@@ -1,0 +1,20 @@
+{
+  "id": "Vitruvium",
+  "title": "Vitruvium Beta",
+  "description": "Custom system with adventures are coming soon!",
+  "version": "0.0.1",
+  "authors": [{ "name": "Dangalor" }],
+  "minimumCoreVersion": "12",
+  "compatibleCoreVersion": "13",
+
+  "template": "template.json",
+
+  "documentTypes": {
+    "Actor": ["character"],
+    "Item": ["ability", "item"]
+  },
+
+  "esmodules": ["module/system.js"],
+
+  "styles": ["styles/system.css"]
+}

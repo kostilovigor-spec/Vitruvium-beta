@@ -1,0 +1,28 @@
+{
+  "Actor": {
+    "types": ["character"],
+    "character": {
+      "attributes": {
+        "condition": 1,
+        "attention": 1,
+        "movement": 1,
+        "combat": 1,
+        "thinking": 1,
+        "communication": 1,
+        "inspiration": { "value": 6, "max": 6 },
+        "hp": { "value": 5, "max": 5 }
+      }
+    }
+  },
+  "Item": {
+    "types": ["ability", "item"],
+    "ability": {
+      "cost": 1,
+      "description": ""
+    },
+    "item": {
+      "description": "",
+      "quantity": 1
+    }
+  }
+}

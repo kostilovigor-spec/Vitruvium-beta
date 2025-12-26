@@ -1,0 +1,393 @@
+import { rollSuccessDice } from "./rolls.js";
+
+/**
+ * Vitruvium Character Sheet
+ * - Attributes (1..6) with +/- and roll buttons
+ * - Inspiration (value/max) with +/-
+ * - HP max = 5 * condition (auto), HP value manual input (saved on blur/change/Enter)
+ * - Extra dice quick roll (stored in Actor flags, stable)
+ * - Abilities (Items: ability): create/open/delete/use (spend inspiration + chat card)
+ */
+export class VitruviumCharacterSheet extends ActorSheet {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      classes: ["vitruvium", "sheet", "actor"],
+      template: "systems/vitruvium/templates/actor/character-sheet.hbs",
+      width: 640,
+      height: 720,
+      // We keep global auto-submit OFF (it caused annoying resets),
+      // and instead manually persist specific fields (HP) below.
+      submitOnChange: true,
+      submitOnClose: true,
+    });
+  }
+
+  getData() {
+    const data = super.getData();
+
+    const sys = data.system ?? this.actor.system ?? {};
+    const attrs = sys.attributes ?? {};
+
+    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+    const num = (v, d) => {
+      const x = Number(v);
+      return Number.isNaN(x) ? d : x;
+    };
+
+    const getAttr = (k) => clamp(num(attrs[k], 1), 1, 6);
+
+    // Inspiration
+    const insp = attrs.inspiration ?? { value: 6, max: 6 };
+    const inspValue = clamp(num(insp.value, 6), 0, 99);
+    const inspMax = clamp(num(insp.max, 6), 0, 99);
+
+    // HP (max always derived)
+    const condition = getAttr("condition");
+    const hpMax = condition * 5;
+    const hp = attrs.hp ?? { value: hpMax, max: hpMax };
+    const hpValue = clamp(num(hp.value, hpMax), 0, hpMax);
+
+    // Extra dice stored in flags (scope must match system id)
+    const scope = game.system.id;
+    const savedExtra = this.actor.getFlag(scope, "extraDice");
+    let extraDice = clamp(num(savedExtra, 2), 1, 20);
+
+    data.vitruvium = data.vitruvium || {};
+    data.vitruvium.attributes = [
+      { key: "condition", label: "Самочувствие", value: getAttr("condition") },
+      { key: "attention", label: "Внимание", value: getAttr("attention") },
+      { key: "movement", label: "Движение", value: getAttr("movement") },
+      { key: "combat", label: "Сражение", value: getAttr("combat") },
+      { key: "thinking", label: "Мышление", value: getAttr("thinking") },
+      {
+        key: "communication",
+        label: "Общение",
+        value: getAttr("communication"),
+      },
+    ];
+
+    data.vitruvium.inspiration = { value: inspValue, max: inspMax };
+    data.vitruvium.hp = { value: hpValue, max: hpMax };
+    data.vitruvium.extraDice = extraDice;
+    // Keep data.system.attributes.hp in sync for templates/tokens that read it
+    data.system = data.system || {};
+    data.system.attributes = data.system.attributes || {};
+    data.system.attributes.hp = data.system.attributes.hp || {};
+    data.system.attributes.hp.value = hpValue;
+    data.system.attributes.hp.max = hpMax;
+
+    return data;
+  }
+
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+    const num = (v, d) => {
+      const x = Number(v);
+      return Number.isNaN(x) ? d : x;
+    };
+    const esc = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const scope = game.system.id;
+
+    // ===== Attributes +/- (1..6) =====
+    html.find("[data-action='attr-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      const key = ev.currentTarget.dataset.attr;
+
+      const attrs = this.actor.system.attributes ?? {};
+      const current = clamp(num(attrs[key], 1), 1, 6);
+      const next = clamp(current + 1, 1, 6);
+
+      const patch = { [`system.attributes.${key}`]: next };
+
+      // Auto HP max = 5 * condition (and clamp hp.value)
+      if (key === "condition") {
+        const newMaxHp = next * 5;
+        patch["system.attributes.hp.max"] = newMaxHp;
+
+        const curHp = clamp(
+          num(this.actor.system.attributes?.hp?.value, newMaxHp),
+          0,
+          newMaxHp
+        );
+        if (curHp > newMaxHp) patch["system.attributes.hp.value"] = newMaxHp;
+      }
+
+      await this.actor.update(patch);
+    });
+
+    html.find("[data-action='attr-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      const key = ev.currentTarget.dataset.attr;
+
+      const attrs = this.actor.system.attributes ?? {};
+      const current = clamp(num(attrs[key], 1), 1, 6);
+      const next = clamp(current - 1, 1, 6);
+
+      const patch = { [`system.attributes.${key}`]: next };
+
+      if (key === "condition") {
+        const newMaxHp = next * 5;
+        patch["system.attributes.hp.max"] = newMaxHp;
+
+        const curHp = clamp(
+          num(this.actor.system.attributes?.hp?.value, newMaxHp),
+          0,
+          newMaxHp
+        );
+        if (curHp > newMaxHp) patch["system.attributes.hp.value"] = newMaxHp;
+      }
+
+      await this.actor.update(patch);
+    });
+
+    // ===== Roll attribute check =====
+    html.find("[data-action='roll-attribute']").on("click", async (ev) => {
+      ev.preventDefault();
+      const btn = ev.currentTarget;
+
+      const key = btn.dataset.attr;
+      const label = btn.dataset.label ?? key;
+
+      const attrs = this.actor.system.attributes ?? {};
+      let pool = clamp(num(attrs[key], 1), 1, 6);
+
+      // Call rolls.js in a backward/forward compatible way
+      await rollSuccessDice({
+        pool,
+        actorName: this.actor.name,
+        checkName: label,
+        label: `Проверка: ${label}`, // harmless if rolls.js ignores it
+      });
+    });
+
+    // ===== Inspiration +/- (0..max) =====
+    html.find("[data-action='insp-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+
+      const insp = this.actor.system.attributes?.inspiration ?? {
+        value: 6,
+        max: 6,
+      };
+      const m = clamp(num(insp.max, 6), 0, 99);
+      const v = clamp(num(insp.value, 6) + 1, 0, m);
+
+      await this.actor.update({
+        "system.attributes.inspiration.max": m,
+        "system.attributes.inspiration.value": v,
+      });
+    });
+
+    html.find("[data-action='insp-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+
+      const insp = this.actor.system.attributes?.inspiration ?? {
+        value: 6,
+        max: 6,
+      };
+      const m = clamp(num(insp.max, 6), 0, 99);
+      const v = clamp(num(insp.value, 6) - 1, 0, m);
+
+      await this.actor.update({
+        "system.attributes.inspiration.max": m,
+        "system.attributes.inspiration.value": v,
+      });
+    });
+
+    // ===== Extra dice (flags) =====
+    html.find("[data-action='extra-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      cur = clamp(cur + 1, 1, 20);
+      await this.actor.setFlag(scope, "extraDice", cur);
+    });
+
+    html.find("[data-action='extra-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      cur = clamp(cur - 1, 1, 20);
+      await this.actor.setFlag(scope, "extraDice", cur);
+    });
+
+    html.find("[data-action='extra-roll']").on("click", async (ev) => {
+      ev.preventDefault();
+      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+
+      await rollSuccessDice({
+        pool: cur,
+        actorName: this.actor.name,
+        checkName: "Дополнительные кубы",
+        label: `Дополнительный бросок: ${cur} куб(ов)`,
+      });
+    });
+
+    // ===== Luck roll (always 1 die) =====
+    html.find("[data-action='luck-roll']").on("click", async (ev) => {
+      ev.preventDefault();
+
+      await rollSuccessDice({
+        pool: 1,
+        actorName: this.actor.name,
+        checkName: "Бросок удачи",
+      });
+    });
+
+    // ===== Abilities (Items: ability) =====
+    html.find("[data-action='create-ability']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новая способность",
+          type: "ability",
+          system: { cost: 1, description: "" },
+        },
+      ]);
+    });
+
+    html.find("[data-action='edit-item']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (item) item.sheet.render(true);
+    });
+
+    html.find("[data-action='delete-item']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+
+      const ok = await Dialog.confirm({
+        title: "Удалить способность?",
+        content: `<p>Удалить <b>${esc(item.name)}</b>?</p>`,
+      });
+
+      if (!ok) return;
+      await this.actor.deleteEmbeddedDocuments("Item", [id]);
+    });
+
+    html.find("[data-action='use-ability']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+
+      const sys = item.system ?? {};
+      const cost = Math.max(0, num(sys.cost, 0));
+      const desc = String(sys.description ?? "");
+
+      // Current inspiration
+      const insp = this.actor.system.attributes?.inspiration ?? {
+        value: 0,
+        max: 6,
+      };
+      const inspValue = num(insp.value, 0);
+
+      if (inspValue < cost) {
+        ui.notifications?.warn(
+          `Недостаточно вдохновения: нужно ${cost}, есть ${inspValue}`
+        );
+        return;
+      }
+
+      await this.actor.update({
+        "system.attributes.inspiration.value": inspValue - cost,
+      });
+
+      const content = `
+        <div class="vitruvium-chatcard">
+          <h3>${esc(item.name)}</h3>
+          <p><b>Стоимость:</b> −${cost} вдохн.</p>
+          ${
+            desc
+              ? `<p>${esc(desc).replace(/\\n/g, "<br>")}</p>`
+              : `<p class="hint">Описание не задано.</p>`
+          }
+        </div>
+      `;
+
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+        content,
+      });
+    });
+
+    // ===== HP manual input: persist on INPUT (debounced) + blur/Enter =====
+    // Fixes: field clearing on rerender when clicking buttons (create/use ability etc.)
+    const hpInput = html.find("input[name='system.attributes.hp.value']");
+    if (hpInput.length) {
+      const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+      const num = (v, d) => {
+        const x = Number(v);
+        return Number.isNaN(x) ? d : x;
+      };
+
+      let hpTimer = null;
+
+      const computeMaxHp = () => {
+        const attrs = this.actor.system.attributes ?? {};
+        const condition = clamp(num(attrs.condition, 1), 1, 6);
+        return condition * 5;
+      };
+
+      const normalizeHp = (raw) => {
+        const hpMax = computeMaxHp();
+        let v = num(raw, 0);
+        v = Math.round(v);
+        v = clamp(v, 0, hpMax);
+        return v;
+      };
+
+      const saveHpNow = async () => {
+        const v = normalizeHp(hpInput.val());
+        // update only if changed (reduces rerenders)
+        const current = num(this.actor.system.attributes?.hp?.value, 0);
+        if (v === current) return;
+        await this.actor.update({ "system.attributes.hp.value": v });
+      };
+
+      const scheduleSave = () => {
+        if (hpTimer) clearTimeout(hpTimer);
+        hpTimer = setTimeout(() => {
+          hpTimer = null;
+          // fire and forget, but keep errors visible
+          saveHpNow().catch(console.error);
+        }, 150);
+      };
+
+      // Save while typing (prevents losing value on rerender)
+      hpInput.on("input", scheduleSave);
+
+      // Also save on blur/change (extra safety)
+      hpInput.on("change", scheduleSave);
+      hpInput.on("blur", scheduleSave);
+
+      // Enter: save immediately
+      hpInput.on("keydown", async (ev) => {
+        if (ev.key !== "Enter") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (hpTimer) clearTimeout(hpTimer);
+        hpTimer = null;
+        await saveHpNow();
+        hpInput.blur();
+      });
+
+      // Before clicking any button on the sheet, flush pending HP to avoid rerender wipe
+      html.find("button").on("mousedown", async () => {
+        if (!hpTimer) return;
+        clearTimeout(hpTimer);
+        hpTimer = null;
+        await saveHpNow();
+      });
+    }
+  }
+}

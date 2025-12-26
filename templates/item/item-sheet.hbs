@@ -1,0 +1,46 @@
+<form class="{{cssClass}} v-sheet" autocomplete="off">
+  <header class="v-header">
+    <div class="v-header__title" style="width: 100%;">
+      <input
+        class="vitruvium-title"
+        type="text"
+        name="name"
+        value="{{item.name}}"
+      />
+      <div class="v-subtle">Vitruvium · предмет</div>
+    </div>
+  </header>
+
+  <section class="v-panel">
+    <div class="v-panel__head">
+      <h2 class="v-h2">Параметры</h2>
+      <div class="v-line"></div>
+    </div>
+
+    <div class="v-resource__row">
+      <div class="v-resource__label" style="min-width: 90px;">Количество</div>
+      <input
+        class="v-input"
+        type="number"
+        name="system.quantity"
+        value="{{system.quantity}}"
+        data-dtype="Number"
+        min="0"
+      />
+    </div>
+
+    <div class="v-subtle" style="margin-top: 10px;">
+      Пока без эффектов — предметы чисто описательные.
+    </div>
+  </section>
+
+  <section class="v-panel">
+    <div class="v-panel__head">
+      <h2 class="v-h2">Описание</h2>
+      <div class="v-line"></div>
+    </div>
+
+    <textarea name="system.description">{{system.description}}</textarea>
+
+  </section>
+</form>
