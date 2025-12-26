@@ -1,0 +1,716 @@
+/* =========================================================
+   Vitruvium — system.css (полный файл)
+   Минимализм + декоративные линии/акценты
+   Включает: лист персонажа, лист способности, чат-карточки, общие утилиты
+   ========================================================= */
+
+/* ---------- Base ---------- */
+:root {
+  --v-border: rgba(0, 0, 0, 0.14);
+  --v-border-strong: rgba(0, 0, 0, 0.18);
+  --v-border-soft: rgba(0, 0, 0, 0.1);
+  --v-bg: rgba(255, 255, 255, 0.55);
+  --v-bg-soft: rgba(255, 255, 255, 0.35);
+  --v-bg-strong: rgba(255, 255, 255, 0.7);
+  --v-ink: rgba(0, 0, 0, 0.92);
+  --v-muted: rgba(0, 0, 0, 0.72);
+  --v-muted2: rgba(0, 0, 0, 0.58);
+  --v-shadow: rgba(0, 0, 0, 0.06);
+  --v-radius: 14px;
+  --v-radius-sm: 10px;
+  --v-radius-xs: 8px;
+}
+
+.vitruvium-sheet,
+.v-sheet {
+  color: var(--v-ink);
+  padding: 12px;
+}
+
+.v-subtle {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* ---------- Header ---------- */
+.v-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--v-border);
+}
+
+.v-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.v-rule {
+  font-size: 12px;
+  opacity: 0.7;
+  padding: 4px 8px;
+  border: 1px solid var(--v-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- Layout grid ---------- */
+.v-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 12px;
+}
+
+/* ---------- Panels ---------- */
+.v-panel {
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius);
+  padding: 12px;
+  background: var(--v-bg);
+  box-shadow: 0 6px 18px var(--v-shadow);
+}
+
+.v-panel--wide {
+  grid-column: 1 / -1;
+}
+
+.v-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.v-h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.v-line {
+  flex: 1;
+  height: 1px;
+  background: var(--v-border);
+  border-radius: 999px;
+}
+
+/* ---------- Buttons ---------- */
+.v-btn {
+  border: 1px solid var(--v-border-strong);
+  border-radius: var(--v-radius-sm);
+  padding: 6px 10px;
+  height: 30px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  transition: transform 0.06s ease, filter 0.1s ease, background 0.1s ease;
+}
+
+.v-btn:hover {
+  filter: brightness(0.99);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.v-btn:active {
+  transform: translateY(1px);
+}
+
+.v-btn--tiny {
+  width: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.v-btn--ghost {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.v-btn--solid {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.v-btn--danger {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(0, 0, 0, 0.26);
+}
+
+/* ---------- Inputs ---------- */
+.v-input {
+  border: 1px solid var(--v-border-strong);
+  border-radius: var(--v-radius-sm);
+  height: 30px;
+  padding: 0 10px;
+  background: var(--v-bg-strong);
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.v-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+.v-input--hp {
+  width: 90px;
+}
+
+.v-sep {
+  opacity: 0.6;
+}
+
+/* ---------- Readonly pill ---------- */
+.v-readonly {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 4px 10px;
+  border-radius: var(--v-radius-sm);
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.v-readonly--big {
+  font-size: 16px;
+  min-width: 44px;
+}
+
+/* ---------- Attributes ---------- */
+.v-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v-attr {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--v-border);
+  background: var(--v-bg-soft);
+}
+
+.v-attr__label {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.v-attr__controls {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v-attr__value {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+/* ---------- Resources ---------- */
+.v-resource {
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--v-border);
+  background: var(--v-bg-soft);
+  margin-bottom: 10px;
+}
+
+.v-resource__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.v-resource__label {
+  font-weight: 900;
+}
+
+.v-resource__hint {
+  font-size: 12px;
+  opacity: 0.7;
+  text-align: right;
+}
+
+.v-resource__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Extra roll ---------- */
+.v-extra {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 0 6px;
+}
+
+/* ---------- Abilities list ---------- */
+.v-abilities {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v-ability {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--v-border);
+  background: var(--v-bg-soft);
+}
+
+.v-ability__name {
+  font-weight: 900;
+}
+
+.v-ability__meta {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+.v-ability__btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Ability sheet (Item) ---------- */
+.vitruvium-sheet .vitruvium-header,
+.v-sheet .vitruvium-header {
+  margin-bottom: 12px;
+}
+
+.vitruvium-title,
+.v-title {
+  width: 100%;
+  font-size: 18px;
+  font-weight: 800;
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.vitruvium-card,
+.v-cardblock {
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius);
+  padding: 12px;
+  background: var(--v-bg);
+  box-shadow: 0 6px 18px var(--v-shadow);
+  margin-bottom: 12px;
+}
+
+.vitruvium-insp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+/* ---------- Legacy helpers (если где-то остались старые классы) ---------- */
+.vitruvium-attrctrl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.vitruvium-smallbtn {
+  width: 32px;
+  height: 28px;
+  line-height: 26px;
+  padding: 0;
+  text-align: center;
+  border-radius: var(--v-radius-xs);
+  border: 1px solid var(--v-border-strong);
+  background: rgba(255, 255, 255, 0.65);
+  font-weight: 800;
+}
+
+.vitruvium-attrvalue {
+  min-width: 22px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* =========================================================
+   Chat Cards (Rolls + Abilities)
+   ========================================================= */
+
+/* Основная карточка в чате */
+.v-card {
+  border: 1px solid var(--v-border-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 6px 18px var(--v-shadow);
+}
+
+.v-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--v-border);
+  margin-bottom: 8px;
+}
+
+.v-card__title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.v-card__meta {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.v-card__row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.v-card__label {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.v-card__value {
+  min-height: 24px;
+}
+
+.v-card__footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--v-border);
+  margin-top: 6px;
+}
+
+.v-rule {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Иконки успехов */
+.v-successes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.v-success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid var(--v-border-strong);
+  background: rgba(255, 255, 255, 0.5);
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.v-success--none {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+/* Карточка способности (если ты используешь .vitruvium-chatcard) */
+.vitruvium-chatcard {
+  border: 1px solid var(--v-border-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 6px 18px var(--v-shadow);
+}
+
+.vitruvium-chatcard h3 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.vitruvium-chatcard p {
+  margin: 6px 0;
+}
+
+.vitruvium-chatcard .hint {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+/* =========================================================
+   Small polish
+   ========================================================= */
+
+/* Делает скролл в листах чуть приятнее */
+.v-sheet::-webkit-scrollbar,
+.vitruvium-sheet::-webkit-scrollbar {
+  width: 10px;
+}
+
+.v-sheet::-webkit-scrollbar-thumb,
+.vitruvium-sheet::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+
+.v-sheet::-webkit-scrollbar-track,
+.vitruvium-sheet::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Чтобы кнопки в Foundry не выглядели “чужими” рядом с нашими */
+.v-sheet button,
+.vitruvium-sheet button {
+  cursor: pointer;
+}
+
+/* =========================================================
+   Vitruvium — Compact override
+   (добавь в самый конец system.css)
+   ========================================================= */
+
+.v-sheet {
+  padding: 8px;
+}
+
+/* Header */
+.v-header {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+}
+
+.v-name {
+  font-size: 18px;
+}
+
+.v-subtle,
+.v-rule,
+.hint {
+  font-size: 11px;
+}
+
+/* Grid */
+.v-grid {
+  gap: 8px;
+}
+
+/* Panels */
+.v-panel,
+.vitruvium-card,
+.v-cardblock {
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.v-panel__head {
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.v-h2 {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* Buttons */
+.v-btn {
+  height: 26px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.v-btn--tiny {
+  width: 28px;
+  font-size: 14px;
+}
+
+/* Inputs / pills */
+.v-input {
+  height: 26px;
+  border-radius: 9px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.v-input--hp {
+  width: 74px;
+}
+
+.v-readonly {
+  padding: 3px 8px;
+  border-radius: 9px;
+  font-size: 12px;
+  min-width: 32px;
+}
+
+.v-readonly--big {
+  font-size: 14px;
+  min-width: 38px;
+}
+
+/* Attributes */
+.v-attrs {
+  gap: 6px;
+}
+
+.v-attr {
+  padding: 8px 8px;
+  gap: 8px;
+  border-radius: 11px;
+  grid-template-columns: 1fr 96px;
+}
+
+.v-attr__label {
+  font-size: 12px;
+}
+
+.v-attr__controls {
+  margin-top: 4px;
+  gap: 6px;
+}
+
+.v-attr__value {
+  font-size: 14px;
+  min-width: 22px;
+}
+
+/* Resources */
+.v-resource {
+  padding: 8px 8px;
+  border-radius: 11px;
+  margin-bottom: 8px;
+}
+
+.v-resource__top {
+  margin-bottom: 6px;
+}
+
+.v-resource__label {
+  font-size: 12px;
+}
+
+.v-resource__hint {
+  font-size: 11px;
+}
+
+/* Extra roll */
+.v-extra {
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+/* Abilities */
+.v-abilities {
+  gap: 6px;
+}
+
+.v-ability {
+  padding: 8px 8px;
+  gap: 8px;
+  border-radius: 11px;
+  grid-template-columns: 1fr 280px;
+}
+
+.v-ability__name {
+  font-size: 12px;
+}
+
+.v-ability__meta {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.v-ability__btns {
+  gap: 6px;
+}
+
+/* Chat cards a bit tighter too */
+.v-card,
+.vitruvium-chatcard {
+  padding: 8px 10px;
+  border-radius: 11px;
+}
+
+.v-card__title,
+.vitruvium-chatcard h3 {
+  font-size: 13px;
+}
+
+.v-card__row {
+  padding: 4px 0;
+  grid-template-columns: 64px 1fr;
+}
+
+.v-success {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+/* Extra compact: squeeze buttons/columns a bit more */
+.v-attr {
+  grid-template-columns: 1fr 88px;
+}
+.v-ability {
+  grid-template-columns: 1fr 260px;
+}
+
+.v-btn--solid,
+.v-btn--ghost,
+.v-btn--danger {
+  padding: 4px 6px;
+}
+
+/* Luck roll */
+.v-luck {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.v-luck .v-btn {
+  font-size: 12px;
+  opacity: 0.85;
+}
