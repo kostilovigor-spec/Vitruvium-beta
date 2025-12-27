@@ -13,60 +13,43 @@ export class VitruviumItemSheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    const desc = html.find("textarea[name='system.description']");
-    if (!desc.length) return;
+    html.find("[data-action='edit-description']").on("click", async (ev) => {
+      ev.preventDefault();
 
-    // Храним последнее значение, чтобы не спамить update
-    let lastSaved = String(this.document.system?.description ?? "");
-    let timer = null;
+      const current = String(this.document.system?.description ?? "");
 
-    const saveNow = async () => {
-      const value = String(desc.val() ?? "");
-      if (value === lastSaved) return;
-      lastSaved = value;
-      await this.document.update({ "system.description": value });
-    };
+      const esc = (s) =>
+        String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
 
-    // Быстрое сохранение: почти сразу (30мс), чтобы не проиграть перерендерам
-    const scheduleFast = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        saveNow().catch(console.error);
-      }, 30);
-    };
+      const content = `
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea id="vitruvium-desc" style="width:100%; min-height:260px; resize:vertical;">${esc(
+            current
+          )}</textarea>
+        </div>
+      `;
 
-    // Пока печатают — сохраняем быстро
-    desc.on("input", scheduleFast);
-
-    // Blur/change — тоже
-    desc.on("blur", scheduleFast);
-    desc.on("change", scheduleFast);
-
-    // Перед любым нажатием кнопок — форсим сохранение
-    html.find("button").on("mousedown", async () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-      await saveNow();
+      new Dialog({
+        title: `Описание: ${this.document.name}`,
+        content,
+        buttons: {
+          save: {
+            label: "Сохранить",
+            callback: async (dlgHtml) => {
+              const value = dlgHtml.find("#vitruvium-desc").val();
+              await this.document.update({
+                "system.description": String(value ?? ""),
+              });
+            },
+          },
+          cancel: { label: "Отмена" },
+        },
+        default: "save",
+      }).render(true);
     });
-
-    // Запомним функцию принудительного сохранения для close()
-    this._vitruviumForceSave = async () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-      await saveNow();
-    };
-  }
-
-  async close(options) {
-    // Самое важное: при закрытии листа — всегда сохранить текущий текст
-    if (this._vitruviumForceSave) {
-      await this._vitruviumForceSave();
-    }
-    return super.close(options);
   }
 }

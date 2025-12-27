@@ -1,46 +1,45 @@
-<form class="{{cssClass}} v-sheet" autocomplete="off">
-  <header class="v-header">
-    <div class="v-header__title" style="width: 100%;">
+<form class="{{cssClass}}" autocomplete="off">
+  <header class="sheet-header">
+    <h1 class="charname">
       <input
-        class="vitruvium-title"
         type="text"
         name="name"
         value="{{item.name}}"
+        placeholder="Название предмета"
       />
-      <div class="v-subtle">Vitruvium · предмет</div>
-    </div>
+    </h1>
   </header>
 
-  <section class="v-panel">
-    <div class="v-panel__head">
-      <h2 class="v-h2">Параметры</h2>
-      <div class="v-line"></div>
-    </div>
-
-    <div class="v-resource__row">
-      <div class="v-resource__label" style="min-width: 90px;">Количество</div>
+  <section class="sheet-body">
+    <div class="form-group">
+      <label>Количество</label>
       <input
-        class="v-input"
         type="number"
         name="system.quantity"
-        value="{{system.quantity}}"
-        data-dtype="Number"
+        value="{{item.system.quantity}}"
         min="0"
       />
     </div>
 
-    <div class="v-subtle" style="margin-top: 10px;">
-      Пока без эффектов — предметы чисто описательные.
+    <div class="form-group">
+      <label
+        style="display:flex; align-items:center; justify-content:space-between; gap:8px;"
+      >
+        <span>Описание</span>
+        <button type="button" data-action="edit-description">
+          Редактировать описание
+        </button>
+      </label>
+
+      <div
+        style="white-space: pre-wrap; padding: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; min-height: 140px;"
+      >
+        {{#if item.system.description}}
+          {{item.system.description}}
+        {{else}}
+          <span style="opacity:0.7;">(Описание не задано)</span>
+        {{/if}}
+      </div>
     </div>
-  </section>
-
-  <section class="v-panel">
-    <div class="v-panel__head">
-      <h2 class="v-h2">Описание</h2>
-      <div class="v-line"></div>
-    </div>
-
-    <textarea name="system.description">{{system.description}}</textarea>
-
   </section>
 </form>

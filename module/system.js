@@ -1,6 +1,6 @@
 import { VitruviumCharacterSheet } from "./character-sheet.js";
 import { VitruviumAbilitySheet } from "./ability-sheet.js";
-//import { VitruviumItemSheet } from "./item-sheet.js";
+import { VitruviumItemSheet } from "./item-sheet.js";
 import "./dice-so-nice.js";
 
 Hooks.once("init", () => {
@@ -20,6 +20,11 @@ Hooks.once("init", () => {
 
   Items.registerSheet(NS, VitruviumAbilitySheet, {
     types: ["ability"],
+    makeDefault: true,
+  });
+
+  Items.registerSheet(NS, VitruviumItemSheet, {
+    types: ["item"],
     makeDefault: true,
   });
 });

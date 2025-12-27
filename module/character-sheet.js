@@ -66,6 +66,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
       },
     ];
 
+    data.vitruvium = data.vitruvium || {};
+    data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
     data.vitruvium.inspiration = { value: inspValue, max: inspMax };
     data.vitruvium.hp = { value: hpValue, max: hpMax };
     data.vitruvium.extraDice = extraDice;
@@ -238,6 +240,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
         actorName: this.actor.name,
         checkName: "Бросок удачи",
       });
+    });
+
+    // ===== Items (type: item) =====
+    html.find("[data-action='create-item']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новый предмет",
+          type: "item",
+          system: { description: "", quantity: 1 },
+        },
+      ]);
     });
 
     // ===== Abilities (Items: ability) =====

@@ -8,13 +8,10 @@
   "compatibleCoreVersion": "13",
 
   "template": "template.json",
-
   "documentTypes": {
     "Actor": ["character"],
     "Item": ["ability", "item"]
   },
-
   "esmodules": ["module/system.js"],
-
   "styles": ["styles/system.css"]
 }

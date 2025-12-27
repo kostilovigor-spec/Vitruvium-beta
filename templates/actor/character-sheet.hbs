@@ -216,5 +216,51 @@
 
     </section>
 
+    <section class="v-panel v-panel--wide">
+      <div class="v-panel__head">
+        <h2 class="v-h2">Инвентарь</h2>
+        <div class="v-line"></div>
+
+        <button
+          type="button"
+          class="v-btn v-btn--ghost"
+          data-action="create-item"
+        >
+          + Предмет
+        </button>
+      </div>
+
+      <div class="v-abilities">
+        {{#each vitruvium.items as |it|}}
+          <div class="v-ability">
+            <div class="v-ability__main">
+              <div class="v-ability__name">{{it.name}}</div>
+              <div class="v-ability__meta">Кол-во:
+                <b>{{it.system.quantity}}</b></div>
+            </div>
+
+            <div class="v-ability__btns">
+              <button
+                type="button"
+                class="v-btn v-btn--ghost"
+                data-action="edit-item"
+                data-item-id="{{it._id}}"
+              >
+                Открыть
+              </button>
+              <button
+                type="button"
+                class="v-btn v-btn--danger"
+                data-action="delete-item"
+                data-item-id="{{it._id}}"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    </section>
+
   </div>
 </form>
