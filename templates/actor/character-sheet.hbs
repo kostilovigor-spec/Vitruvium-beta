@@ -243,11 +243,21 @@
               <button
                 type="button"
                 class="v-btn v-btn--ghost"
+                data-action="item-chat"
+                data-item-id="{{it._id}}"
+              >
+                В чат
+              </button>
+
+              <button
+                type="button"
+                class="v-btn v-btn--ghost"
                 data-action="edit-item"
                 data-item-id="{{it._id}}"
               >
                 Открыть
               </button>
+
               <button
                 type="button"
                 class="v-btn v-btn--danger"
@@ -257,6 +267,7 @@
                 Удалить
               </button>
             </div>
+
           </div>
         {{/each}}
       </div>

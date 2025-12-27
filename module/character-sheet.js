@@ -254,6 +254,36 @@ export class VitruviumCharacterSheet extends ActorSheet {
       ]);
     });
 
+    // ===== Post inventory item to chat =====
+    html.find("[data-action='item-chat']").on("click", async (ev) => {
+      ev.preventDefault();
+
+      const itemId = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(itemId);
+      if (!item) return;
+
+      const name = item.name ?? "Предмет";
+      const qty = Number(item.system?.quantity ?? 1);
+      const descRaw = String(item.system?.description ?? "").trim();
+      const desc = descRaw
+        ? foundry.utils.escapeHTML(descRaw)
+        : "<span style='opacity:.7;'>(без описания)</span>";
+
+      const title = qty > 1 ? `${name} ×${qty}` : name;
+
+      const content = `
+    <div class="vitruvium chat-card">
+      <h3 style="margin:0 0 6px 0;">${title}</h3>
+      <div style="white-space: pre-wrap;">${desc}</div>
+    </div>
+  `;
+
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+        content,
+      });
+    });
+
     // ===== Abilities (Items: ability) =====
     html.find("[data-action='create-ability']").on("click", async (ev) => {
       ev.preventDefault();
