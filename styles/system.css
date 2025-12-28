@@ -1,716 +1,530 @@
 /* =========================================================
-   Vitruvium — system.css (полный файл)
-   Минимализм + декоративные линии/акценты
-   Включает: лист персонажа, лист способности, чат-карточки, общие утилиты
+   Vitruvium — system.css (CLEAN)
+   Built for character-sheet.hbs markup (v-grid / v-hero / v-res / v-rollbox / v-row)
+   Goal: compact parchment layout exactly like your scheme, without drift.
    ========================================================= */
 
-/* ---------- Base ---------- */
+/* ---------- Variables ---------- */
 :root {
-  --v-border: rgba(0, 0, 0, 0.14);
-  --v-border-strong: rgba(0, 0, 0, 0.18);
-  --v-border-soft: rgba(0, 0, 0, 0.1);
-  --v-bg: rgba(255, 255, 255, 0.55);
-  --v-bg-soft: rgba(255, 255, 255, 0.35);
-  --v-bg-strong: rgba(255, 255, 255, 0.7);
+  --v-bg: rgba(255, 245, 225, 0.45);
+  --v-bg-soft: rgba(255, 245, 225, 0.3);
+
+  --v-border: rgba(0, 0, 0, 0.18);
+  --v-border-soft: rgba(0, 0, 0, 0.12);
+
   --v-ink: rgba(0, 0, 0, 0.92);
-  --v-muted: rgba(0, 0, 0, 0.72);
-  --v-muted2: rgba(0, 0, 0, 0.58);
+  --v-muted: rgba(0, 0, 0, 0.65);
+
   --v-shadow: rgba(0, 0, 0, 0.06);
-  --v-radius: 14px;
-  --v-radius-sm: 10px;
-  --v-radius-xs: 8px;
+
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 8px;
+
+  --btn-h: 28px;
+  --row-h: 40px;
+  --gap: 10px;
 }
 
-.vitruvium-sheet,
+/* ---------- Predictable sizing ---------- */
+.v-sheet,
+.v-sheet * {
+  box-sizing: border-box;
+}
+
+/* ---------- Base ---------- */
 .v-sheet {
+  padding: 8px;
   color: var(--v-ink);
-  padding: 12px;
-}
-
-.v-subtle {
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-.hint {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-/* ---------- Header ---------- */
-.v-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--v-border);
-}
-
-.v-name {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-}
-
-.v-rule {
-  font-size: 12px;
-  opacity: 0.7;
-  padding: 4px 8px;
-  border: 1px solid var(--v-border);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.35);
-}
-
-/* ---------- Layout grid ---------- */
-.v-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 12px;
-}
-
-/* ---------- Panels ---------- */
-.v-panel {
-  border: 1px solid var(--v-border);
-  border-radius: var(--v-radius);
-  padding: 12px;
-  background: var(--v-bg);
-  box-shadow: 0 6px 18px var(--v-shadow);
-}
-
-.v-panel--wide {
-  grid-column: 1 / -1;
-}
-
-.v-panel__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
 }
 
 .v-h2 {
-  margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  opacity: 0.9;
+  margin: 0;
 }
 
 .v-line {
-  flex: 1;
   height: 1px;
-  background: var(--v-border);
-  border-radius: 999px;
+  background: var(--v-border-soft);
+}
+
+/* ---------- Main grid ---------- */
+.v-grid {
+  display: grid;
+  grid-template-columns: 160px 420px 1fr; /* left fixed, center fixed, right fills */
+  gap: var(--gap);
+  align-items: start;
+}
+
+.v-col {
+  min-width: 0;
+}
+.v-col--center {
+  width: 420px;
+  max-width: 420px;
+}
+
+/* Make right column panel stretch vertically */
+.v-col--right {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.v-col--right > .v-panel {
+  flex: 1 1 auto;
+  min-height: 560px;
+}
+.v-col--right .v-list {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+/* ---------- Panels / cards ---------- */
+.v-panel,
+.v-hero,
+.v-attrcard,
+.v-row {
+  position: relative;
+  background: var(--v-bg);
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 12px var(--v-shadow);
+}
+
+.v-panel,
+.v-hero {
+  padding: 10px;
+}
+.v-row {
+  padding: 6px 10px;
+  min-height: var(--row-h);
+}
+
+/* Decorative corners */
+.v-panel::before,
+.v-hero::before,
+.v-attrcard::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.35;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) top
+      left/20px 1px no-repeat,
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top left/1px
+      20px no-repeat,
+    linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) top right/20px
+      1px no-repeat,
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top right/1px
+      20px no-repeat,
+    linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) bottom left/20px
+      1px no-repeat,
+    linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent) bottom left/1px
+      20px no-repeat,
+    linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) bottom right/20px
+      1px no-repeat,
+    linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent) bottom right/1px
+      20px no-repeat;
+}
+
+/* ---------- LEFT: Attributes (1x6) ---------- */
+.v-attrgrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.v-attrcard {
+  padding: 10px;
+  height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.v-attrcard__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.v-attrcard__icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  border: 1px solid var(--v-border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.v-attrcard__value {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 900;
+  padding: 6px 0;
+  border-radius: var(--r-md);
+  border: 1px solid var(--v-border-soft);
+  cursor: pointer;
+}
+.v-attrcard__value:hover {
+  border-color: var(--v-border);
+}
+
+.v-attrcard__ctrl {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.v-attrcard__ctrl .v-mini {
+  height: var(--btn-h);
+  min-width: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--v-ink);
 }
 
 /* ---------- Buttons ---------- */
-.v-btn {
-  border: 1px solid var(--v-border-strong);
-  border-radius: var(--v-radius-sm);
-  padding: 6px 10px;
-  height: 30px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
-  transition: transform 0.06s ease, filter 0.1s ease, background 0.1s ease;
+.v-btn,
+.v-mini {
+  border: 1px solid var(--v-border);
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--v-ink);
 }
 
-.v-btn:hover {
-  filter: brightness(0.99);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.v-btn:active {
-  transform: translateY(1px);
-}
-
-.v-btn--tiny {
-  width: 34px;
-  padding: 0;
+.v-mini {
+  height: var(--btn-h);
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  line-height: 1;
 }
 
-.v-btn--ghost {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.v-btn--solid {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.v-btn--danger {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(0, 0, 0, 0.26);
-}
-
-/* ---------- Inputs ---------- */
-.v-input {
-  border: 1px solid var(--v-border-strong);
-  border-radius: var(--v-radius-sm);
-  height: 30px;
-  padding: 0 10px;
-  background: var(--v-bg-strong);
-  font-weight: 800;
-  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
-}
-
-.v-input:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
-}
-
-.v-input--hp {
-  width: 90px;
-}
-
-.v-sep {
-  opacity: 0.6;
-}
-
-/* ---------- Readonly pill ---------- */
-.v-readonly {
-  min-width: 36px;
-  text-align: center;
-  font-weight: 900;
-  font-size: 14px;
-  padding: 4px 10px;
-  border-radius: var(--v-radius-sm);
-  border: 1px dashed rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.v-readonly--big {
-  font-size: 16px;
-  min-width: 44px;
-}
-
-/* ---------- Attributes ---------- */
-.v-attrs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.v-attr {
-  display: grid;
-  grid-template-columns: 1fr 110px;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--v-border);
-  background: var(--v-bg-soft);
-}
-
-.v-attr__label {
-  font-weight: 800;
-  letter-spacing: 0.2px;
-}
-
-.v-attr__controls {
-  margin-top: 6px;
+.v-btn {
+  height: var(--btn-h);
+  padding: 0 12px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  line-height: 1.05;
 }
 
-.v-attr__value {
-  min-width: 26px;
-  text-align: center;
-  font-weight: 900;
-  font-size: 16px;
-  opacity: 0.95;
+.v-mini--danger {
+  border-color: rgba(120, 0, 0, 0.4);
 }
 
-/* ---------- Resources ---------- */
-.v-resource {
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--v-border);
-  background: var(--v-bg-soft);
+/* ---------- CENTER: Hero ---------- */
+.v-hero {
+  display: grid;
+  grid-template-columns: 140px 1fr; /* portrait column + meta */
+  gap: 10px;
   margin-bottom: 10px;
 }
 
-.v-resource__top {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.v-resource__label {
-  font-weight: 900;
-}
-
-.v-resource__hint {
-  font-size: 12px;
-  opacity: 0.7;
-  text-align: right;
-}
-
-.v-resource__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* ---------- Extra roll ---------- */
-.v-extra {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px 0 6px;
-}
-
-/* ---------- Abilities list ---------- */
-.v-abilities {
+.v-hero__portrait {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.v-ability {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--v-border);
-  background: var(--v-bg-soft);
-}
-
-.v-ability__name {
-  font-weight: 900;
-}
-
-.v-ability__meta {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-top: 4px;
-}
-
-.v-ability__btns {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* ---------- Ability sheet (Item) ---------- */
-.vitruvium-sheet .vitruvium-header,
-.v-sheet .vitruvium-header {
-  margin-bottom: 12px;
-}
-
-.vitruvium-title,
-.v-title {
-  width: 100%;
-  font-size: 18px;
-  font-weight: 800;
-  border: 1px solid var(--v-border);
-  border-radius: var(--v-radius-sm);
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.vitruvium-card,
-.v-cardblock {
-  border: 1px solid var(--v-border);
-  border-radius: var(--v-radius);
-  padding: 12px;
-  background: var(--v-bg);
-  box-shadow: 0 6px 18px var(--v-shadow);
-  margin-bottom: 12px;
-}
-
-.vitruvium-insp {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding-top: 6px;
-}
-
-/* ---------- Legacy helpers (если где-то остались старые классы) ---------- */
-.vitruvium-attrctrl {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.vitruvium-smallbtn {
-  width: 32px;
-  height: 28px;
-  line-height: 26px;
-  padding: 0;
-  text-align: center;
-  border-radius: var(--v-radius-xs);
-  border: 1px solid var(--v-border-strong);
-  background: rgba(255, 255, 255, 0.65);
-  font-weight: 800;
-}
-
-.vitruvium-attrvalue {
-  min-width: 22px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-/* =========================================================
-   Chat Cards (Rolls + Abilities)
-   ========================================================= */
-
-/* Основная карточка в чате */
-.v-card {
-  border: 1px solid var(--v-border-strong);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 6px 18px var(--v-shadow);
-}
-
-.v-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--v-border);
-  margin-bottom: 8px;
-}
-
-.v-card__title {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-}
-
-.v-card__meta {
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.v-card__row {
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 6px 0;
-}
-
-.v-card__label {
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-.v-card__value {
-  min-height: 24px;
-}
-
-.v-card__footer {
-  padding-top: 8px;
-  border-top: 1px solid var(--v-border);
-  margin-top: 6px;
-}
-
-.v-rule {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-/* Иконки успехов */
-.v-successes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.v-success {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  border: 1px solid var(--v-border-strong);
-  background: rgba(255, 255, 255, 0.5);
-  font-weight: 900;
-  font-size: 14px;
-}
-
-.v-success--none {
-  opacity: 0.6;
-  border-style: dashed;
-}
-
-/* Карточка способности (если ты используешь .vitruvium-chatcard) */
-.vitruvium-chatcard {
-  border: 1px solid var(--v-border-strong);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 6px 18px var(--v-shadow);
-}
-
-.vitruvium-chatcard h3 {
-  margin: 0 0 6px 0;
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.vitruvium-chatcard p {
-  margin: 6px 0;
-}
-
-.vitruvium-chatcard .hint {
-  opacity: 0.7;
-  font-size: 12px;
-}
-
-/* =========================================================
-   Small polish
-   ========================================================= */
-
-/* Делает скролл в листах чуть приятнее */
-.v-sheet::-webkit-scrollbar,
-.vitruvium-sheet::-webkit-scrollbar {
-  width: 10px;
-}
-
-.v-sheet::-webkit-scrollbar-thumb,
-.vitruvium-sheet::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 999px;
-}
-
-.v-sheet::-webkit-scrollbar-track,
-.vitruvium-sheet::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-/* Чтобы кнопки в Foundry не выглядели “чужими” рядом с нашими */
-.v-sheet button,
-.vitruvium-sheet button {
-  cursor: pointer;
-}
-
-/* =========================================================
-   Vitruvium — Compact override
-   (добавь в самый конец system.css)
-   ========================================================= */
-
-.v-sheet {
-  padding: 8px;
-}
-
-/* Header */
-.v-header {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+.v-portrait {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--r-lg);
+  object-fit: cover;
+  border: 1px solid var(--v-border-soft);
 }
 
 .v-name {
+  width: 100%;
   font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
 }
 
-.v-subtle,
-.v-rule,
-.hint {
-  font-size: 11px;
-}
-
-/* Grid */
-.v-grid {
-  gap: 8px;
-}
-
-/* Panels */
-.v-panel,
-.vitruvium-card,
-.v-cardblock {
-  padding: 10px;
-  border-radius: 12px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-}
-
-.v-panel__head {
-  margin-bottom: 8px;
-  gap: 8px;
-}
-
-.v-h2 {
-  font-size: 12px;
-  letter-spacing: 0.5px;
-}
-
-/* Buttons */
-.v-btn {
-  height: 26px;
-  padding: 4px 8px;
-  border-radius: 9px;
-  font-size: 12px;
-}
-
-.v-btn--tiny {
-  width: 28px;
-  font-size: 14px;
-}
-
-/* Inputs / pills */
-.v-input {
-  height: 26px;
-  border-radius: 9px;
-  padding: 0 8px;
-  font-size: 12px;
-}
-
-.v-input--hp {
-  width: 74px;
-}
-
-.v-readonly {
-  padding: 3px 8px;
-  border-radius: 9px;
-  font-size: 12px;
-  min-width: 32px;
-}
-
-.v-readonly--big {
-  font-size: 14px;
-  min-width: 38px;
-}
-
-/* Attributes */
-.v-attrs {
-  gap: 6px;
-}
-
-.v-attr {
-  padding: 8px 8px;
-  gap: 8px;
-  border-radius: 11px;
-  grid-template-columns: 1fr 96px;
-}
-
-.v-attr__label {
-  font-size: 12px;
-}
-
-.v-attr__controls {
-  margin-top: 4px;
-  gap: 6px;
-}
-
-.v-attr__value {
-  font-size: 14px;
-  min-width: 22px;
-}
-
-/* Resources */
-.v-resource {
-  padding: 8px 8px;
-  border-radius: 11px;
-  margin-bottom: 8px;
-}
-
-.v-resource__top {
-  margin-bottom: 6px;
-}
-
-.v-resource__label {
-  font-size: 12px;
-}
-
-.v-resource__hint {
-  font-size: 11px;
-}
-
-/* Extra roll */
-.v-extra {
-  gap: 8px;
-  padding: 8px 0 4px;
-}
-
-/* Abilities */
-.v-abilities {
-  gap: 6px;
-}
-
-.v-ability {
-  padding: 8px 8px;
-  gap: 8px;
-  border-radius: 11px;
-  grid-template-columns: 1fr 280px;
-}
-
-.v-ability__name {
-  font-size: 12px;
-}
-
-.v-ability__meta {
-  font-size: 11px;
-  margin-top: 2px;
-}
-
-.v-ability__btns {
-  gap: 6px;
-}
-
-/* Chat cards a bit tighter too */
-.v-card,
-.vitruvium-chatcard {
-  padding: 8px 10px;
-  border-radius: 11px;
-}
-
-.v-card__title,
-.vitruvium-chatcard h3 {
-  font-size: 13px;
-}
-
-.v-card__row {
-  padding: 4px 0;
-  grid-template-columns: 64px 1fr;
-}
-
-.v-success {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  font-size: 13px;
-}
-/* Extra compact: squeeze buttons/columns a bit more */
-.v-attr {
-  grid-template-columns: 1fr 88px;
-}
-.v-ability {
-  grid-template-columns: 1fr 260px;
-}
-
-.v-btn--solid,
-.v-btn--ghost,
-.v-btn--danger {
-  padding: 4px 6px;
-}
-
-/* Luck roll */
+/* Luck button under portrait (when you moved it into .v-hero__portrait) */
 .v-luck {
-  display: flex;
-  justify-content: center;
-  margin-top: 6px;
+  width: 140px;
+  height: 44px;
+  padding: 0 10px;
+  white-space: normal;
 }
 
-.v-luck .v-btn {
+/* ---------- Resources row (HP + Inspiration) ---------- */
+.v-resrow {
+  display: grid;
+  grid-template-columns: 104px 1fr; /* HP fixed + insp flexible */
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: start;
+}
+
+.v-res {
+  background: var(--v-bg-soft);
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-md);
+  padding: 8px;
+  min-width: 0;
+}
+
+.v-res__label {
+  font-size: 11px;
+  opacity: 0.78;
+  margin: 0 0 6px 0;
+}
+
+/* HP tile: "15 / 15" stable */
+.v-res--hp {
+  width: 104px;
+  display: grid;
+  grid-template-columns: 34px 10px 34px;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  row-gap: 4px;
+  align-items: center;
+}
+.v-res--hp .v-res__label {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.v-res--hp .v-res__input {
+  grid-column: 1;
+  width: 34px;
+  height: var(--btn-h);
+  padding: 0 4px;
+  text-align: center;
+}
+.v-res--hp .v-res__sep {
+  grid-column: 2;
+  text-align: center;
+  opacity: 0.75;
+}
+.v-res--hp .v-res__max {
+  grid-column: 3;
+  text-align: left;
+  font-weight: 800;
+}
+
+/* Inspiration tile: no drifting, buttons always inside */
+.v-res--insp .v-res__btns {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+.v-res--insp .v-mini {
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
+}
+.v-res--insp .v-res__val {
+  font-weight: 900;
+  min-width: 1.6em;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.v-res--insp .v-res__hint {
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ---------- Rolls row (Extra dice) ---------- */
+.v-rollrow {
+  display: flex;
+  gap: 10px;
+  align-items: start;
+}
+
+/* Keep only the rollbox here (if luck moved under portrait) */
+.v-rollbox {
+  flex: 1 1 auto;
+  background: var(--v-bg-soft);
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-md);
+  padding: 8px;
+  min-width: 0;
+}
+
+.v-rollbox__label {
+  font-size: 11px;
+  opacity: 0.8;
+  margin: 0 0 6px 0;
+}
+
+.v-rollbox__ctrl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap; /* never stack */
+}
+
+.v-rollbox__val {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 900;
+}
+
+/* If luck button still remains inside v-rollrow (fallback) */
+.v-rollrow > .v-btn[data-action="luck-roll"] {
+  width: 110px;
+  height: 44px;
+  padding: 0 8px;
+  white-space: normal;
+  flex: 0 0 auto;
+}
+
+/* ---------- Panel headers (button under title) ---------- */
+.v-panel__head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "title line"
+    "btn   btn";
+  column-gap: 10px;
+  row-gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.v-panel__head > .v-h2 {
+  grid-area: title;
+}
+.v-panel__head > .v-line {
+  grid-area: line;
+}
+.v-panel__head > .v-btn {
+  grid-area: btn;
+  width: 100%;
+  max-width: 300px;
+  justify-self: start;
+  height: 34px;
+}
+
+/* ---------- Lists (Inventory / Abilities) ---------- */
+.v-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Row layout: name+meta on left, buttons on right */
+.v-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.v-row__main {
+  min-width: 0;
+}
+.v-row__title {
   font-size: 12px;
-  opacity: 0.85;
+  font-weight: 800;
+  max-width: 210px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-row__meta {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+/* Buttons stay on one line, never stretch vertically */
+.v-row__btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+}
+
+.v-row__btns .v-mini {
+  height: var(--btn-h);
+}
+.v-row__btns .v-mini--danger {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+
+/* ---------- Small form element sanity ---------- */
+.v-sheet input[type="text"],
+.v-sheet input[type="number"] {
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--v-ink);
+}
+
+/* =========================================================
+   HOTFIX: prevent overlap at narrower sheet widths
+   - Right column gets a minimum width
+   - Rows become grid so buttons never push outside
+   ========================================================= */
+
+/* Ensure the overall grid never makes the right column too narrow */
+.v-grid {
+  grid-template-columns: 160px 420px minmax(360px, 1fr);
+}
+
+/* If the window is very narrow, let grid stack (optional but safe) */
+@media (max-width: 980px) {
+  .v-grid {
+    display: grid;
+    grid-template-columns: 160px 420px minmax(360px, 1fr);
+    gap: 10px;
+  }
+  .v-col--right {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Ability/Item rows: grid layout that wraps safely */
+/* === FIX: buttons in a single row, compact height (inventory/abilities) === */
+.v-row {
+  min-height: 34px; /* было 40 */
+  padding: 4px 10px; /* меньше воздуха */
+  align-items: center;
+}
+
+/* имя/кол-во не должны распирать строку */
+.v-row__title {
+  max-width: 260px;
+}
+
+/* КНОПКИ В РЯД */
+.v-row__btns {
+  display: flex;
+  flex-wrap: nowrap !important; /* ключевое */
+  gap: 6px;
+  align-items: center;
+}
+
+/* Кнопки ниже и уже */
+.v-row__btns .v-mini {
+  height: 26px; /* чуть меньше btn-h */
+  padding: 0 8px;
+}
+
+/* Красный крестик — квадрат */
+.v-row__btns .v-mini--danger {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
 }

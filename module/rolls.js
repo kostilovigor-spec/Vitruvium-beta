@@ -45,10 +45,6 @@ export async function rollSuccessDice({
           ${successIcons}
         </div>
       </div>
-
-      <div class="v-card__footer">
-        <span class="v-rule">1–3 = 0 · 4–5 = 1 · 6 = 2</span>
-      </div>
     </div>
   `;
 

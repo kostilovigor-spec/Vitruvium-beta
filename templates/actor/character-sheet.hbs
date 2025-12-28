@@ -1,277 +1,241 @@
 <form class="{{cssClass}} v-sheet" autocomplete="off">
 
-  <!-- ===== Header ===== -->
-  <header class="v-header">
-    <div class="v-header__title">
-      <h1 class="v-name">{{actor.name}}</h1>
-      <div class="v-subtle">Vitruvium · лист персонажа</div>
-    </div>
-    {{! <div class="v-header__rule">
-      <span class="v-rule">1–3 = 0 · 4–5 = 1 · 6 = 2</span>
-    </div> }}
-  </header>
-
   <div class="v-grid">
 
-    <!-- ===== Left: Attributes ===== -->
-    <section class="v-panel">
-      <div class="v-panel__head">
-        <h2 class="v-h2">Атрибуты</h2>
-        <div class="v-line"></div>
-      </div>
+    <!-- LEFT: Attributes -->
+    <aside class="v-col v-col--left">
 
-      <div class="v-attrs">
+      <div class="v-attrgrid">
         {{#each vitruvium.attributes as |a|}}
-          <div class="v-attr">
-            <div class="v-attr__left">
-              <div class="v-attr__label">{{a.label}}</div>
-              <div class="v-attr__controls">
-                <button
-                  type="button"
-                  class="v-btn v-btn--tiny"
-                  data-action="attr-dec"
-                  data-attr="{{a.key}}"
-                  aria-label="Уменьшить"
-                >−</button>
-                <div class="v-attr__value">{{a.value}}</div>
-                <button
-                  type="button"
-                  class="v-btn v-btn--tiny"
-                  data-action="attr-inc"
-                  data-attr="{{a.key}}"
-                  aria-label="Увеличить"
-                >+</button>
-              </div>
+          <div class="v-attrcard">
+            <div class="v-attrcard__label">
+              <span class="v-attrcard__icon">{{a.icon}}</span>
+              <span class="v-attrcard__text">{{a.label}}</span>
             </div>
 
-            <button
-              type="button"
-              class="v-btn v-btn--ghost"
+            <div
+              class="v-attrcard__value"
+              role="button"
+              title="Нажми чтобы сделать проверку"
               data-action="roll-attribute"
               data-attr="{{a.key}}"
               data-label="{{a.label}}"
             >
-              Бросить
-            </button>
+              {{a.value}}
+            </div>
+
+            <div class="v-attrcard__ctrl">
+              <button
+                type="button"
+                class="v-mini"
+                data-action="attr-dec"
+                data-attr="{{a.key}}"
+              >–</button>
+              <button
+                type="button"
+                class="v-mini"
+                data-action="attr-inc"
+                data-attr="{{a.key}}"
+              >+</button>
+            </div>
           </div>
         {{/each}}
       </div>
-    </section>
 
-    <!-- ===== Right: Resources + Quick Roll ===== -->
-    <section class="v-panel">
-      <div class="v-panel__head">
-        <h2 class="v-h2">Ресурсы</h2>
-        <div class="v-line"></div>
-      </div>
+    </aside>
 
-      <!-- HP -->
-      <div class="v-resource">
-        <div class="v-resource__top">
-          <div class="v-resource__label">HP</div>
-          <div class="v-resource__hint">Макс. = 5 × Самочувствие</div>
-        </div>
+    <!-- CENTER: Portrait + Rolls + Inventory -->
+    <main class="v-col v-col--center">
 
-        <div class="v-resource__row">
-          <input
-            class="v-input v-input--hp"
-            type="number"
-            name="system.attributes.hp.value"
-            value="{{vitruvium.hp.value}}"
-            data-dtype="Number"
-            min="0"
+      <section class="v-hero">
+        <div class="v-hero__portrait">
+          <img
+            class="v-portrait"
+            src="{{actor.img}}"
+            data-edit="img"
+            title="{{actor.name}}"
           />
-          <span class="v-sep">/</span>
-          <span class="v-readonly">{{vitruvium.hp.max}}</span>
-        </div>
-      </div>
-
-      <!-- Inspiration -->
-      <div class="v-resource">
-        <div class="v-resource__top">
-          <div class="v-resource__label">Вдохновение</div>
-          <div class="v-resource__hint">Тратить на способности</div>
-        </div>
-
-        <div class="v-resource__row">
           <button
             type="button"
-            class="v-btn v-btn--tiny"
-            data-action="insp-dec"
-            aria-label="Потратить"
-          >−</button>
-          <span class="v-readonly">{{vitruvium.inspiration.value}}</span>
-          <span class="v-sep">/</span>
-          <span class="v-readonly">{{vitruvium.inspiration.max}}</span>
+            class="v-btn v-btn--ghost"
+            data-action="luck-roll"
+          >
+            Бросок удачи
+          </button>
+        </div>
+
+        <div class="v-hero__meta">
+          <input
+            class="v-name"
+            type="text"
+            name="name"
+            value="{{actor.name}}"
+            placeholder="Имя персонажа"
+          />
+
+          <div class="v-resrow">
+            <div class="v-res v-res--hp">
+              <div class="v-res__label">HP</div>
+              <input
+                class="v-res__input"
+                type="number"
+                name="system.attributes.hp.value"
+                value="{{vitruvium.hp.value}}"
+                min="0"
+                data-dtype="Number"
+              />
+              <div class="v-res__sep">/</div>
+              <div class="v-res__max">{{vitruvium.hp.max}}</div>
+            </div>
+
+            <div class="v-res v-res--insp">
+              <div class="v-res__label">Вдохн.</div>
+              <div class="v-res__btns">
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="insp-dec"
+                >–</button>
+                <div class="v-res__val">{{vitruvium.inspiration.value}}</div>
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="insp-inc"
+                >+</button>
+              </div>
+              {{!-- <div class="v-res__hint">max {{vitruvium.inspiration.max}}</div> --}}
+            </div>
+          </div>
+
+          <div class="v-rollrow">
+            <div class="v-rollbox">
+              <div class="v-rollbox__label">Доп. кубы</div>
+              <div class="v-rollbox__ctrl">
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="extra-dec"
+                >–</button>
+                <div class="v-rollbox__val">{{vitruvium.extraDice}}</div>
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="extra-inc"
+                >+</button>
+                <button
+                  type="button"
+                  class="v-btn"
+                  data-action="extra-roll"
+                >Бросить</button>
+              </div>
+            </div>
+
+            {{! <button
+              type="button"
+              class="v-btn v-btn--ghost"
+              data-action="luck-roll"
+            >
+              Бросок удачи
+            </button> }}
+          </div>
+        </div>
+      </section>
+
+      <!-- Inventory -->
+      <section class="v-panel">
+        <div class="v-panel__head">
+          <div class="v-h2">Инвентарь</div>
+          <div class="v-line"></div>
           <button
             type="button"
-            class="v-btn v-btn--tiny"
-            data-action="insp-inc"
-            aria-label="Восстановить"
-          >+</button>
+            class="v-btn v-btn--ghost"
+            data-action="create-item"
+          >+ Предмет</button>
         </div>
-      </div>
 
-      <!-- Extra dice -->
-      <div class="v-panel__head" style="margin-top: 8px;">
-        <h2 class="v-h2">Доп. бросок</h2>
-        <div class="v-line"></div>
-      </div>
-
-      <div class="v-extra">
-        <button
-          type="button"
-          class="v-btn v-btn--tiny"
-          data-action="extra-dec"
-          aria-label="Меньше"
-        >−</button>
-        <span class="v-readonly v-readonly--big">{{vitruvium.extraDice}}</span>
-        <button
-          type="button"
-          class="v-btn v-btn--tiny"
-          data-action="extra-inc"
-          aria-label="Больше"
-        >+</button>
-
-        <button
-          type="button"
-          class="v-btn v-btn--solid"
-          data-action="extra-roll"
-        >
-          Бросить
-        </button>
-      </div>
-
-      <div class="v-luck">
-        <button
-          type="button"
-          class="v-btn v-btn--ghost"
-          data-action="luck-roll"
-        >
-          Бросок удачи
-        </button>
-      </div>
-
-      <div class="v-subtle" style="margin-top: 6px;">
-        Для “докинь ещё X кубов” без привязки к атрибуту.
-      </div>
-
-    </section>
-
-    <!-- ===== Full width: Abilities ===== -->
-    <section class="v-panel v-panel--wide">
-      <div class="v-panel__head">
-        <h2 class="v-h2">Способности</h2>
-        <div class="v-line"></div>
-
-        <button
-          type="button"
-          class="v-btn v-btn--ghost"
-          data-action="create-ability"
-        >
-          + Новая
-        </button>
-      </div>
-
-      <div class="v-abilities">
-        {{#each actor.items as |it|}}
-          {{#if (eq it.type "ability")}}
-            <div class="v-ability">
-              <div class="v-ability__main">
-                <div class="v-ability__name">{{it.name}}</div>
-                <div class="v-ability__meta">Стоимость:
-                  <b>{{it.system.cost}}</b>
-                  вдохн.</div>
+        <div class="v-list">
+          {{#each vitruvium.items as |it|}}
+            <div class="v-row">
+              <div class="v-row__main">
+                <div class="v-row__title">{{it.name}}</div>
+                <div class="v-row__meta">×{{it.system.quantity}}</div>
               </div>
 
-              <div class="v-ability__btns">
+              <div class="v-row__btns">
                 <button
                   type="button"
-                  class="v-btn v-btn--solid"
-                  data-action="use-ability"
+                  class="v-mini"
+                  data-action="item-chat"
                   data-item-id="{{it._id}}"
-                >Применить</button>
+                >В чат</button>
                 <button
                   type="button"
-                  class="v-btn v-btn--ghost"
+                  class="v-mini"
                   data-action="edit-item"
                   data-item-id="{{it._id}}"
-                >Открыть</button>
+                >Откр.</button>
                 <button
                   type="button"
-                  class="v-btn v-btn--danger"
+                  class="v-mini v-mini--danger"
                   data-action="delete-item"
                   data-item-id="{{it._id}}"
-                >Удалить</button>
+                >✕</button>
               </div>
             </div>
-          {{/if}}
-        {{/each}}
-      </div>
+          {{/each}}
+        </div>
+      </section>
 
-      <div class="v-subtle" style="margin-top: 8px;">
-        Способности — нарративные инструменты. Применение списывает вдохновение
-        и пишет карточку в чат.
-      </div>
+    </main>
 
-    </section>
+    <!-- RIGHT: Abilities -->
+    <aside class="v-col v-col--right">
 
-    <section class="v-panel v-panel--wide">
-      <div class="v-panel__head">
-        <h2 class="v-h2">Инвентарь</h2>
-        <div class="v-line"></div>
+      <section class="v-panel">
+        <div class="v-panel__head">
+          <div class="v-h2">Способности</div>
+          <div class="v-line"></div>
+          <button
+            type="button"
+            class="v-btn v-btn--ghost"
+            data-action="create-ability"
+          >+ Способность</button>
+        </div>
 
-        <button
-          type="button"
-          class="v-btn v-btn--ghost"
-          data-action="create-item"
-        >
-          + Предмет
-        </button>
-      </div>
+        <div class="v-list">
+          {{#each vitruvium.abilities as |ab|}}
+            <div class="v-row">
+              <div class="v-row__main">
+                <div class="v-row__title">{{ab.name}}</div>
+                <div class="v-row__meta">стоим. {{ab.system.cost}}</div>
+              </div>
 
-      <div class="v-abilities">
-        {{#each vitruvium.items as |it|}}
-          <div class="v-ability">
-            <div class="v-ability__main">
-              <div class="v-ability__name">{{it.name}}</div>
-              <div class="v-ability__meta">Кол-во:
-                <b>{{it.system.quantity}}</b></div>
+              <div class="v-row__btns">
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="use-ability"
+                  data-item-id="{{ab._id}}"
+                >Исп.</button>
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="edit-item"
+                  data-item-id="{{ab._id}}"
+                >Откр.</button>
+                <button
+                  type="button"
+                  class="v-mini v-mini--danger"
+                  data-action="delete-item"
+                  data-item-id="{{ab._id}}"
+                >✕</button>
+              </div>
             </div>
+          {{/each}}
+        </div>
+      </section>
 
-            <div class="v-ability__btns">
-              <button
-                type="button"
-                class="v-btn v-btn--ghost"
-                data-action="item-chat"
-                data-item-id="{{it._id}}"
-              >
-                В чат
-              </button>
-
-              <button
-                type="button"
-                class="v-btn v-btn--ghost"
-                data-action="edit-item"
-                data-item-id="{{it._id}}"
-              >
-                Открыть
-              </button>
-
-              <button
-                type="button"
-                class="v-btn v-btn--danger"
-                data-action="delete-item"
-                data-item-id="{{it._id}}"
-              >
-                Удалить
-              </button>
-            </div>
-
-          </div>
-        {{/each}}
-      </div>
-    </section>
+    </aside>
 
   </div>
 </form>

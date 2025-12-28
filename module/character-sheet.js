@@ -28,6 +28,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
     const sys = data.system ?? this.actor.system ?? {};
     const attrs = sys.attributes ?? {};
 
+    const abilities = (this.actor.items ?? []).filter(
+      (i) => i.type === "ability"
+    );
+    data.vitruvium = data.vitruvium ?? {};
+    data.vitruvium.abilities = abilities;
+
     const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
     const num = (v, d) => {
       const x = Number(v);
@@ -53,16 +59,51 @@ export class VitruviumCharacterSheet extends ActorSheet {
     let extraDice = clamp(num(savedExtra, 2), 1, 20);
 
     data.vitruvium = data.vitruvium || {};
+    const icons = {
+      condition: "♥",
+      attention: "◉",
+      movement: "➜",
+      combat: "⚔",
+      thinking: "✦",
+      communication: "☉",
+    };
+
     data.vitruvium.attributes = [
-      { key: "condition", label: "Самочувствие", value: getAttr("condition") },
-      { key: "attention", label: "Внимание", value: getAttr("attention") },
-      { key: "movement", label: "Движение", value: getAttr("movement") },
-      { key: "combat", label: "Сражение", value: getAttr("combat") },
-      { key: "thinking", label: "Мышление", value: getAttr("thinking") },
+      {
+        key: "condition",
+        label: "Самочувствие",
+        value: attrs.condition,
+        icon: icons.condition,
+      },
+      {
+        key: "attention",
+        label: "Внимание",
+        value: attrs.attention,
+        icon: icons.attention,
+      },
+      {
+        key: "movement",
+        label: "Движение",
+        value: attrs.movement,
+        icon: icons.movement,
+      },
+      {
+        key: "combat",
+        label: "Сражение",
+        value: attrs.combat,
+        icon: icons.combat,
+      },
+      {
+        key: "thinking",
+        label: "Мышление",
+        value: attrs.thinking,
+        icon: icons.thinking,
+      },
       {
         key: "communication",
         label: "Общение",
-        value: getAttr("communication"),
+        value: attrs.communication,
+        icon: icons.communication,
       },
     ];
 
