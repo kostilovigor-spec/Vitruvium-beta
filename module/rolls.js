@@ -35,14 +35,12 @@ export async function rollSuccessDice({
       </div>
 
       <div class="v-card__row">
-        <div class="v-card__label">Пул</div>
-        <div class="v-card__value"><b>${pool}</b></div>
+        <div class="v-card__value" style="font-size: 18px;"><b>Пул: ${pool}</b></div>
       </div>
 
       <div class="v-card__row">
-        <div class="v-card__label">Успехи</div>
-        <div class="v-card__value v-successes">
-          ${successIcons}
+        <div class="v-card__value v-successes" style="font-size: 18px;">
+          Успехи = ${successes} ${successIcons}
         </div>
       </div>
     </div>
