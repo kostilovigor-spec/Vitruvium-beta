@@ -2,10 +2,15 @@
   "id": "Vitruvium",
   "title": "Vitruvium Beta",
   "description": "Custom system with adventures are coming soon!",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "authors": [{ "name": "Dangalor" }],
   "minimumCoreVersion": "12",
   "compatibleCoreVersion": "13",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13",
+    "maximum": "13"
+  },
 
   "template": "template.json",
   "documentTypes": {

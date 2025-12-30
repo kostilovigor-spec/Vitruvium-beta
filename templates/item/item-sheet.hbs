@@ -1,46 +1,72 @@
-<form class="{{cssClass}}" autocomplete="off">
-  <header class="sheet-header">
-    <h1 class="charname">
-      <input
-        type="text"
-        name="name"
-        value="{{item.name}}"
-        placeholder="Название предмета"
-      />
-    </h1>
+<form class="{{cssClass}} v-sheet v-item" autocomplete="off">
+
+  <!-- Title -->
+  <header class="v-item__header">
+    <input
+      class="v-item__title"
+      type="text"
+      name="name"
+      value="{{item.name}}"
+    />
   </header>
 
-  <section class="sheet-body">
-    <div class="form-group">
-      <label>Количество</label>
-      <input
-        type="number"
-        name="system.quantity"
-        value="{{item.system.quantity}}"
-        min="0"
+  <!-- Body: icon left, description right -->
+  <section class="v-item__body">
+
+    <div class="v-item__iconbox">
+      <img
+        class="v-item__icon"
+        src="{{item.img}}"
+        data-edit="img"
+        title="{{item.name}}"
       />
-    </div>
 
-    <div class="form-group">
-      <label
-        style="display:flex; align-items:center; justify-content:space-between; gap:8px;"
-      >
-        <span>Описание</span>
-
-        <span style="display:flex; gap:6px;">
-          <button type="button" data-action="edit-description">Редакт.</button>
-        </span>
-      </label>
-
-      <div
-        style="white-space: pre-wrap; padding: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; min-height: 140px;"
-      >
-        {{#if item.system.description}}
-          {{item.system.description}}
-        {{else}}
-          <span style="opacity:0.7;">(Описание не задано)</span>
-        {{/if}}
+      <div class="v-item__qty">
+        <span class="v-item__qtylabel">Кол-во</span>
+        <input
+          class="v-item__qtyinput"
+          type="number"
+          name="system.quantity"
+          value="{{system.quantity}}"
+          data-dtype="Number"
+          min="0"
+        />
       </div>
     </div>
+
+    <div class="v-item__descbox">
+      <div class="v-item__deschead">
+        <div class="v-h2">Описание</div>
+        <div class="v-line"></div>
+      </div>
+
+      <!-- Read-only view -->
+      <div class="v-item__descview" data-role="desc-view">
+        {{#if system.description}}
+          <div class="v-item__desccontent">{{{vitruvium.descriptionHTML}}}</div>
+        {{else}}
+          <div class="v-item__descplaceholder">Описание не задано.</div>
+        {{/if}}
+      </div>
+
+      <!-- Edit view (hidden by default) -->
+      <textarea
+        class="v-item__descedit"
+        name="system.description"
+        data-role="desc-edit"
+      >{{system.description}}</textarea>
+
+      <div class="v-item__actions">
+        <button
+          type="button"
+          class="v-btn v-btn--ghost"
+          data-action="toggle-desc"
+        >
+          Редактировать описание
+        </button>
+      </div>
+    </div>
+
   </section>
+
 </form>

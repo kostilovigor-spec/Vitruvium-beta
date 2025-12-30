@@ -537,3 +537,156 @@
   font-size: 14px;
   font-weight: 400;
 }
+/* =========================================================
+   Item Sheet (inventory item) — Vitruvium
+   ========================================================= */
+
+.v-item__header {
+  margin-bottom: 10px;
+}
+
+.v-item__title {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 16px;
+  font-weight: 900;
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--v-ink);
+}
+
+.v-item__body {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.v-item__iconbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v-item__icon {
+  width: 170px;
+  height: 170px;
+  border-radius: var(--r-lg);
+  object-fit: cover;
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.v-item__qty {
+  background: var(--v-bg-soft);
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-md);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 70px;
+  gap: 8px;
+  align-items: center;
+}
+
+.v-item__qtylabel {
+  font-size: 11px;
+  opacity: 0.8;
+  font-weight: 800;
+}
+
+.v-item__qtyinput {
+  height: var(--btn-h);
+  padding: 0 6px;
+  text-align: center;
+}
+
+.v-item__descbox {
+  background: var(--v-bg);
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 12px var(--v-shadow);
+  padding: 10px;
+  min-height: 250px;
+}
+
+.v-item__deschead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.v-item__descview {
+  padding: 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.35);
+  min-height: 200px;
+  overflow: auto;
+}
+
+.v-item__desccontent {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.v-item__descplaceholder {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.v-item__descedit {
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+  padding: 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--v-ink);
+}
+
+.v-item__actions {
+  margin-top: 8px;
+}
+/* ===== Chat: Item card with image ===== */
+.v-itemcard .v-itemcard__top {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  margin-bottom: 8px;
+}
+
+.v-itemcard__img {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.v-itemcard__title {
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.v-itemcard__sub {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.v-itemcard__desc {
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.92;
+}

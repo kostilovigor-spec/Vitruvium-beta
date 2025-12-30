@@ -296,26 +296,42 @@ export class VitruviumCharacterSheet extends ActorSheet {
     });
 
     // ===== Post inventory item to chat =====
+    // ===== Item -> Chat (with image + description) =====
     html.find("[data-action='item-chat']").on("click", async (ev) => {
       ev.preventDefault();
 
-      const itemId = ev.currentTarget.dataset.itemId;
-      const item = this.actor.items.get(itemId);
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
       if (!item) return;
 
-      const name = item.name ?? "Предмет";
-      const qty = Number(item.system?.quantity ?? 1);
-      const descRaw = String(item.system?.description ?? "").trim();
-      const desc = descRaw
-        ? foundry.utils.escapeHTML(descRaw)
-        : "<span style='opacity:.7;'>(без описания)</span>";
+      const esc = (s) =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
 
-      const title = qty > 1 ? `${name} ×${qty}` : name;
+      const desc = String(item.system?.description ?? "");
+      const descHtml = desc
+        ? esc(desc).replace(/\n/g, "<br>")
+        : `<span class="hint">Описание не задано.</span>`;
+
+      const qty = Number(item.system?.quantity ?? 1);
+      const qtyText = Number.isFinite(qty) ? ` ×${qty}` : "";
+
+      const img = item.img || "icons/svg/item-bag.svg";
 
       const content = `
-    <div class="vitruvium chat-card">
-      <h3 style="margin:0 0 6px 0;">${title}</h3>
-      <div style="white-space: pre-wrap;">${desc}</div>
+    <div class="vitruvium-chatcard v-itemcard">
+      <div class="v-itemcard__top">
+        <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
+        <div class="v-itemcard__head">
+          <div class="v-itemcard__title">${esc(item.name)}${qtyText}</div>
+          <div class="v-itemcard__sub">${esc(this.actor.name)} · предмет</div>
+        </div>
+      </div>
+      <div class="v-itemcard__desc">${descHtml}</div>
     </div>
   `;
 

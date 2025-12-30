@@ -3,53 +3,73 @@ export class VitruviumItemSheet extends ItemSheet {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["vitruvium", "sheet", "item"],
       template: "systems/Vitruvium/templates/item/item-sheet.hbs",
-      width: 520,
-      height: 600,
+      width: 720,
+      height: 520,
       submitOnChange: true,
       submitOnClose: true,
+      resizable: true,
     });
+  }
+
+  getData() {
+    const data = super.getData();
+
+    // Унифицируем доступ к system (в разных версиях Foundry контекст отличается)
+    const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
+    data.system = sys;
+
+    const desc = String(sys.description ?? "");
+
+    // Готовим HTML для режима "чтение"
+    const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
+    data.vitruvium = data.vitruvium || {};
+    data.vitruvium.descriptionHTML = safe;
+
+    return data;
   }
 
   activateListeners(html) {
     super.activateListeners(html);
 
-    html.find("[data-action='edit-description']").on("click", async (ev) => {
+    const view = html.find("[data-role='desc-view']");
+    const edit = html.find("[data-role='desc-edit']");
+    const btn = html.find("[data-action='toggle-desc']");
+
+    // старт: режим чтения
+    edit.hide();
+    view.show();
+    btn.text("Редактировать описание");
+
+    const setMode = (isEdit) => {
+      if (isEdit) {
+        view.hide();
+        edit.show();
+        btn.text("Готово");
+        edit.trigger("focus");
+      } else {
+        edit.hide();
+        view.show();
+        btn.text("Редактировать описание");
+      }
+    };
+
+    let editing = false;
+
+    btn.on("click", async (ev) => {
       ev.preventDefault();
 
-      const current = String(this.document.system?.description ?? "");
+      // переключаем режим
+      editing = !editing;
 
-      const esc = (s) =>
-        String(s)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+      // если выключаем редактирование — сохраняем напрямую в Item
+      if (!editing) {
+        const text = String(edit.val() ?? "");
+        await this.item.update({ "system.description": text });
+        // После update Foundry перерендерит лист, и getData() снова заполнит descriptionHTML
+        return;
+      }
 
-      const content = `
-        <div class="form-group">
-          <label>Описание</label>
-          <textarea id="vitruvium-desc" style="width:100%; min-height:260px; resize:vertical;">${esc(
-            current
-          )}</textarea>
-        </div>
-      `;
-
-      new Dialog({
-        title: `Описание: ${this.document.name}`,
-        content,
-        buttons: {
-          save: {
-            label: "Сохранить",
-            callback: async (dlgHtml) => {
-              const value = dlgHtml.find("#vitruvium-desc").val();
-              await this.document.update({
-                "system.description": String(value ?? ""),
-              });
-            },
-          },
-          cancel: { label: "Отмена" },
-        },
-        default: "save",
-      }).render(true);
+      setMode(true);
     });
   }
 }
