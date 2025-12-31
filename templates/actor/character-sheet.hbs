@@ -190,6 +190,34 @@
 
     <!-- RIGHT: Abilities -->
     <aside class="v-col v-col--right">
+      <section class="v-panel-adv" style="margin-bottom: 8px;">
+  <div class="v-panel__head">
+    <div class="v-h2">Режим бросков</div>
+    <div class="v-line"></div>
+  </div>
+
+  <div class="v-rollmode" role="group" aria-label="Режим бросков">
+       <button type="button"
+            class="v-mini {{#if (eq vitruvium.rollMode 'adv')}}is-active{{/if}}"
+            data-action="set-rollmode"
+            data-mode="adv">Adv</button>
+
+    <button type="button"
+            class="v-mini {{#if (eq vitruvium.rollMode 'normal')}}is-active{{/if}}"
+            data-action="set-rollmode"
+            data-mode="normal">Normal</button>
+
+    <button type="button"
+            class="v-mini {{#if (eq vitruvium.rollMode 'dis')}}is-active{{/if}}"
+            data-action="set-rollmode"
+            data-mode="dis">Dis</button>
+  </div>
+
+  <div class="v-subtle" style="margin-top: 6px;">
+    Влияет на все броски (атрибуты, удача, доп. кубы).
+  </div>
+</section>
+
 
       <section class="v-panel">
         <div class="v-panel__head">

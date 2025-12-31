@@ -18,7 +18,11 @@
     "types": ["ability", "item"],
     "ability": {
       "cost": 1,
-      "description": ""
+      "description": "",
+      "roll": {
+        "type": "",
+        "attribute": ""
+      }
     },
     "item": {
       "description": "",

@@ -107,6 +107,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
       },
     ];
 
+    const savedMode = this.actor.getFlag(scope, "rollMode");
+    data.vitruvium.rollMode = savedMode ?? "normal";
+
     data.vitruvium = data.vitruvium || {};
     data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
     data.vitruvium.inspiration = { value: inspValue, max: inspMax };
@@ -139,6 +142,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
         .replace(/'/g, "&#039;");
 
     const scope = game.system.id;
+
+    // ===== Roll mode (normal / adv / dis) saved in flags =====
+    html.find("[data-action='set-rollmode']").on("click", async (ev) => {
+      ev.preventDefault();
+      const mode = ev.currentTarget.dataset.mode;
+      const scope = game.system.id;
+      await this.actor.setFlag(scope, "rollMode", mode);
+    });
 
     // ===== Attributes +/- (1..6) =====
     html.find("[data-action='attr-inc']").on("click", async (ev) => {
@@ -199,6 +210,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const key = btn.dataset.attr;
       const label = btn.dataset.label ?? key;
+      const scope = game.system.id;
+      const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
 
       const attrs = this.actor.system.attributes ?? {};
       let pool = clamp(num(attrs[key], 1), 1, 6);
@@ -208,6 +221,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         pool,
         actorName: this.actor.name,
         checkName: label,
+        mode: rollMode,
         label: `Проверка: ${label}`, // harmless if rolls.js ignores it
       });
     });
@@ -262,13 +276,16 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
     html.find("[data-action='extra-roll']").on("click", async (ev) => {
       ev.preventDefault();
-      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+
+      const scope = game.system.id;
+      const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
+      const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
 
       await rollSuccessDice({
         pool: cur,
         actorName: this.actor.name,
         checkName: "Дополнительные кубы",
-        label: `Дополнительный бросок: ${cur} куб(ов)`,
+        mode: rollMode,
       });
     });
 
@@ -276,10 +293,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find("[data-action='luck-roll']").on("click", async (ev) => {
       ev.preventDefault();
 
+      const scope = game.system.id;
+      const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
+
       await rollSuccessDice({
         pool: 1,
         actorName: this.actor.name,
         checkName: "Бросок удачи",
+        mode: rollMode,
       });
     });
 
