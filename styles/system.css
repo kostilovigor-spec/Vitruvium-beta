@@ -67,6 +67,11 @@
   max-width: 420px;
 }
 
+/* .v-col--left {
+  width: 420px;
+  max-width: 420px;
+} */
+
 /* Make right column panel stretch vertically */
 .v-col--right {
   display: flex;
@@ -760,4 +765,213 @@
   width: 3px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.12);
+}
+
+/* ===== NPC Sheet ===== */
+.v-npc {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v-npc__name {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 800;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.v-npc__hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.v-npc__hpLabel {
+  font-weight: 900;
+  opacity: 0.85;
+}
+.v-npc__hpInput {
+  width: 80px;
+  height: 26px;
+  border-radius: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.65);
+  font-weight: 800;
+}
+.v-npc__hpSep {
+  opacity: 0.6;
+}
+.v-npc__hpMax {
+  font-weight: 900;
+}
+
+.v-npc__attrs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v-npc__attr {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  display: grid;
+  gap: 6px;
+}
+
+.v-npc__attrLabel {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.8;
+  line-height: 1.1;
+}
+
+.v-npc__attrVal {
+  text-align: center;
+  font-weight: 900;
+  font-size: 16px;
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+}
+
+.v-npc__attrCtrl {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.v-npc__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.v-npc__box {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.v-npc__boxTitle {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.8;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.v-npc__boxCtrl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v-npc__mini,
+.v-npc__btn {
+  height: 26px;
+  border-radius: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.65);
+  font-weight: 800;
+}
+
+.v-npc__mini {
+  width: 28px;
+  padding: 0;
+}
+.v-npc__mini--danger {
+  border-color: rgba(0, 0, 0, 0.26);
+}
+
+.v-npc__pill {
+  min-width: 34px;
+  text-align: center;
+  font-weight: 900;
+  border-radius: 9px;
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.v-npc__btn {
+  padding: 0 10px;
+}
+.v-npc__btn--ghost {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.v-npc__bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.v-npc__panel {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.v-npc__panelHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.v-npc__panelTitle {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  opacity: 0.85;
+}
+
+.v-npc__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v-npc__rowItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.v-npc__rowTitle {
+  font-weight: 900;
+  font-size: 12px;
+}
+.v-npc__rowMeta {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.v-npc__rowBtns {
+  display: flex;
+  gap: 6px;
 }

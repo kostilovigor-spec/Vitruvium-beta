@@ -1,7 +1,19 @@
 {
   "Actor": {
-    "types": ["character"],
+    "types": ["character", "npc"],
     "character": {
+      "attributes": {
+        "condition": 1,
+        "attention": 1,
+        "movement": 1,
+        "combat": 1,
+        "thinking": 1,
+        "communication": 1,
+        "inspiration": { "value": 6, "max": 6 },
+        "hp": { "value": 5, "max": 5 }
+      }
+    },
+    "npc": {
       "attributes": {
         "condition": 1,
         "attention": 1,
@@ -18,11 +30,7 @@
     "types": ["ability", "item"],
     "ability": {
       "cost": 1,
-      "description": "",
-      "roll": {
-        "type": "",
-        "attribute": ""
-      }
+      "description": ""
     },
     "item": {
       "description": "",

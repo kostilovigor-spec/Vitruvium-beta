@@ -1,0 +1,185 @@
+<form class="{{cssClass}} v-npc" autocomplete="off">
+  <!-- Top: Name -->
+  <header class="v-npc__top">
+    <input
+      class="v-npc__name"
+      type="text"
+      name="name"
+      value="{{actor.name}}"
+      placeholder="Имя NPC"
+    />
+  </header>
+
+  <!-- HP row -->
+  <section class="v-npc__hp">
+    <div class="v-npc__hpLabel">HP</div>
+    <input
+      class="v-npc__hpInput"
+      type="number"
+      name="system.attributes.hp.value"
+      value="{{vitruvium.hp.value}}"
+      min="0"
+      data-dtype="Number"
+    />
+    <div class="v-npc__hpSep">/</div>
+    <div class="v-npc__hpMax">{{vitruvium.hp.max}}</div>
+  </section>
+
+  <!-- Attributes in one line; roll by clicking the number -->
+  <section class="v-npc__attrs">
+    {{#each vitruvium.attributes as |a|}}
+      <div class="v-npc__attr" title="Нажми на число чтобы бросить">
+        <div class="v-npc__attrLabel">{{a.label}}</div>
+        <div
+          class="v-npc__attrVal"
+          data-action="roll-attribute"
+          data-attr="{{a.key}}"
+          data-label="{{a.label}}"
+        >{{a.value}}</div>
+        <div class="v-npc__attrCtrl">
+          <button
+            type="button"
+            class="v-npc__mini"
+            data-action="attr-dec"
+            data-attr="{{a.key}}"
+          >–</button>
+          <button
+            type="button"
+            class="v-npc__mini"
+            data-action="attr-inc"
+            data-attr="{{a.key}}"
+          >+</button>
+        </div>
+      </div>
+    {{/each}}
+  </section>
+
+  <!-- Extra roll (left) and Inspiration (right) in one row -->
+  <section class="v-npc__row">
+    <div class="v-npc__box">
+      <div class="v-npc__boxTitle">Доп. бросок</div>
+      <div class="v-npc__boxCtrl">
+        <button
+          type="button"
+          class="v-npc__mini"
+          data-action="extra-dec"
+        >–</button>
+        <div class="v-npc__pill">{{vitruvium.extraDice}}</div>
+        <button
+          type="button"
+          class="v-npc__mini"
+          data-action="extra-inc"
+        >+</button>
+        <button
+          type="button"
+          class="v-npc__btn"
+          data-action="extra-roll"
+        >Бросить</button>
+      </div>
+    </div>
+
+    <div class="v-npc__box">
+      <div class="v-npc__boxTitle">Вдохновение</div>
+      <div class="v-npc__boxCtrl">
+        <button
+          type="button"
+          class="v-npc__mini"
+          data-action="insp-dec"
+        >–</button>
+        <div class="v-npc__pill">{{vitruvium.inspiration.value}}</div>
+        <button
+          type="button"
+          class="v-npc__mini"
+          data-action="insp-inc"
+        >+</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom: two blocks; left abilities, right items -->
+  <section class="v-npc__bottom">
+    <div class="v-npc__panel">
+      <div class="v-npc__panelHead">
+        <div class="v-npc__panelTitle">Способности</div>
+        <button
+          type="button"
+          class="v-npc__btn v-npc__btn--ghost"
+          data-action="create-ability"
+        >+ Способность</button>
+      </div>
+
+      <div class="v-npc__list">
+        {{#each vitruvium.abilities as |ab|}}
+          <div class="v-npc__rowItem">
+            <div class="v-npc__rowMain">
+              <div class="v-npc__rowTitle">{{ab.name}}</div>
+              <div class="v-npc__rowMeta">стоим. {{ab.system.cost}}</div>
+            </div>
+            <div class="v-npc__rowBtns">
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="use-ability"
+                data-item-id="{{ab._id}}"
+              >Исп.</button>
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="edit-item"
+                data-item-id="{{ab._id}}"
+              >Откр.</button>
+              <button
+                type="button"
+                class="v-npc__mini v-npc__mini--danger"
+                data-action="delete-item"
+                data-item-id="{{ab._id}}"
+              >✕</button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+
+    <div class="v-npc__panel">
+      <div class="v-npc__panelHead">
+        <div class="v-npc__panelTitle">Предметы</div>
+        <button
+          type="button"
+          class="v-npc__btn v-npc__btn--ghost"
+          data-action="create-item"
+        >+ Предмет</button>
+      </div>
+
+      <div class="v-npc__list">
+        {{#each vitruvium.items as |it|}}
+          <div class="v-npc__rowItem">
+            <div class="v-npc__rowMain">
+              <div class="v-npc__rowTitle">{{it.name}}</div>
+              <div class="v-npc__rowMeta">×{{it.system.quantity}}</div>
+            </div>
+            <div class="v-npc__rowBtns">
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="item-chat"
+                data-item-id="{{it._id}}"
+              >В чат</button>
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="edit-item"
+                data-item-id="{{it._id}}"
+              >Откр.</button>
+              <button
+                type="button"
+                class="v-npc__mini v-npc__mini--danger"
+                data-action="delete-item"
+                data-item-id="{{it._id}}"
+              >✕</button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+</form>

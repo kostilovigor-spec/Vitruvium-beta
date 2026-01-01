@@ -1,6 +1,7 @@
 import { VitruviumCharacterSheet } from "./character-sheet.js";
 import { VitruviumAbilitySheet } from "./ability-sheet.js";
 import { VitruviumItemSheet } from "./item-sheet.js";
+import { VitruviumNPCSheet } from "./npc-sheet.js";
 import "./dice-so-nice.js";
 
 Hooks.once("init", () => {
@@ -12,6 +13,12 @@ Hooks.once("init", () => {
   Actors.unregisterSheet("core", ActorSheet);
   Actors.registerSheet(NS, VitruviumCharacterSheet, {
     types: ["character"],
+    makeDefault: true,
+  });
+
+  Actors.registerSheet("Vitruvium", VitruviumNPCSheet, {
+    label: "Vitruvium (NPC)",
+    types: ["npc"],
     makeDefault: true,
   });
 
