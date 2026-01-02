@@ -234,10 +234,23 @@
           {{#each vitruvium.abilities as |ab|}}
             <div class="v-row">
               <div class="v-row__main">
-                <div class="v-row__title">{{ab.name}}</div>
-                <div class="v-row__meta">стоим. {{ab.system.cost}}</div>
+                <div class="v-row__title">
+                    {{ab.name}}
+                    <span class="v-tag">L</span>
+                    <span class="v-lvltext">{{ab.system.level}}</span>
+                    {{!-- <input
+                      type="number"
+                      class="v-lvl"
+                      value="{{ab.system.level}}"
+                      min="0"
+                      max="20"
+                      data-action="set-ability-level"
+                      data-item-id="{{ab._id}}"
+                    /> --}}
+                  </div>
+                  <div class="v-row__meta">стоим. {{ab.system.cost}}</div>
               </div>
-
+              
               <div class="v-row__btns">
                 <button
                   type="button"

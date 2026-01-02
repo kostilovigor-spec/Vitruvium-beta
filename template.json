@@ -30,6 +30,7 @@
     "types": ["ability", "item"],
     "ability": {
       "cost": 1,
+      "level": 1,
       "description": ""
     },
     "item": {

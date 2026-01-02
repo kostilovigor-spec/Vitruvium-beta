@@ -1,40 +1,68 @@
-<form class="{{cssClass}} vitruvium-sheet" autocomplete="off">
-  <header class="vitruvium-header">
-    <input
-      class="vitruvium-title"
-      type="text"
-      name="name"
-      value="{{item.name}}"
-    />
+<form class="{{cssClass}} v-sheet v-abilitysheet" autocomplete="off">
+
+  <!-- HEADER -->
+  <header class="v-abilitysheet__header">
+    <div class="v-abilitysheet__headrow">
+      <input
+        class="v-abilitysheet__name"
+        type="text"
+        name="name"
+        value="{{item.name}}"
+        placeholder="Название способности"
+      />
+
+      <div class="v-abilitysheet__lvl">
+        <span class="v-abilitysheet__lvltag">L</span>
+        <input
+          class="v-abilitysheet__lvlinput"
+          type="number"
+          name="system.level"
+          value="{{system.level}}"
+          data-dtype="Number"
+          min="0"
+          max="6"
+        />
+      </div>
+    </div>
   </header>
 
-  <section class="vitruvium-card">
-    <h2>Стоимость</h2>
+  <!-- BODY: 2 columns -->
+  <section class="v-abilitysheet__body">
+    <!-- LEFT -->
+    <aside class="v-abilitysheet__left">
+      <img
+        class="v-abilitysheet__img"
+        src="{{item.img}}"
+        data-edit="img"
+        title="{{item.name}}"
+      />
 
-    <div class="vitruvium-insp">
-      <button
-        type="button"
-        class="vitruvium-smallbtn"
-        data-action="cost-dec"
-      >−</button>
+      <div class="v-abilitysheet__cost">
+        <div class="v-abilitysheet__costlabel">Стоимость</div>
+        <div class="v-abilitysheet__costrow">
+          <input
+            class="v-abilitysheet__costinput"
+            type="number"
+            name="system.cost"
+            value="{{system.cost}}"
+            data-dtype="Number"
+            min="0"
+            max="6"
+          />
+          <span class="v-abilitysheet__costsuffix">вдохн.</span>
+        </div>
+      </div>
+    </aside>
 
-      <span class="vitruvium-attrvalue">{{vitruvium.cost}}</span>
-
-      <button
-        type="button"
-        class="vitruvium-smallbtn"
-        data-action="cost-inc"
-      >+</button>
-    </div>
-
-    <p class="hint">Стоимость списывается при применении способности.</p>
+    <!-- RIGHT -->
+    <main class="v-abilitysheet__right">
+      <div class="v-abilitysheet__descrhead">Описание</div>
+      <textarea
+        class="v-abilitysheet__desc"
+        name="system.description"
+        placeholder="Коротко и по делу: что делает способность."
+      >{{system.description}}</textarea>
+    </main>
   </section>
 
-  <section class="vitruvium-card">
-    <h2>Описание</h2>
-    <textarea
-      name="system.description"
-      rows="8"
-    >{{vitruvium.description}}</textarea>
-  </section>
 </form>

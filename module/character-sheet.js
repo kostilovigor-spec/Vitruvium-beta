@@ -374,6 +374,22 @@ export class VitruviumCharacterSheet extends ActorSheet {
       ]);
     });
 
+    // ===== Ability level (inline edit) =====
+    html.find("[data-action='set-ability-level']").on("change", async (ev) => {
+      ev.preventDefault();
+
+      const input = ev.currentTarget;
+      const id = input.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+
+      let level = Number(input.value);
+      if (Number.isNaN(level)) level = 0;
+      level = Math.min(Math.max(level, 0), 20);
+
+      await item.update({ "system.level": level });
+    });
+
     html.find("[data-action='edit-item']").on("click", async (ev) => {
       ev.preventDefault();
       const id = ev.currentTarget.dataset.itemId;
