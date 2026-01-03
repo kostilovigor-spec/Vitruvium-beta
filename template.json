@@ -44,6 +44,7 @@
       "attackBonus": 0,
       "armorBonus": 0,
       "damage": 0,
+      "isShield": false,
       "description": ""
     }
   }

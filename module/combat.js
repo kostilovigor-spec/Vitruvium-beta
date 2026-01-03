@@ -2,6 +2,7 @@
 // - Rolls are attached to ChatMessage via { rolls: [...] } so DSN can render 3D dice.
 // - Damage is computed even on miss (shown as potential), but HP is only reduced on hit.
 // - Defender dodge supports normal/adv/dis; block always hits (defender rolls condition).
+// - New: On FAILED dodge, apply only BODY armor (no shield) at half value (floor). Shield is flagged via item.system.isShield.
 
 function clamp(n, min, max) { return Math.min(Math.max(n, min), max); }
 function num(v, d) { const x = Number(v); return Number.isNaN(x) ? d : x; }
@@ -56,14 +57,22 @@ async function rollPool(pool, mode = "normal") {
 
 /* ================= STATS ================= */
 
-function getArmorTotal(actor) {
+// Armor is base system.attributes.armor + sum of equipped item.system.armorBonus (0..6)
+// New: item.system.isShield flag lets us exclude shields when needed (e.g., dodge failed).
+function getArmorTotal(actor, { includeShield = true } = {}) {
   const base = num(actor.system?.attributes?.armor, 0);
   let bonus = 0;
+
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
     if (!it.system?.equipped) continue;
+
+    const isShield = !!it.system?.isShield;
+    if (!includeShield && isShield) continue;
+
     bonus += clamp(num(it.system.armorBonus, 0), 0, 6);
   }
+
   return { total: base + bonus };
 }
 
@@ -223,10 +232,20 @@ export async function startAttackFlow(attackerActor) {
     }
 
     const weaponDamage = getWeaponDamage(attackerActor);
-    const armor = getArmorTotal(defenderActor).total;
+
+    // Full armor (body + shield) baseline
+    const armorFull = getArmorTotal(defenderActor, { includeShield: true }).total;
+
+    // If dodge fails (hit), apply only BODY armor (exclude shield) at half value (floor)
+    const armorBodyOnly = getArmorTotal(defenderActor, { includeShield: false }).total;
+    const armorDodgeFailed = Math.floor(armorBodyOnly / 2);
+
+    // Armor used depends on defense type and outcome
+    let armorUsed = armorFull;
+    if (defChoice.type === "dodge" && hit) armorUsed = armorDodgeFailed;
 
     // Damage is computed ALWAYS (shown even on miss)
-    let damage = weaponDamage + (atkRoll.successes - defRoll.successes) - armor;
+    let damage = weaponDamage + (atkRoll.successes - defRoll.successes) - armorUsed;
     damage = Math.max(0, damage);
 
     // HP is reduced ONLY on hit
@@ -241,17 +260,22 @@ export async function startAttackFlow(attackerActor) {
       ...(defRoll.rolls ?? []),
     ];
 
+    const defLabel =
+      defChoice.type === "block"
+        ? "Блок"
+        : `Уклонение (${defChoice.mode ?? "normal"})`;
+
     await postAttackChat({
       attacker: attackerActor,
       defender: defenderActor,
       atkLabel: atkChoice.attrKey === "thinking" ? "Мышление" : "Сражение",
       atkMode: atkChoice.mode,
-      defLabel: defChoice.type === "block" ? "Блок" : `Уклонение (${defChoice.mode ?? "normal"})`,
+      defLabel,
       atkS: atkRoll.successes,
       defS: defRoll.successes,
       hit,
       weaponDamage,
-      armor,
+      armor: armorUsed,
       damage,
       rolls: chatRolls,
     });
