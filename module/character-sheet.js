@@ -1,4 +1,5 @@
 import { rollSuccessDice } from "./rolls.js";
+import { startAttackFlow } from "./combat.js";
 
 /**
  * Vitruvium Character Sheet
@@ -123,12 +124,34 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.system.attributes.hp.max = hpMax;
 
     data.vitruvium.level = Number(attrs.level ?? 1);
-    data.vitruvium.attack = Number(attrs.attack ?? 0);
-    data.vitruvium.armor = Number(attrs.armor ?? 0);
+
+    const baseAttack = Number(attrs.attack ?? 0);
+    const baseArmor = Number(attrs.armor ?? 0);
+
+    let bonusAttack = 0;
+    let bonusArmor = 0;
+
+    const clamp6 = (n) => Math.min(Math.max(Number(n ?? 0), 0), 6);
+
+    for (const it of this.actor.items) {
+      if (it.type !== "item") continue;
+      const sys = it.system ?? {};
+      if (!sys.equipped) continue;
+
+      bonusAttack += clamp6(sys.attackBonus);
+      bonusArmor += clamp6(sys.armorBonus);
+    }
+
+    data.vitruvium.attack = baseAttack; // база (редактируемая)
+    data.vitruvium.armor = baseArmor; // база (редактируемая)
+    data.vitruvium.attackBonus = bonusAttack; // бонус (отображаем)
+    data.vitruvium.armorBonus = bonusArmor; // бонус (отображаем)
+    data.vitruvium.attackTotal = baseAttack + bonusAttack;
+    data.vitruvium.armorTotal = baseArmor + bonusArmor;
 
     // speed = movement * 2
     const mv = Number(attrs.movement ?? 1);
-    data.vitruvium.speed = mv * 2;
+    data.vitruvium.speed = Math.max(mv * 2, 5);
 
     return data;
   }
@@ -312,6 +335,33 @@ export class VitruviumCharacterSheet extends ActorSheet {
       });
     });
 
+    // ===== Attack button =====
+    html.find("[data-action='attack']").on("click", async (ev) => {
+      ev.preventDefault();
+
+      console.log("Vitruvium | Attack button clicked");
+
+      // Нужно: контролить свой токен
+      const myToken = canvas.tokens.controlled?.[0];
+      if (!myToken) {
+        ui.notifications?.warn(
+          "Выбери свой токен на сцене (controlled), затем выбери цель (target)."
+        );
+        return;
+      }
+
+      // Нужно: выбрать цель (target)
+      const target = [...game.user.targets]?.[0];
+      if (!target) {
+        ui.notifications?.warn(
+          "Выбери цель (target) перед атакой (клавиша T)."
+        );
+        return;
+      }
+
+      await startAttackFlow(this.actor);
+    });
+
     // ===== Items (type: item) =====
     html.find("[data-action='create-item']").on("click", async (ev) => {
       ev.preventDefault();
@@ -322,6 +372,19 @@ export class VitruviumCharacterSheet extends ActorSheet {
           system: { description: "", quantity: 1 },
         },
       ]);
+    });
+
+    // ===== Toggle item equipped state =====
+    html.find("[data-action='toggle-equip']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+
+      const sys = item.system ?? {};
+      const next = !sys.equipped;
+
+      await item.update({ "system.equipped": next });
     });
 
     // ===== Post inventory item to chat =====

@@ -68,6 +68,28 @@ export class VitruviumItemSheet extends ItemSheet {
         // После update Foundry перерендерит лист, и getData() снова заполнит descriptionHTML
         return;
       }
+      const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+      const num = (v, d) => {
+        const x = Number(v);
+        return Number.isNaN(x) ? d : x;
+      };
+
+      // Clamp item bonuses to 0..6 (only for item type)
+      if (this.item.type === "item") {
+        html
+          .find("input[name='system.attackBonus']")
+          .on("change", async (ev) => {
+            const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
+            await this.item.update({ "system.attackBonus": v });
+          });
+
+        html
+          .find("input[name='system.armorBonus']")
+          .on("change", async (ev) => {
+            const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
+            await this.item.update({ "system.armorBonus": v });
+          });
+      }
 
       setMode(true);
     });

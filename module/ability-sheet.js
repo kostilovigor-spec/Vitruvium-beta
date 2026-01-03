@@ -26,6 +26,24 @@ export class VitruviumAbilitySheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
+    // Always allow icon editing (independent of edit mode)
+    // Always allow icon editing for abilities
+    html
+      .find("img[data-edit='img']")
+      .off("click.vitruvium-img")
+      .on("click.vitruvium-img", (ev) => {
+        ev.preventDefault();
+
+        new FilePicker({
+          type: "image",
+          current: this.item.img,
+          callback: async (path) => {
+            await this.item.update({ img: path });
+          },
+        }).browse();
+      });
+
+    // Функционал режима редактирования
     const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
     const num = (v, d) => {
       const x = Number(v);

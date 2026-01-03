@@ -62,6 +62,9 @@
           >
             Бросок удачи
           </button>
+
+          <button type="button" class="v-btn" data-action="attack">Атака</button>
+
         </div>
 
         <div class="v-hero__meta">
@@ -155,37 +158,57 @@
           </div>
         </div>
         <div class="v-stats3">
-  <div class="v-statbox">
-    <div class="v-statbox__top">
-      <span class="v-statbox__icon">⚔</span>
-      <span class="v-statbox__label">Атака</span>
-    </div>
-    <input
-      class="v-statbox__value"
-      type="number"
-      name="system.attributes.attack"
-      value="{{vitruvium.attack}}"
-      data-dtype="Number"
-      min="0"
-      max="99"
-    />
-  </div>
+           <div class="v-statbox">
+              <div class="v-statbox__top">
+                <span class="v-statbox__icon">⚔</span>
+                <span class="v-statbox__label">Атака</span>
+              </div>
+            
+              <div class="v-statbox__row">
+                <input
+                  class="v-statbox__value"
+                  type="number"
+                  name="system.attributes.attack"
+                  value="{{vitruvium.attack}}"
+                  data-dtype="Number"
+                  min="0"
+                  max="99"
+                />
+                <div class="v-statbox__bonus">
+                  +{{vitruvium.attackBonus}}
+                </div>
+              </div>
+            
+              <div class="v-statbox__hint">
+                итого {{vitruvium.attackTotal}}
+              </div>
+            </div>
 
-  <div class="v-statbox">
-    <div class="v-statbox__top">
-      <span class="v-statbox__icon">🛡</span>
-      <span class="v-statbox__label">Броня</span>
-    </div>
-    <input
-      class="v-statbox__value"
-      type="number"
-      name="system.attributes.armor"
-      value="{{vitruvium.armor}}"
-      data-dtype="Number"
-      min="0"
-      max="99"
-    />
-  </div>
+        <div class="v-statbox">
+        <div class="v-statbox__top">
+          <span class="v-statbox__icon">🛡</span>
+          <span class="v-statbox__label">Броня</span>
+        </div>
+      
+        <div class="v-statbox__row">
+          <input
+            class="v-statbox__value"
+            type="number"
+            name="system.attributes.armor"
+            value="{{vitruvium.armor}}"
+            data-dtype="Number"
+            min="0"
+            max="99"
+          />
+          <div class="v-statbox__bonus">
+            +{{vitruvium.armorBonus}}
+          </div>
+        </div>
+      
+        <div class="v-statbox__hint">
+          итого {{vitruvium.armorTotal}}
+        </div>
+      </div>
 
   <div class="v-statbox v-statbox--speed">
     <div class="v-statbox__top">
@@ -219,6 +242,14 @@
               </div>
 
               <div class="v-row__btns">
+                <button
+                  type="button"
+                  class="v-mini"
+                  data-action="toggle-equip"
+                  data-item-id="{{it._id}}"
+                >
+                  {{#if it.system.equipped}}Снять{{else}}Надеть{{/if}}
+                </button>
                 <button
                   type="button"
                   class="v-mini"
