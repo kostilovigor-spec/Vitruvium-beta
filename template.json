@@ -9,6 +9,11 @@
         "combat": 1,
         "thinking": 1,
         "communication": 1,
+
+        "attack": 0,
+        "armor": 0,
+        "level": 1,
+
         "inspiration": { "value": 6, "max": 6 },
         "hp": { "value": 5, "max": 5 }
       }

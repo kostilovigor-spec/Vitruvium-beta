@@ -146,14 +146,22 @@
   border-radius: inherit;
   pointer-events: none;
   opacity: 0.35;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) top left/20px 1px no-repeat,
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top left/1px 20px no-repeat,
-    linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) top right/20px 1px no-repeat,
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top right/1px 20px no-repeat,
-    linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) bottom left/20px 1px no-repeat,
-    linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent) bottom left/1px 20px no-repeat,
-    linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) bottom right/20px 1px no-repeat,
-    linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent) bottom right/1px 20px no-repeat;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) top
+      left/20px 1px no-repeat,
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top left/1px
+      20px no-repeat,
+    linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) top right/20px
+      1px no-repeat,
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top right/1px
+      20px no-repeat,
+    linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) bottom left/20px
+      1px no-repeat,
+    linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent) bottom left/1px
+      20px no-repeat,
+    linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) bottom right/20px
+      1px no-repeat,
+    linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent) bottom right/1px
+      20px no-repeat;
 }
 
 /* ---------- LEFT: Attributes (1x6) ---------- */
@@ -1120,4 +1128,145 @@
   padding: 10px;
   font-size: 13px;
   line-height: 1.35;
+}
+.vitruvium-chatcard__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.vitruvium-chatcard__img {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
+}
+
+.vitruvium-chatcard__head h3 {
+  margin: 0;
+}
+.vitruvium-chatcard__head p {
+  margin: 4px 0 0 0;
+}
+/* Name + level row */
+/* 3 stat boxes row (red zone) */
+.v-statbox {
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.v-statbox__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.v-statbox__icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.v-statbox__label {
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+.v-statbox__value {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.v-statbox__readonly {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  font-weight: 900;
+}
+/* Name row alignment fix */
+
+/* ===== Sheet tweaks: level + stats alignment (2026-01) ===== */
+
+/* Name row: keep everything on one line and align neatly */
+.v-namebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+/* Keep your chosen shorter name width (do not change overall frame) */
+.v-namebar .v-name {
+  flex: 1;
+  max-width: 180px;
+}
+
+/* Level: small like HP value, no separate outer frame */
+.v-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex: 0 0 auto;
+}
+
+.v-level__label {
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.85;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.v-level__input {
+  width: 34px;
+  height: var(--btn-h);
+  padding: 0 4px;
+  text-align: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--v-ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+/* 3 stat boxes: center as a group within the middle column, prevent "drifting" */
+.v-stats3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+/* Give each stat box a stable width so centering is visually consistent */
+.v-statbox {
+  flex: 0 0 140px;
 }

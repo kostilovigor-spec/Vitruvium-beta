@@ -1,7 +1,7 @@
 /* =========================================================
-   Vitruvium — system.css (CLEAN)
-   Built for character-sheet.hbs markup (v-grid / v-hero / v-res / v-rollbox / v-row)
-   Goal: compact parchment layout exactly like your scheme, without drift.
+   Vitruvium — system.css (CLEAN / DEDUPED)
+   Purpose: same visuals as your current file, but with duplicates removed
+   and final (effective) values consolidated.
    ========================================================= */
 
 /* ---------- Variables ---------- */
@@ -54,7 +54,7 @@
 /* ---------- Main grid ---------- */
 .v-grid {
   display: grid;
-  grid-template-columns: 160px 420px 1fr; /* left fixed, center fixed, right fills */
+  grid-template-columns: 160px 420px minmax(360px, 1fr);
   gap: var(--gap);
   align-items: start;
 }
@@ -62,15 +62,11 @@
 .v-col {
   min-width: 0;
 }
+
 .v-col--center {
   width: 420px;
   max-width: 420px;
 }
-
-/* .v-col--left {
-  width: 420px;
-  max-width: 420px;
-} */
 
 /* Make right column panel stretch vertically */
 .v-col--right {
@@ -78,10 +74,12 @@
   flex-direction: column;
   min-height: 100%;
 }
+
 .v-col--right > .v-panel {
   flex: 1 1 auto;
   min-height: 560px;
 }
+
 .v-col--right > .v-panel-adv {
   position: relative;
   background: var(--v-bg);
@@ -93,9 +91,22 @@
   min-height: 100px;
   max-height: 200px;
 }
+
 .v-col--right .v-list {
   flex: 1 1 auto;
   overflow: auto;
+}
+
+/* Narrow widths: let right column wrap below */
+@media (max-width: 980px) {
+  .v-grid {
+    display: grid;
+    grid-template-columns: 160px 420px minmax(360px, 1fr);
+    gap: 10px;
+  }
+  .v-col--right {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ---------- Panels / cards ---------- */
@@ -114,9 +125,15 @@
 .v-hero {
   padding: 10px;
 }
+
+/* Final (effective) row sizing */
 .v-row {
-  padding: 6px 10px;
-  min-height: var(--row-h);
+  padding: 4px 10px;
+  min-height: 34px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Decorative corners */
@@ -190,6 +207,7 @@
   border: 1px solid var(--v-border-soft);
   cursor: pointer;
 }
+
 .v-attrcard__value:hover {
   border-color: var(--v-border);
 }
@@ -199,6 +217,7 @@
   justify-content: center;
   gap: 8px;
 }
+
 .v-attrcard__ctrl .v-mini {
   height: var(--btn-h);
   min-width: 54px;
@@ -244,7 +263,7 @@
 /* ---------- CENTER: Hero ---------- */
 .v-hero {
   display: grid;
-  grid-template-columns: 140px 1fr; /* portrait column + meta */
+  grid-template-columns: 140px 1fr;
   gap: 10px;
   margin-bottom: 10px;
 }
@@ -270,7 +289,7 @@
   margin: 0 0 8px 0;
 }
 
-/* Luck button under portrait (when you moved it into .v-hero__portrait) */
+/* Luck button under portrait */
 .v-luck {
   width: 140px;
   height: 44px;
@@ -281,7 +300,7 @@
 /* ---------- Resources row (HP + Inspiration) ---------- */
 .v-resrow {
   display: grid;
-  grid-template-columns: 104px 1fr; /* HP fixed + insp flexible */
+  grid-template-columns: 104px 1fr;
   gap: 10px;
   margin-bottom: 10px;
   align-items: start;
@@ -301,7 +320,7 @@
   margin: 0 0 6px 0;
 }
 
-/* HP tile: "15 / 15" stable */
+/* HP tile */
 .v-res--hp {
   width: 104px;
   display: grid;
@@ -311,10 +330,12 @@
   row-gap: 4px;
   align-items: center;
 }
+
 .v-res--hp .v-res__label {
   grid-column: 1 / -1;
   margin: 0;
 }
+
 .v-res--hp .v-res__input {
   grid-column: 1;
   width: 34px;
@@ -322,18 +343,20 @@
   padding: 0 4px;
   text-align: center;
 }
+
 .v-res--hp .v-res__sep {
   grid-column: 2;
   text-align: center;
   opacity: 0.75;
 }
+
 .v-res--hp .v-res__max {
   grid-column: 3;
   text-align: left;
   font-weight: 800;
 }
 
-/* Inspiration tile: no drifting, buttons always inside */
+/* Inspiration tile */
 .v-res--insp .v-res__btns {
   display: flex;
   align-items: center;
@@ -341,17 +364,20 @@
   gap: 6px;
   width: 100%;
 }
+
 .v-res--insp .v-mini {
   width: 28px;
   min-width: 28px;
   padding: 0;
 }
+
 .v-res--insp .v-res__val {
   font-weight: 900;
   min-width: 1.6em;
   text-align: center;
   flex: 0 0 auto;
 }
+
 .v-res--insp .v-res__hint {
   margin-top: 6px;
   font-size: 11px;
@@ -365,7 +391,6 @@
   align-items: start;
 }
 
-/* Keep only the rollbox here (if luck moved under portrait) */
 .v-rollbox {
   flex: 1 1 auto;
   background: var(--v-bg-soft);
@@ -385,7 +410,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap; /* never stack */
+  flex-wrap: nowrap;
 }
 
 .v-rollbox__val {
@@ -394,7 +419,7 @@
   font-weight: 900;
 }
 
-/* If luck button still remains inside v-rollrow (fallback) */
+/* Fallback if luck button still in rollrow */
 .v-rollrow > .v-btn[data-action="luck-roll"] {
   width: 110px;
   height: 44px;
@@ -403,7 +428,7 @@
   flex: 0 0 auto;
 }
 
-/* ---------- Panel headers (button under title) ---------- */
+/* ---------- Panel headers ---------- */
 .v-panel__head {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -419,9 +444,11 @@
 .v-panel__head > .v-h2 {
   grid-area: title;
 }
+
 .v-panel__head > .v-line {
   grid-area: line;
 }
+
 .v-panel__head > .v-btn {
   grid-area: btn;
   width: 100%;
@@ -437,45 +464,40 @@
   gap: 8px;
 }
 
-/* Row layout: name+meta on left, buttons on right */
-.v-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
 .v-row__main {
   min-width: 0;
 }
+
 .v-row__title {
   font-size: 12px;
   font-weight: 800;
-  max-width: 210px;
+  max-width: 260px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .v-row__meta {
   font-size: 11px;
   opacity: 0.65;
 }
 
-/* Buttons stay on one line, never stretch vertically */
 .v-row__btns {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  gap: 6px;
+  flex-wrap: nowrap !important;
   flex: 0 0 auto;
 }
 
 .v-row__btns .v-mini {
-  height: var(--btn-h);
+  height: 26px;
+  padding: 0 8px;
 }
+
 .v-row__btns .v-mini--danger {
-  width: 32px;
-  min-width: 32px;
+  width: 30px;
+  min-width: 30px;
   padding: 0;
 }
 
@@ -488,75 +510,54 @@
   color: var(--v-ink);
 }
 
-/* =========================================================
-   HOTFIX: prevent overlap at narrower sheet widths
-   - Right column gets a minimum width
-   - Rows become grid so buttons never push outside
-   ========================================================= */
-
-/* Ensure the overall grid never makes the right column too narrow */
-.v-grid {
-  grid-template-columns: 160px 420px minmax(360px, 1fr);
-}
-
-/* If the window is very narrow, let grid stack (optional but safe) */
-@media (max-width: 980px) {
-  .v-grid {
-    display: grid;
-    grid-template-columns: 160px 420px minmax(360px, 1fr);
-    gap: 10px;
-  }
-  .v-col--right {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Ability/Item rows: grid layout that wraps safely */
-/* === FIX: buttons in a single row, compact height (inventory/abilities) === */
-.v-row {
-  min-height: 34px; /* было 40 */
-  padding: 4px 10px; /* меньше воздуха */
-  align-items: center;
-}
-
-/* имя/кол-во не должны распирать строку */
-.v-row__title {
-  max-width: 260px;
-}
-
-/* КНОПКИ В РЯД */
-.v-row__btns {
-  display: flex;
-  flex-wrap: nowrap !important; /* ключевое */
-  gap: 6px;
-  align-items: center;
-}
-
-/* Кнопки ниже и уже */
-.v-row__btns .v-mini {
-  height: 26px; /* чуть меньше btn-h */
-  padding: 0 8px;
-}
-
-/* Красный крестик — квадрат */
-.v-row__btns .v-mini--danger {
-  width: 30px;
-  min-width: 30px;
-  padding: 0;
-}
-
-.v-card {
-  font-size: 14px;
-  font-weight: 400;
-}
+/* ---------- Chat cards ---------- */
+.v-card,
 .v-card__row {
   font-size: 14px;
   font-weight: 400;
 }
-/* =========================================================
-   Item Sheet (inventory item) — Vitruvium
-   ========================================================= */
 
+/* ===== Chat: mode badge + chosen marker ===== */
+.v-card__mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 8px;
+  margin-right: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.9;
+}
+
+.v-card__pick {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.v-card--adv::before,
+.v-card--dis::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Item Sheet (inventory item) ===== */
 .v-item__header {
   margin-bottom: 10px;
 }
@@ -669,7 +670,8 @@
 .v-item__actions {
   margin-top: 8px;
 }
-/* ===== Chat: Item card with image ===== */
+
+/* Chat: Item card with image */
 .v-itemcard .v-itemcard__top {
   display: grid;
   grid-template-columns: 46px 1fr;
@@ -706,6 +708,7 @@
   line-height: 1.35;
   opacity: 0.92;
 }
+
 /* Roll mode switch */
 .v-rollmode {
   display: flex;
@@ -725,46 +728,6 @@
 .v-rollmode .v-mini.is-active {
   background: rgba(0, 0, 0, 0.1);
   opacity: 1;
-}
-/* Chat: mode badge + chosen marker */
-.v-card__mode {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 18px;
-  padding: 0 8px;
-  margin-right: 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
-  font-weight: 900;
-  opacity: 0.9;
-}
-
-.v-card__pick {
-  display: inline-flex;
-  margin-left: 8px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(0, 0, 0, 0.06);
-  font-size: 11px;
-  font-weight: 800;
-  opacity: 0.9;
-}
-
-/* Optional subtle variant backgrounds (keep minimal) */
-.v-card--adv::before,
-.v-card--dis::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.12);
 }
 
 /* ===== NPC Sheet ===== */
@@ -799,6 +762,7 @@
   font-weight: 900;
   opacity: 0.85;
 }
+
 .v-npc__hpInput {
   width: 80px;
   height: 26px;
@@ -808,9 +772,11 @@
   background: rgba(255, 255, 255, 0.65);
   font-weight: 800;
 }
+
 .v-npc__hpSep {
   opacity: 0.6;
 }
+
 .v-npc__hpMax {
   font-weight: 900;
 }
@@ -895,6 +861,7 @@
   width: 28px;
   padding: 0;
 }
+
 .v-npc__mini--danger {
   border-color: rgba(0, 0, 0, 0.26);
 }
@@ -912,6 +879,7 @@
 .v-npc__btn {
   padding: 0 10px;
 }
+
 .v-npc__btn--ghost {
   background: rgba(255, 255, 255, 0.35);
 }
@@ -965,6 +933,7 @@
   font-weight: 900;
   font-size: 12px;
 }
+
 .v-npc__rowMeta {
   font-size: 11px;
   opacity: 0.75;
@@ -975,7 +944,8 @@
   display: flex;
   gap: 6px;
 }
-/* Ability level inline */
+
+/* Ability level (display-only on character sheet) */
 .v-tag {
   display: inline-flex;
   align-items: center;
@@ -1003,13 +973,27 @@
   font-weight: 800;
 }
 
-/* ===== Ability sheet: compact 2-column layout ===== */
+.v-lvltext {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.9;
+}
 
+/* ===== Ability sheet: compact 2-column layout ===== */
 .v-abilitysheet {
   padding: 10px;
 }
 
-/* Header row: name left, level right */
 .v-abilitysheet__header {
   margin-bottom: 10px;
 }
@@ -1020,11 +1004,10 @@
   gap: 10px;
 }
 
-/* IMPORTANT: override "inputs are 100% width" behavior */
 .v-abilitysheet__name {
   flex: 1;
   min-width: 220px;
-  max-width: 420px; /* чтобы не тянулось на весь лист */
+  max-width: 420px;
   height: 30px;
   padding: 0 10px;
   border-radius: 12px;
@@ -1066,10 +1049,9 @@
   font-weight: 900;
 }
 
-/* Body grid: left icon + cost, right description */
 .v-abilitysheet__body {
   display: grid;
-  grid-template-columns: 140px 1fr; /* компактнее */
+  grid-template-columns: 140px 1fr;
   gap: 12px;
   align-items: start;
 }
@@ -1082,16 +1064,15 @@
 
 .v-abilitysheet__img {
   width: 140px;
-  height: 140px; /* меньше, чем было */
+  height: 140px;
   object-fit: cover;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.18);
   background: rgba(255, 255, 255, 0.35);
 }
 
-/* Cost block under icon */
 .v-abilitysheet__cost {
-  width: 140px; /* чтобы точно не налезало на описание */
+  width: 140px;
   padding: 8px 10px;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.16);
@@ -1129,7 +1110,6 @@
   white-space: nowrap;
 }
 
-/* Description right */
 .v-abilitysheet__descrhead {
   font-size: 12px;
   font-weight: 900;
@@ -1149,19 +1129,132 @@
   font-size: 13px;
   line-height: 1.35;
 }
+.vitruvium-chatcard__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
 
-.v-lvltext {
+.vitruvium-chatcard__img {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
+}
+
+.vitruvium-chatcard__head h3 {
+  margin: 0;
+}
+.vitruvium-chatcard__head p {
+  margin: 4px 0 0 0;
+}
+/* Name + level row */
+.v-namebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.v-namebar .v-name {
+  flex: 1;
+  max-width: 180px; /* делает поле имени чуть короче, не меняя рамку */
+}
+
+.v-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.v-level__label {
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.v-level__input {
+  width: 56px; /* двухзначное число */
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* 3 stat boxes row (red zone) */
+.v-stats3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  /* grid-template-columns: repeat(3, max-content); */
+  /* display: flex;
+  justify-content: center; */
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.v-statbox {
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.v-statbox__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.v-statbox__icon {
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 6px;
-  min-width: 26px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 14px;
   opacity: 0.9;
 }
+
+.v-statbox__label {
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+.v-statbox__value {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.v-statbox__readonly {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  font-weight: 900;
+}
+/* Name row alignment fix */

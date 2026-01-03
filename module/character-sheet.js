@@ -122,6 +122,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.system.attributes.hp.value = hpValue;
     data.system.attributes.hp.max = hpMax;
 
+    data.vitruvium.level = Number(attrs.level ?? 1);
+    data.vitruvium.attack = Number(attrs.attack ?? 0);
+    data.vitruvium.armor = Number(attrs.armor ?? 0);
+
+    // speed = movement * 2
+    const mv = Number(attrs.movement ?? 1);
+    data.vitruvium.speed = mv * 2;
+
     return data;
   }
 
@@ -439,11 +447,19 @@ export class VitruviumCharacterSheet extends ActorSheet {
       await this.actor.update({
         "system.attributes.inspiration.value": inspValue - cost,
       });
+      const img = item.img ?? "icons/svg/mystery-man.svg";
 
       const content = `
         <div class="vitruvium-chatcard">
-          <h3>${esc(item.name)}</h3>
-          <p><b>Стоимость:</b> −${cost} вдохн.</p>
+          <div class="vitruvium-chatcard__top">
+            <img class="vitruvium-chatcard__img" src="${esc(img)}" title="${esc(
+        item.name
+      )}" />
+            <div class="vitruvium-chatcard__head">
+              <h3>${esc(item.name)}</h3>
+              <p><b>Стоимость:</b> −${cost} вдохн.</p>
+            </div>
+          </div>
           ${
             desc
               ? `<p>${esc(desc).replace(/\\n/g, "<br>")}</p>`

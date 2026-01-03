@@ -65,13 +65,28 @@
         </div>
 
         <div class="v-hero__meta">
-          <input
-            class="v-name"
-            type="text"
-            name="name"
-            value="{{actor.name}}"
-            placeholder="Имя персонажа"
-          />
+          <div class="v-namebar">
+              <input
+                class="v-name"
+                type="text"
+                name="name"
+                value="{{actor.name}}"
+                placeholder="Имя персонажа"
+              />
+            
+              <div class="v-lvlmini">
+                 <div class="v-lvlmini__label">Ур.</div>
+                 <input
+                   class="v-lvlmini__input"
+                   type="number"
+                   name="system.attributes.level"
+                   value="{{vitruvium.level}}"
+                   data-dtype="Number"
+                   min="1"
+                   max="99"
+                 />
+              </div>
+          </div>
 
           <div class="v-resrow">
             <div class="v-res v-res--hp">
@@ -139,6 +154,48 @@
             </button> }}
           </div>
         </div>
+        <div class="v-stats3">
+  <div class="v-statbox">
+    <div class="v-statbox__top">
+      <span class="v-statbox__icon">⚔</span>
+      <span class="v-statbox__label">Атака</span>
+    </div>
+    <input
+      class="v-statbox__value"
+      type="number"
+      name="system.attributes.attack"
+      value="{{vitruvium.attack}}"
+      data-dtype="Number"
+      min="0"
+      max="99"
+    />
+  </div>
+
+  <div class="v-statbox">
+    <div class="v-statbox__top">
+      <span class="v-statbox__icon">🛡</span>
+      <span class="v-statbox__label">Броня</span>
+    </div>
+    <input
+      class="v-statbox__value"
+      type="number"
+      name="system.attributes.armor"
+      value="{{vitruvium.armor}}"
+      data-dtype="Number"
+      min="0"
+      max="99"
+    />
+  </div>
+
+  <div class="v-statbox v-statbox--speed">
+    <div class="v-statbox__top">
+      <span class="v-statbox__icon">👣</span>
+      <span class="v-statbox__label">Скорость</span>
+    </div>
+    <div class="v-statbox__readonly">{{vitruvium.speed}}</div>
+  </div>
+</div>
+
       </section>
 
       <!-- Inventory -->
