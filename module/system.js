@@ -4,7 +4,7 @@ import { VitruviumItemSheet } from "./item-sheet.js";
 import { VitruviumNPCSheet } from "./npc-sheet.js";
 import { patchVitruviumInitiative } from "./initiative.js";
 import "./dice-so-nice.js";
-import { startAttackFlow, startAirAttackFlow } from "./combat.js";
+import { startWeaponAttackFlow } from "./combat.js";
 
 Hooks.once("init", () => {
   console.log("Vitruvium | Initializing system");
@@ -37,6 +37,11 @@ Hooks.once("init", () => {
     types: ["item"],
     makeDefault: true,
   });
+});
+
+Hooks.once("init", () => {
+  game.vitruvium = game.vitruvium ?? {};
+  game.vitruvium.startWeaponAttackFlow = startWeaponAttackFlow;
 });
 
 Hooks.once("ready", () => {
@@ -105,7 +110,6 @@ Hooks.once("ready", () => {
   });
 
   // (опционально) expose API for macros
-  game.vitruvium = game.vitruvium ?? {};
-  game.vitruvium.startAttackFlow = startAttackFlow;
-  game.vitruvium.startAirAttackFlow = startAirAttackFlow;
+  game.vitruvium = game.vitruvium || {};
+  game.vitruvium.startWeaponAttackFlow = startWeaponAttackFlow;
 });

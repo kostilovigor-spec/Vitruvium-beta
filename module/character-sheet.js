@@ -1,5 +1,7 @@
 import { rollSuccessDice } from "./rolls.js";
-import { startAttackFlow } from "./combat.js";
+import { startWeaponAttackFlow } from "./combat.js";
+
+// import { startAttackFlow } from "./combat.js";
 
 /**
  * Vitruvium Character Sheet
@@ -385,6 +387,16 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const next = !sys.equipped;
 
       await item.update({ "system.equipped": next });
+    });
+
+    // ===== Weapon attack button =====
+    html.find("[data-action='weapon-attack']").on("click", async (ev) => {
+      ev.preventDefault();
+      const weaponId = ev.currentTarget.dataset.itemId;
+      const weapon = this.actor.items.get(weaponId);
+      if (!weapon) return;
+
+      await game.vitruvium.startWeaponAttackFlow(this.actor, weapon);
     });
 
     // ===== Post inventory item to chat =====

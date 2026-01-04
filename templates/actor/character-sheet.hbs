@@ -250,6 +250,15 @@
                 >
                   {{#if it.system.equipped}}Снять{{else}}Надеть{{/if}}
                 </button>
+                {{#if it.system.attackBonus}}
+  <button
+    type="button"
+    class="v-mini"
+    data-action="weapon-attack"
+    data-item-id="{{it._id}}"
+  >Атака</button>
+{{/if}}
+
                 <button
                   type="button"
                   class="v-mini"
