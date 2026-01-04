@@ -2,10 +2,24 @@
 // - Rolls are attached to ChatMessage via { rolls: [...] } so DSN can render 3D dice.
 // - Damage is computed even on miss (shown as potential), but HP is only reduced on hit.
 // - Defender dodge supports normal/adv/dis; block always hits (defender rolls condition).
-// - New: On FAILED dodge, apply only BODY armor (no shield) at half value (floor). Shield is flagged via item.system.isShield.
+// - Heavy Armor rule:
+//    * If defender has ANY equipped item (type "item") with system.isHeavyArmor=true,
+//      dodge options are removed; defense is forced to "block" (accept hit with condition roll).
+// - Dodge armor rule:
+//    * Armor does NOT reduce base weapon damage.
+//    * Armor reduces ONLY the success-difference bonus: bonus = max(0, (atkS - defS) - armorNoShield)
+//    * Total damage on (failed) dodge hit = weaponDamage + bonus
+//    * Shield is ignored for dodge (items with system.isShield=true are excluded).
+// - Block armor rule:
+//    * Damage = max(0, weaponDamage + (atkS - defS) - armorFull)  (armor includes shield)
 
-function clamp(n, min, max) { return Math.min(Math.max(n, min), max); }
-function num(v, d) { const x = Number(v); return Number.isNaN(x) ? d : x; }
+function clamp(n, min, max) {
+  return Math.min(Math.max(n, min), max);
+}
+function num(v, d) {
+  const x = Number(v);
+  return Number.isNaN(x) ? d : x;
+}
 function esc(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -22,7 +36,7 @@ async function rollPool(pool, mode = "normal") {
 
   const rollOnce = async () => {
     const roll = await new Roll(`${pool}d6`).evaluate({ async: true });
-    const results = roll.dice[0].results.map(r => r.result);
+    const results = roll.dice[0].results.map((r) => r.result);
 
     let successes = 0;
     for (const r of results) {
@@ -43,8 +57,12 @@ async function rollPool(pool, mode = "normal") {
 
   const chosen =
     mode === "adv"
-      ? (a.successes >= b.successes ? a : b)
-      : (a.successes <= b.successes ? a : b);
+      ? a.successes >= b.successes
+        ? a
+        : b
+      : a.successes <= b.successes
+      ? a
+      : b;
 
   return {
     mode,
@@ -57,8 +75,18 @@ async function rollPool(pool, mode = "normal") {
 
 /* ================= STATS ================= */
 
+// Returns true if actor has any equipped heavy armor item.
+function hasHeavyArmorEquipped(actor) {
+  for (const it of actor.items ?? []) {
+    if (it.type !== "item") continue;
+    if (!it.system?.equipped) continue;
+    if (it.system?.isHeavyArmor) return true;
+  }
+  return false;
+}
+
 // Armor is base system.attributes.armor + sum of equipped item.system.armorBonus (0..6)
-// New: item.system.isShield flag lets us exclude shields when needed (e.g., dodge failed).
+// item.system.isShield=true lets us exclude shields when needed.
 function getArmorTotal(actor, { includeShield = true } = {}) {
   const base = num(actor.system?.attributes?.armor, 0);
   let bonus = 0;
@@ -78,11 +106,17 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
 
 function getWeaponDamage(actor) {
   let best = 0;
+
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
     if (!it.system?.equipped) continue;
-    best = Math.max(best, num(it.system.damage, 0));
+
+    // У тебя урон/атака предмета — это attackBonus (damage может не существовать)
+    const dmg = num(it.system.attackBonus ?? it.system.damage ?? 0, 0);
+    best = Math.max(best, clamp(dmg, 0, 6));
   }
+
+  // Фоллбек на базовую атаку актёра (если вообще нет оружия)
   return best > 0 ? best : num(actor.system?.attributes?.attack, 0);
 }
 
@@ -98,8 +132,9 @@ async function postAttackChat({
   defS,
   hit,
   weaponDamage,
-  armor,
+  armorShown,
   damage,
+  detailHtml = "",
   rolls = [],
 }) {
   const content = `
@@ -113,29 +148,29 @@ async function postAttackChat({
     <p><b>Успехи защиты:</b> ${defS}</p>
     <hr>
 
+    ${detailHtml}
+
     ${
       hit
-        ? `<p><b>ПОПАДАНИЕ.</b> Урон оружия ${weaponDamage}
-           + (${atkS} − ${defS}) − броня ${armor}
-           = <b>${damage}</b></p>`
+        ? `<p><b>ПОПАДАНИЕ.</b> Итоговый урон: <b>${damage}</b></p>`
         : `<p><b>ПРОМАХ.</b></p>
-           <p class="hint"><b>Потенциальный урон при попадании:</b>
-           ${weaponDamage} + (${atkS} − ${defS}) − ${armor}
-           = <b>${damage}</b></p>`
+           <p class="hint"><b>Потенциальный урон при попадании:</b> <b>${damage}</b></p>`
     }
+
+    <p class="hint">Броня (учтённая): ${armorShown}</p>
   </div>`;
 
   await ChatMessage.create({
     speaker: ChatMessage.getSpeaker({ actor: attacker }),
     content,
-    rolls, // IMPORTANT: Dice So Nice hooks into ChatMessage.rolls
+    rolls,
   });
 }
 
 /* ================= DIALOGS ================= */
 
 function attackDialog() {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     new Dialog({
       title: "Атака",
       content: `
@@ -148,15 +183,18 @@ function attackDialog() {
       buttons: {
         normal: {
           label: "Обычная",
-          callback: html => resolve({ attrKey: html.find("select").val(), mode: "normal" }),
+          callback: (html) =>
+            resolve({ attrKey: html.find("select").val(), mode: "normal" }),
         },
         adv: {
           label: "С преимуществом",
-          callback: html => resolve({ attrKey: html.find("select").val(), mode: "adv" }),
+          callback: (html) =>
+            resolve({ attrKey: html.find("select").val(), mode: "adv" }),
         },
         dis: {
           label: "С помехой",
-          callback: html => resolve({ attrKey: html.find("select").val(), mode: "dis" }),
+          callback: (html) =>
+            resolve({ attrKey: html.find("select").val(), mode: "dis" }),
         },
       },
       close: () => resolve(null),
@@ -164,29 +202,36 @@ function attackDialog() {
   });
 }
 
-function defenseDialog() {
-  return new Promise(resolve => {
+function defenseDialog({ allowDodge = true } = {}) {
+  return new Promise((resolve) => {
+    const buttons = {};
+
+    if (allowDodge) {
+      buttons.dodgeNormal = {
+        label: "Уклонение (обычное)",
+        callback: () => resolve({ type: "dodge", mode: "normal" }),
+      };
+      buttons.dodgeAdv = {
+        label: "Уклонение (с преимуществом)",
+        callback: () => resolve({ type: "dodge", mode: "adv" }),
+      };
+      buttons.dodgeDis = {
+        label: "Уклонение (с помехой)",
+        callback: () => resolve({ type: "dodge", mode: "dis" }),
+      };
+    }
+
+    buttons.block = {
+      label: allowDodge ? "Блок" : "Принять удар (тяж. броня)",
+      callback: () => resolve({ type: "block" }),
+    };
+
     new Dialog({
       title: "Защита",
-      content: `<p>Выберите реакцию защиты</p>`,
-      buttons: {
-        dodgeNormal: {
-          label: "Уклонение (обычное)",
-          callback: () => resolve({ type: "dodge", mode: "normal" }),
-        },
-        dodgeAdv: {
-          label: "Уклонение (с преимуществом)",
-          callback: () => resolve({ type: "dodge", mode: "adv" }),
-        },
-        dodgeDis: {
-          label: "Уклонение (с помехой)",
-          callback: () => resolve({ type: "dodge", mode: "dis" }),
-        },
-        block: {
-          label: "Блок",
-          callback: () => resolve({ type: "block" }),
-        },
-      },
+      content: allowDodge
+        ? `<p>Выберите реакцию защиты</p>`
+        : `<p><b>Тяжёлые доспехи:</b> уклонение недоступно. Можно только принять удар.</p>`,
+      buttons,
       close: () => resolve(null),
     }).render(true);
   });
@@ -211,18 +256,28 @@ export async function startAttackFlow(attackerActor) {
     const atkChoice = await attackDialog();
     if (!atkChoice) return;
 
-    const atkPool = num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1);
+    const atkPool = num(
+      attackerActor.system?.attributes?.[atkChoice.attrKey],
+      1
+    );
     const atkRoll = await rollPool(atkPool, atkChoice.mode);
 
-    const defChoice = await defenseDialog();
+    // Heavy armor: remove dodge options
+    const allowDodge = !hasHeavyArmorEquipped(defenderActor);
+    const defChoice = allowDodge
+      ? await defenseDialog({ allowDodge: true })
+      : await defenseDialog({ allowDodge: false });
     if (!defChoice) return;
 
     let defRoll;
     let hit = false;
 
     if (defChoice.type === "block") {
-      defRoll = await rollPool(num(defenderActor.system?.attributes?.condition, 1), "normal");
-      hit = true; // block always gets hit, but reduces damage via condition successes
+      defRoll = await rollPool(
+        num(defenderActor.system?.attributes?.condition, 1),
+        "normal"
+      );
+      hit = true;
     } else {
       defRoll = await rollPool(
         num(defenderActor.system?.attributes?.movement, 1),
@@ -233,36 +288,57 @@ export async function startAttackFlow(attackerActor) {
 
     const weaponDamage = getWeaponDamage(attackerActor);
 
-    // Full armor (body + shield) baseline
-    const armorFull = getArmorTotal(defenderActor, { includeShield: true }).total;
+    // Armor values:
+    const armorFull = getArmorTotal(defenderActor, {
+      includeShield: true,
+    }).total; // block uses full armor
+    const armorNoShield = getArmorTotal(defenderActor, {
+      includeShield: false,
+    }).total; // dodge ignores shield
 
-    // If dodge fails (hit), apply only BODY armor (exclude shield) at half value (floor)
-    const armorBodyOnly = getArmorTotal(defenderActor, { includeShield: false }).total;
-    const armorDodgeFailed = Math.floor(armorBodyOnly / 2);
+    const atkS = atkRoll.successes;
+    const defS = defRoll.successes;
+    const diff = atkS - defS;
 
-    // Armor used depends on defense type and outcome
-    let armorUsed = armorFull;
-    if (defChoice.type === "dodge" && hit) armorUsed = armorDodgeFailed;
+    let damage = 0;
+    let armorShown = 0;
+    let detailHtml = "";
 
-    // Damage is computed ALWAYS (shown even on miss)
-    let damage = weaponDamage + (atkRoll.successes - defRoll.successes) - armorUsed;
-    damage = Math.max(0, damage);
+    if (defChoice.type === "block") {
+      armorShown = armorFull;
+      damage = weaponDamage + diff - armorFull;
+      damage = Math.max(0, damage);
+      detailHtml = `
+        <p class="hint"><b>Формула (блок):</b></p>
+        <p>Урон = урон оружия ${weaponDamage} + (${atkS} − ${defS}) − броня ${armorFull}</p>
+      `;
+    } else {
+      armorShown = armorNoShield;
+      const bonus = Math.max(0, diff - armorNoShield);
+      damage = weaponDamage + bonus;
+      damage = Math.max(0, damage);
+      detailHtml = `
+        <p class="hint"><b>Формула (уклонение):</b> щит не учитывается</p>
+        <p>Бонус = max(0, (${atkS} − ${defS}) − броня ${armorNoShield}) = <b>${bonus}</b></p>
+        <p>Урон = урон оружия ${weaponDamage} + бонус ${bonus}</p>
+      `;
+    }
 
-    // HP is reduced ONLY on hit
     if (hit) {
       const hp = defenderActor.system?.attributes?.hp ?? { value: 0, max: 0 };
       const cur = num(hp.value, 0);
-      await defenderActor.update({ "system.attributes.hp.value": Math.max(0, cur - damage) });
+      await defenderActor.update({
+        "system.attributes.hp.value": Math.max(0, cur - damage),
+      });
     }
 
-    const chatRolls = [
-      ...(atkRoll.rolls ?? []),
-      ...(defRoll.rolls ?? []),
-    ];
+    const chatRolls = [...(atkRoll.rolls ?? []), ...(defRoll.rolls ?? [])];
 
     const defLabel =
       defChoice.type === "block"
-        ? "Блок"
+        ? allowDodge
+          ? "Блок"
+          : "Принять удар (тяж. броня)"
         : `Уклонение (${defChoice.mode ?? "normal"})`;
 
     await postAttackChat({
@@ -271,12 +347,13 @@ export async function startAttackFlow(attackerActor) {
       atkLabel: atkChoice.attrKey === "thinking" ? "Мышление" : "Сражение",
       atkMode: atkChoice.mode,
       defLabel,
-      atkS: atkRoll.successes,
-      defS: defRoll.successes,
+      atkS,
+      defS,
       hit,
       weaponDamage,
-      armor: armorUsed,
+      armorShown,
       damage,
+      detailHtml,
       rolls: chatRolls,
     });
   } catch (e) {
@@ -292,11 +369,13 @@ export async function startAirAttackFlow(attackerActor) {
     const atkChoice = await attackDialog();
     if (!atkChoice) return;
 
-    const atkPool = num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1);
+    const atkPool = num(
+      attackerActor.system?.attributes?.[atkChoice.attrKey],
+      1
+    );
     const atkRoll = await rollPool(atkPool, atkChoice.mode);
     const weaponDamage = getWeaponDamage(attackerActor);
 
-    // Air attack damage: weaponDamage + attack successes (no defender, no armor)
     const totalDamage = Math.max(0, weaponDamage + atkRoll.successes);
 
     await ChatMessage.create({
@@ -304,13 +383,17 @@ export async function startAirAttackFlow(attackerActor) {
       content: `
       <div class="vitruvium-chatcard">
         <h3>${esc(attackerActor.name)} — атака в воздух</h3>
-        <p class="hint">Атака: ${esc(atkChoice.attrKey === "thinking" ? "Мышление" : "Сражение")} (${esc(atkChoice.mode)})</p>
+        <p class="hint">Атака: ${esc(
+          atkChoice.attrKey === "thinking" ? "Мышление" : "Сражение"
+        )} (${esc(atkChoice.mode)})</p>
         <p><b>Успехи атаки:</b> ${atkRoll.successes}</p>
         <hr>
-        <p><b>Урон:</b> ${weaponDamage} + ${atkRoll.successes} = <b>${totalDamage}</b></p>
+        <p><b>Урон:</b> ${weaponDamage} + ${
+        atkRoll.successes
+      } = <b>${totalDamage}</b></p>
       </div>
       `,
-      rolls: atkRoll.rolls ?? [], // IMPORTANT for Dice So Nice
+      rolls: atkRoll.rolls ?? [],
     });
   } catch (e) {
     console.error("Vitruvium | startAirAttackFlow error", e);
