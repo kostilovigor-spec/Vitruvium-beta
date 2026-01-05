@@ -7,7 +7,6 @@
       type="text"
       name="name"
       value="{{item.name}}"
-      placeholder="Название предмета"
     />
   </header>
 
@@ -57,32 +56,17 @@
         data-role="desc-edit"
       >{{system.description}}</textarea>
 
-      <!-- Bonuses -->
-      <div class="v-row v-row--bonuses">
-        <div class="v-bonus">
-          <div class="v-bonus__label">Урон оружия</div>
-          <input
-            type="number"
-            name="system.attackBonus"
-            value="{{system.attackBonus}}"
-            data-dtype="Number"
-            min="0"
-            max="6"
-          >
-        </div>
+       <div class="v-row v-row--bonuses">
+         <div class="v-bonus">
+           <div class="v-bonus__label">Бонус атаки</div>
+           <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" data-dtype="Number" min="0" max="6">
+         </div>
+         <div class="v-bonus">
+           <div class="v-bonus__label">Бонус брони</div>
+           <input type="number" name="system.armorBonus" value="{{system.armorBonus}}" data-dtype="Number" min="0" max="6">
+         </div>
+       </div>
 
-        <div class="v-bonus">
-          <div class="v-bonus__label">Броня</div>
-          <input
-            type="number"
-            name="system.armorBonus"
-            value="{{system.armorBonus}}"
-            data-dtype="Number"
-            min="0"
-            max="6"
-          >
-        </div>
-      </div>
 
       <div class="v-item__actions">
         <button
@@ -93,27 +77,26 @@
           Редактировать описание
         </button>
       </div>
-
-      <!-- Toggles -->
-      <div class="v-item__toggles">
-        <label class="v-check">
-          <input type="checkbox" name="system.equipped" {{#if system.equipped}}checked{{/if}}>
-          <span>Надето</span>
-        </label>
-
-        <label class="v-check">
-          <input type="checkbox" name="system.isShield" {{checked system.isShield}}>
-          <span>Щит</span>
-        </label>
-
-        <label class="v-check">
-          <input type="checkbox" name="system.isHeavyArmor" {{checked system.isHeavyArmor}}>
-          <span>Тяжёлые доспехи</span>
-        </label>
-      </div>
-
     </div>
 
+   
+
   </section>
+  
+ <div class="v-row">
+  <label class="v-check">
+    <input type="checkbox" name="system.equipped" {{#if system.equipped}}checked{{/if}}>
+    Надето
+  </label>
+  <label class="v-check">
+  <input type="checkbox" name="system.isShield" {{checked system.isShield}}>
+  <span>Щит</span>
+  <label class="v-check">
+  <input type="checkbox" name="system.isHeavyArmor" {{checked system.isHeavyArmor}}>
+  <span>Тяжёлые доспехи</span>
+</label>
+</label>
+
+</div>
 
 </form>

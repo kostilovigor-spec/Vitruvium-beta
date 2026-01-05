@@ -127,12 +127,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
     data.vitruvium.level = Number(attrs.level ?? 1);
 
-    const baseAttack = Number(attrs.attack ?? 0);
-    const baseArmor = Number(attrs.armor ?? 0);
-
-    let bonusAttack = 0;
+    // --- ARMOR: only from equipped items (no manual base) ---
     let bonusArmor = 0;
-
     const clamp6 = (n) => Math.min(Math.max(Number(n ?? 0), 0), 6);
 
     for (const it of this.actor.items) {
@@ -140,16 +136,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const sys = it.system ?? {};
       if (!sys.equipped) continue;
 
-      bonusAttack += clamp6(sys.attackBonus);
       bonusArmor += clamp6(sys.armorBonus);
     }
 
-    data.vitruvium.attack = baseAttack; // база (редактируемая)
-    data.vitruvium.armor = baseArmor; // база (редактируемая)
-    data.vitruvium.attackBonus = bonusAttack; // бонус (отображаем)
-    data.vitruvium.armorBonus = bonusArmor; // бонус (отображаем)
-    data.vitruvium.attackTotal = baseAttack + bonusAttack;
-    data.vitruvium.armorTotal = baseArmor + bonusArmor;
+    // Финальная броня = сумма брони от экипированных предметов
+    data.vitruvium.armorTotal = bonusArmor;
 
     // speed = movement * 2
     const mv = Number(attrs.movement ?? 1);
