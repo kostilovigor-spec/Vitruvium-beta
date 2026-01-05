@@ -1,7 +1,8 @@
 /* =========================================================
    Vitruvium — system.css (CLEAN / DEDUPED)
-   Purpose: same visuals as your current file, but with duplicates removed
-   and final (effective) values consolidated.
+   - Consolidated rules (no duplicates / no legacy drift)
+   - Supports: character-sheet.hbs + compact inventory + rollmode + item/ability sheets
+   - Adds: equip toggle highlight (.v-inv__a.is-on)
    ========================================================= */
 
 /* ---------- Variables ---------- */
@@ -32,12 +33,12 @@
   box-sizing: border-box;
 }
 
-/* ---------- Base ---------- */
 .v-sheet {
   padding: 8px;
   color: var(--v-ink);
 }
 
+/* Typography helpers */
 .v-h2 {
   font-size: 13px;
   font-weight: 800;
@@ -45,101 +46,77 @@
   text-transform: uppercase;
   margin: 0;
 }
+.v-subtle {
+  font-size: 11px;
+  opacity: 0.75;
+}
 
 .v-line {
   height: 1px;
   background: var(--v-border-soft);
 }
 
-/* ---------- Main grid ---------- */
+/* ---------- Grid layout ---------- */
 .v-grid {
   display: grid;
-  grid-template-columns: 160px 420px minmax(360px, 1fr);
+  grid-template-columns: 160px 420px 1fr; /* left fixed, center fixed, right fills */
   gap: var(--gap);
   align-items: start;
 }
-
 .v-col {
   min-width: 0;
 }
-
 .v-col--center {
-  width: 420px;
-  max-width: 420px;
+  width: 450px;
+  max-width: 450px;
 }
 
-/* Make right column panel stretch vertically */
+/* Right column stretches */
 .v-col--right {
   display: flex;
   flex-direction: column;
   min-height: 100%;
 }
-
 .v-col--right > .v-panel {
   flex: 1 1 auto;
   min-height: 560px;
 }
-
-.v-col--right > .v-panel-adv {
-  position: relative;
-  background: var(--v-bg);
-  border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-lg);
-  box-shadow: 0 4px 12px var(--v-shadow);
-  padding: 10px;
-  flex: 1 1 auto;
-  min-height: 100px;
-  max-height: 200px;
-}
-
 .v-col--right .v-list {
   flex: 1 1 auto;
   overflow: auto;
 }
 
-/* Narrow widths: let right column wrap below */
-@media (max-width: 980px) {
-  .v-grid {
-    display: grid;
-    grid-template-columns: 160px 420px minmax(360px, 1fr);
-    gap: 10px;
-  }
-  .v-col--right {
-    grid-column: 1 / -1;
-  }
+/* Responsive: right column below */
+.v-grid {
+  display: grid;
+  grid-template-columns: 160px 450px minmax(360px, 1fr);
+  gap: var(--gap);
+  align-items: start;
 }
 
 /* ---------- Panels / cards ---------- */
 .v-panel,
 .v-hero,
 .v-attrcard,
-.v-row {
+.v-row,
+.v-panel-adv {
   position: relative;
   background: var(--v-bg);
   border: 1px solid var(--v-border-soft);
   border-radius: var(--r-lg);
   box-shadow: 0 4px 12px var(--v-shadow);
 }
-
 .v-panel,
-.v-hero {
+.v-hero,
+.v-panel-adv {
   padding: 10px;
-}
-
-/* Final (effective) row sizing */
-.v-row {
-  padding: 4px 10px;
-  min-height: 34px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
 }
 
 /* Decorative corners */
 .v-panel::before,
 .v-hero::before,
-.v-attrcard::before {
+.v-attrcard::before,
+.v-panel-adv::before {
   content: "";
   position: absolute;
   inset: 6px;
@@ -164,7 +141,100 @@
       20px no-repeat;
 }
 
-/* ---------- LEFT: Attributes (1x6) ---------- */
+/* Panel header */
+.v-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.v-panel__head .v-line {
+  flex: 1 1 auto;
+}
+
+/* ---------- Inputs ---------- */
+.v-input,
+.v-res__input,
+.v-lvlmini__input,
+.v-statbox__value,
+.v-rollbox__val,
+input[type="text"],
+input[type="number"],
+textarea {
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: var(--r-md);
+  color: var(--v-ink);
+  outline: none;
+}
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  border-color: var(--v-border);
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Remove Foundry defaults that add width constraints */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ---------- Buttons ---------- */
+.v-btn,
+.v-mini,
+.v-inv__a,
+.v-inv__iconbtn {
+  border: 1px solid var(--v-border);
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: var(--v-ink);
+}
+.v-mini,
+.v-btn {
+  height: var(--btn-h);
+  line-height: 1.05;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.v-mini {
+  padding: 0 10px;
+}
+.v-btn {
+  padding: 0 12px;
+}
+.v-btn--ghost {
+  background: rgba(255, 255, 255, 0.35);
+}
+.v-mini--danger {
+  border-color: rgba(120, 0, 0, 0.4);
+}
+
+.v-btn:hover,
+.v-mini:hover,
+.v-inv__a:hover,
+.v-inv__iconbtn:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+}
+
+.v-mini.is-active {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- LEFT: Attribute cards ---------- */
 .v-attrgrid {
   display: flex;
   flex-direction: column;
@@ -207,7 +277,6 @@
   border: 1px solid var(--v-border-soft);
   cursor: pointer;
 }
-
 .v-attrcard__value:hover {
   border-color: var(--v-border);
 }
@@ -217,47 +286,8 @@
   justify-content: center;
   gap: 8px;
 }
-
 .v-attrcard__ctrl .v-mini {
-  height: var(--btn-h);
   min-width: 54px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--v-ink);
-}
-
-/* ---------- Buttons ---------- */
-.v-btn,
-.v-mini {
-  border: 1px solid var(--v-border);
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: var(--r-md);
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--v-ink);
-}
-
-.v-mini {
-  height: var(--btn-h);
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.v-btn {
-  height: var(--btn-h);
-  padding: 0 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.05;
-}
-
-.v-mini--danger {
-  border-color: rgba(120, 0, 0, 0.4);
 }
 
 /* ---------- CENTER: Hero ---------- */
@@ -273,7 +303,6 @@
   flex-direction: column;
   gap: 8px;
 }
-
 .v-portrait {
   width: 140px;
   height: 140px;
@@ -282,786 +311,511 @@
   border: 1px solid var(--v-border-soft);
 }
 
+/* Name row + level mini */
+.v-namebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .v-name {
   width: 100%;
   font-size: 18px;
   font-weight: 800;
   margin: 0 0 8px 0;
+  padding: 6px 10px;
+}
+.v-lvlmini {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.v-lvlmini__label {
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.8;
+}
+.v-lvlmini__input {
+  width: 54px;
+  height: 30px;
+  text-align: center;
+  font-weight: 900;
+  padding: 0 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
 }
 
-/* Luck button under portrait */
-.v-luck {
-  width: 140px;
-  height: 44px;
-  padding: 0 10px;
-  white-space: normal;
-}
-
-/* ---------- Resources row (HP + Inspiration) ---------- */
+/* Resources row */
 .v-resrow {
   display: grid;
-  grid-template-columns: 104px 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-bottom: 10px;
-  align-items: start;
+  margin-top: 2px;
 }
 
 .v-res {
-  background: var(--v-bg-soft);
-  border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-md);
-  padding: 8px;
-  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.25);
 }
-
 .v-res__label {
   font-size: 11px;
-  opacity: 0.78;
-  margin: 0 0 6px 0;
-}
-
-/* HP tile */
-.v-res--hp {
-  width: 104px;
-  display: grid;
-  grid-template-columns: 34px 10px 34px;
-  grid-template-rows: auto auto;
-  column-gap: 6px;
-  row-gap: 4px;
-  align-items: center;
-}
-
-.v-res--hp .v-res__label {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
-.v-res--hp .v-res__input {
-  grid-column: 1;
-  width: 34px;
-  height: var(--btn-h);
-  padding: 0 4px;
-  text-align: center;
-}
-
-.v-res--hp .v-res__sep {
-  grid-column: 2;
-  text-align: center;
-  opacity: 0.75;
-}
-
-.v-res--hp .v-res__max {
-  grid-column: 3;
-  text-align: left;
-  font-weight: 800;
-}
-
-/* Inspiration tile */
-.v-res--insp .v-res__btns {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  width: 100%;
-}
-
-.v-res--insp .v-mini {
-  width: 28px;
-  min-width: 28px;
-  padding: 0;
-}
-
-.v-res--insp .v-res__val {
   font-weight: 900;
-  min-width: 1.6em;
+  opacity: 0.85;
+}
+.v-res__input {
+  height: 30px;
+  padding: 0 8px;
+  font-weight: 900;
   text-align: center;
-  flex: 0 0 auto;
+}
+.v-res__sep {
+  opacity: 0.75;
+  font-weight: 900;
+}
+.v-res__max {
+  font-weight: 900;
+  opacity: 0.85;
 }
 
-.v-res--insp .v-res__hint {
-  margin-top: 6px;
-  font-size: 11px;
-  opacity: 0.7;
+.v-res--insp {
+  grid-template-columns: auto 1fr;
 }
-
-/* ---------- Rolls row (Extra dice) ---------- */
-.v-rollrow {
+.v-res__btns {
   display: flex;
-  gap: 10px;
-  align-items: start;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.v-res__val {
+  min-width: 34px;
+  text-align: center;
+  font-weight: 900;
 }
 
+/* Rolls row */
+.v-rollrow {
+  margin-top: 10px;
+}
 .v-rollbox {
-  flex: 1 1 auto;
-  background: var(--v-bg-soft);
-  border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-md);
-  padding: 8px;
-  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.25);
 }
-
 .v-rollbox__label {
   font-size: 11px;
-  opacity: 0.8;
-  margin: 0 0 6px 0;
+  font-weight: 900;
+  opacity: 0.85;
+  margin-bottom: 6px;
 }
-
 .v-rollbox__ctrl {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
+  gap: 8px;
 }
-
 .v-rollbox__val {
-  min-width: 18px;
-  text-align: center;
+  min-width: 34px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
   font-weight: 900;
 }
 
-/* Fallback if luck button still in rollrow */
-.v-rollrow > .v-btn[data-action="luck-roll"] {
-  width: 110px;
-  height: 44px;
-  padding: 0 8px;
-  white-space: normal;
-  flex: 0 0 auto;
+/* Stats 3 blocks */
+.v-stats3 {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: center; /* centered inside hero area */
 }
 
-/* ---------- Panel headers ---------- */
-.v-panel__head {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "title line"
-    "btn   btn";
-  column-gap: 10px;
-  row-gap: 8px;
+.v-statbox {
+  width: 120px;
+  padding: 8px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--v-border-soft);
+  background: var(--v-bg-soft);
+  box-shadow: 0 4px 12px var(--v-shadow);
+}
+.v-statbox__top {
+  display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 6px;
+}
+.v-statbox__icon {
+  width: 18px;
+  text-align: center;
+  opacity: 0.9;
+}
+.v-statbox__label {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.85;
 }
 
-.v-panel__head > .v-h2 {
-  grid-area: title;
+.v-statbox__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.v-statbox__value {
+  width: 52px;
+  height: 30px;
+  padding: 0 6px;
+  text-align: center;
+  font-weight: 900;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
+}
+.v-statbox__bonus {
+  min-width: 34px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+.v-statbox__hint {
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.v-statbox__readonly {
+  margin-top: 8px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.35);
+  font-weight: 900;
 }
 
-.v-panel__head > .v-line {
-  grid-area: line;
-}
-
-.v-panel__head > .v-btn {
-  grid-area: btn;
-  width: 100%;
-  max-width: 300px;
-  justify-self: start;
-  height: 34px;
-}
-
-/* ---------- Lists (Inventory / Abilities) ---------- */
-.v-list {
+/* ---------- Compact inventory list (inv + abilities) ---------- */
+.v-inv__list {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.v-inv__row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.v-inv__iconbtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.45);
+}
+.v-inv__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.v-inv__name {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
   gap: 8px;
 }
-
-.v-row__main {
-  min-width: 0;
-}
-
-.v-row__title {
+.v-inv__title {
   font-size: 12px;
   font-weight: 800;
-  max-width: 260px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.v-row__meta {
+.v-inv__meta {
   font-size: 11px;
-  opacity: 0.65;
+  opacity: 0.7;
+  white-space: nowrap;
 }
 
-.v-row__btns {
+.v-inv__actions {
   display: flex;
-  align-items: center;
   gap: 6px;
-  flex-wrap: nowrap !important;
-  flex: 0 0 auto;
 }
 
-.v-row__btns .v-mini {
-  height: 26px;
-  padding: 0 8px;
-}
-
-.v-row__btns .v-mini--danger {
-  width: 30px;
-  min-width: 30px;
+.v-inv__a {
+  width: 28px;
+  height: 28px;
   padding: 0;
-}
-
-/* ---------- Small form element sanity ---------- */
-.v-sheet input[type="text"],
-.v-sheet input[type="number"] {
-  border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-sm);
-  background: rgba(255, 255, 255, 0.65);
-  color: var(--v-ink);
-}
-
-/* ---------- Chat cards ---------- */
-.v-card,
-.v-card__row {
-  font-size: 14px;
-  font-weight: 400;
-}
-
-/* ===== Chat: mode badge + chosen marker ===== */
-.v-card__mode {
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 18px;
-  padding: 0 8px;
-  margin-right: 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
-  font-weight: 900;
-  opacity: 0.9;
+}
+.v-inv__a i {
+  font-size: 12px;
+  opacity: 0.85;
 }
 
-.v-card__pick {
-  display: inline-flex;
-  margin-left: 8px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(0, 0, 0, 0.06);
-  font-size: 11px;
+.v-inv__a--danger {
+  border-color: rgba(120, 0, 0, 0.35);
+}
+
+/* Equip highlight (requested) */
+.v-inv__a.is-on {
+  background: rgba(40, 120, 60, 0.22);
+  border-color: rgba(40, 120, 60, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(40, 120, 60, 0.18);
+}
+.v-inv__a.is-on i {
+  opacity: 1;
+}
+
+/* Abilities list tweaks */
+.v-abi__row .v-inv__meta {
+  opacity: 0.75;
+}
+
+/* ---------- Roll mode panel ---------- */
+.v-rollmode {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- Generic rows (legacy list blocks) ---------- */
+.v-row {
+  padding: 4px 10px;
+  min-height: 34px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.v-row__main {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.v-row__title {
   font-weight: 800;
-  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-row__meta {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.v-row__btns {
+  display: flex;
+  gap: 6px;
 }
 
-.v-card--adv::before,
-.v-card--dis::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.12);
-}
-
-/* ===== Item Sheet (inventory item) ===== */
+/* =========================================================
+   ITEM SHEET (item-sheet.hbs)
+   ========================================================= */
 .v-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
 }
-
 .v-item__title {
-  width: 100%;
-  height: 34px;
-  padding: 0 10px;
-  font-size: 16px;
-  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.v-item__iconbox {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
   border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-md);
-  background: rgba(255, 255, 255, 0.65);
-  color: var(--v-ink);
+  background: rgba(255, 255, 255, 0.25);
+}
+.v-item__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.v-item input[name="name"] {
+  width: 100%;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 6px 10px;
 }
 
 .v-item__body {
   display: grid;
-  grid-template-columns: 170px 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-.v-item__iconbox {
-  display: flex;
-  flex-direction: column;
   gap: 10px;
 }
 
-.v-item__icon {
-  width: 170px;
-  height: 170px;
-  border-radius: var(--r-lg);
-  object-fit: cover;
-  border: 1px solid var(--v-border-soft);
+.v-item__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.v-row--bonuses {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.v-bonus {
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 0.25);
+}
+.v-bonus__label {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.85;
+  margin-bottom: 6px;
 }
 
 .v-item__qty {
-  background: var(--v-bg-soft);
-  border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-md);
-  padding: 8px;
   display: grid;
-  grid-template-columns: 1fr 70px;
-  gap: 8px;
+  grid-template-columns: auto 1fr;
   align-items: center;
+  gap: 8px;
 }
-
 .v-item__qtylabel {
   font-size: 11px;
-  opacity: 0.8;
-  font-weight: 800;
+  font-weight: 900;
+  opacity: 0.85;
 }
-
 .v-item__qtyinput {
-  height: var(--btn-h);
-  padding: 0 6px;
+  height: 30px;
+  padding: 0 8px;
+  font-weight: 900;
   text-align: center;
 }
 
-.v-item__descbox {
-  background: var(--v-bg);
-  border: 1px solid var(--v-border-soft);
-  border-radius: var(--r-lg);
-  box-shadow: 0 4px 12px var(--v-shadow);
-  padding: 10px;
-  min-height: 250px;
+.v-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.9;
 }
 
+.v-item__descbox {
+  padding: 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.22);
+}
 .v-item__deschead {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
 }
-
-.v-item__descview {
-  padding: 8px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--v-border-soft);
-  background: rgba(255, 255, 255, 0.35);
-  min-height: 200px;
-  overflow: auto;
-}
-
 .v-item__desccontent {
   font-size: 12px;
-  line-height: 1.35;
+  opacity: 0.92;
 }
-
 .v-item__descplaceholder {
   font-size: 12px;
   opacity: 0.65;
 }
-
 .v-item__descedit {
   width: 100%;
-  min-height: 200px;
-  resize: vertical;
-  padding: 8px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--v-border-soft);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--v-ink);
 }
 
-.v-item__actions {
-  margin-top: 8px;
-}
-
-/* Chat: Item card with image */
-.v-itemcard .v-itemcard__top {
-  display: grid;
-  grid-template-columns: 46px 1fr;
-  gap: 10px;
-  align-items: center;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-  margin-bottom: 8px;
-}
-
-.v-itemcard__img {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  object-fit: cover;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.v-itemcard__title {
-  font-weight: 900;
-  font-size: 14px;
-  line-height: 1.15;
-}
-
-.v-itemcard__sub {
-  font-size: 11px;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-
-.v-itemcard__desc {
-  font-size: 12px;
-  line-height: 1.35;
-  opacity: 0.92;
-}
-
-/* Roll mode switch */
-.v-rollmode {
-  display: flex;
-  gap: 6px;
-}
-
-.v-rollmode .v-mini {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 10px;
-  padding: 4px 8px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.45);
-  font-weight: 800;
-  opacity: 0.85;
-}
-
-.v-rollmode .v-mini.is-active {
-  background: rgba(0, 0, 0, 0.1);
-  opacity: 1;
-}
-
-/* ===== NPC Sheet ===== */
-.v-npc {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.v-npc__name {
-  width: 100%;
-  font-size: 16px;
-  font-weight: 800;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  border-radius: 10px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.v-npc__hp {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.45);
-}
-
-.v-npc__hpLabel {
-  font-weight: 900;
-  opacity: 0.85;
-}
-
-.v-npc__hpInput {
-  width: 80px;
-  height: 26px;
-  border-radius: 9px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  padding: 0 8px;
-  background: rgba(255, 255, 255, 0.65);
-  font-weight: 800;
-}
-
-.v-npc__hpSep {
-  opacity: 0.6;
-}
-
-.v-npc__hpMax {
-  font-weight: 900;
-}
-
-.v-npc__attrs {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.v-npc__attr {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.4);
-  display: grid;
-  gap: 6px;
-}
-
-.v-npc__attrLabel {
-  font-size: 11px;
-  font-weight: 900;
-  opacity: 0.8;
-  line-height: 1.1;
-}
-
-.v-npc__attrVal {
-  text-align: center;
-  font-weight: 900;
-  font-size: 16px;
-  border: 1px dashed rgba(0, 0, 0, 0.18);
-  border-radius: 10px;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-}
-
-.v-npc__attrCtrl {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-}
-
-.v-npc__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.v-npc__box {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.45);
-}
-
-.v-npc__boxTitle {
-  font-size: 11px;
-  font-weight: 900;
-  opacity: 0.8;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.v-npc__boxCtrl {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.v-npc__mini,
-.v-npc__btn {
-  height: 26px;
-  border-radius: 9px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(255, 255, 255, 0.65);
-  font-weight: 800;
-}
-
-.v-npc__mini {
-  width: 28px;
-  padding: 0;
-}
-
-.v-npc__mini--danger {
-  border-color: rgba(0, 0, 0, 0.26);
-}
-
-.v-npc__pill {
-  min-width: 34px;
-  text-align: center;
-  font-weight: 900;
-  border-radius: 9px;
-  border: 1px dashed rgba(0, 0, 0, 0.18);
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.v-npc__btn {
-  padding: 0 10px;
-}
-
-.v-npc__btn--ghost {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.v-npc__bottom {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.v-npc__panel {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.45);
-}
-
-.v-npc__panelHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.v-npc__panelTitle {
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  opacity: 0.85;
-}
-
-.v-npc__list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.v-npc__rowItem {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.v-npc__rowTitle {
-  font-weight: 900;
-  font-size: 12px;
-}
-
-.v-npc__rowMeta {
-  font-size: 11px;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-
-.v-npc__rowBtns {
-  display: flex;
-  gap: 6px;
-}
-
-/* Ability level (display-only on character sheet) */
-.v-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 8px;
-  width: 16px;
-  height: 16px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
-  font-weight: 900;
-  opacity: 0.85;
-}
-
-.v-lvl {
-  width: 44px;
-  height: 22px;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.v-lvltext {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 6px;
-  min-width: 26px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 12px;
-  font-weight: 900;
-  opacity: 0.9;
-}
-
-/* ===== Ability sheet: compact 2-column layout ===== */
-.v-abilitysheet {
-  padding: 10px;
-}
-
+/* =========================================================
+   ABILITY SHEET (ability-sheet.hbs)
+   ========================================================= */
 .v-abilitysheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 10px;
 }
-
 .v-abilitysheet__headrow {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
-
 .v-abilitysheet__name {
-  flex: 1;
-  min-width: 220px;
-  max-width: 420px;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 16px;
-  font-weight: 800;
+  width: 100%;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 6px 10px;
 }
 
 .v-abilitysheet__lvl {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
 }
-
 .v-abilitysheet__lvltag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 7px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
-  opacity: 0.85;
+  opacity: 0.8;
 }
-
 .v-abilitysheet__lvlinput {
-  width: 52px;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 13px;
+  width: 56px;
+  height: 32px;
+  padding: 0 6px;
+  text-align: center;
   font-weight: 900;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .v-abilitysheet__body {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 160px 1fr;
   gap: 12px;
   align-items: start;
 }
 
 .v-abilitysheet__left {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 10px;
 }
-
 .v-abilitysheet__img {
   width: 140px;
   height: 140px;
@@ -1070,227 +824,57 @@
   border: 1px solid rgba(0, 0, 0, 0.18);
   background: rgba(255, 255, 255, 0.35);
 }
-
-.v-abilitysheet__cost {
-  width: 140px;
-  padding: 8px 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.v-abilitysheet__costlabel {
-  font-size: 12px;
-  font-weight: 900;
-  opacity: 0.85;
-  margin-bottom: 6px;
-}
-
 .v-abilitysheet__costrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.v-abilitysheet__costinput {
-  width: 60px;
-  height: 28px;
-  padding: 0 8px;
+  padding: 8px;
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.65);
-  font-size: 13px;
-  font-weight: 900;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.25);
 }
-
-.v-abilitysheet__costsuffix {
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0.75;
-  white-space: nowrap;
-}
-
-.v-abilitysheet__descrhead {
-  font-size: 12px;
+.v-abilitysheet__costlabel {
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.06em;
   opacity: 0.85;
   margin-bottom: 6px;
 }
-
-.v-abilitysheet__desc {
-  width: 100%;
-  min-height: 320px;
-  resize: vertical;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(255, 255, 255, 0.55);
-  padding: 10px;
-  font-size: 13px;
-  line-height: 1.35;
-}
-.vitruvium-chatcard__top {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.vitruvium-chatcard__img {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  object-fit: cover;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.35);
-  flex: 0 0 auto;
-}
-
-.vitruvium-chatcard__head h3 {
-  margin: 0;
-}
-.vitruvium-chatcard__head p {
-  margin: 4px 0 0 0;
-}
-/* Name + level row */
-/* 3 stat boxes row (red zone) */
-.v-statbox {
-  padding: 10px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.v-statbox__top {
+.v-abilitysheet__cost {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
-
-.v-statbox__icon {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.v-statbox__label {
-  font-size: 12px;
-  font-weight: 900;
-  opacity: 0.85;
-}
-
-.v-statbox__value {
-  width: 100%;
+.v-abilitysheet__costinput {
+  width: 64px;
   height: 30px;
-  padding: 0 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.65);
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.v-statbox__readonly {
-  width: 100%;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 14px;
-  font-weight: 900;
-}
-/* Name row alignment fix */
-
-/* ===== Sheet tweaks: level + stats alignment (2026-01) ===== */
-
-/* Name row: keep everything on one line and align neatly */
-.v-namebar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
-}
-
-/* Keep your chosen shorter name width (do not change overall frame) */
-.v-namebar .v-name {
-  flex: 1;
-  max-width: 180px;
-}
-
-/* Level: small like HP value, no separate outer frame */
-.v-level {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  flex: 0 0 auto;
-}
-
-.v-level__label {
-  font-size: 12px;
-  font-weight: 900;
-  opacity: 0.85;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.v-level__input {
-  width: 34px;
-  height: var(--btn-h);
-  padding: 0 4px;
   text-align: center;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--v-border-soft);
-  background: rgba(255, 255, 255, 0.65);
-  color: var(--v-ink);
-  font-size: 14px;
   font-weight: 900;
-}
-
-/* 3 stat boxes: center as a group within the middle column, prevent "drifting" */
-.v-stats3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  /* display: flex;
-  justify-content: center; */
-  gap: 10px;
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
-/* Give each stat box a stable width so centering is visually consistent */
-.v-statbox {
-  flex: 0 10px 0;
-}
-
-.v-statbox__bonus {
-  flex: 0 0 auto;
-  min-width: 34px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0 6px;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.4);
-  font-size: 13px;
-  font-weight: 900;
-  opacity: 0.85;
+}
+.v-abilitysheet__costsuffix {
+  font-size: 12px;
+  opacity: 0.8;
 }
 
-.v-statbox__hint {
-  margin-top: 6px;
+.v-abilitysheet__right {
+  min-width: 0;
+}
+.v-abilitysheet__descrhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.v-abilitysheet__desc {
+  padding: 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Utility */
+.hint {
+  opacity: 0.7;
   font-size: 11px;
-  font-weight: 800;
-  opacity: 0.65;
 }

@@ -4,12 +4,19 @@
 // GM client listens to createChatMessage for that flag and posts the Resolve card (whisper to GM only).
 // No sockets, no blind, no public resolve. Public remains: attack request card + defense roll card.
 
-function clamp(n, min, max) { return Math.min(Math.max(n, min), max); }
-function num(v, d) { const x = Number(v); return Number.isNaN(x) ? d : x; }
+function clamp(n, min, max) {
+  return Math.min(Math.max(n, min), max);
+}
+function num(v, d) {
+  const x = Number(v);
+  return Number.isNaN(x) ? d : x;
+}
 function esc(s) {
   return String(s ?? "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
 
@@ -22,9 +29,15 @@ function owners(actor) {
   }
   return list;
 }
-function isGMNPC(actor) { return owners(actor).length === 0; }
-function gmUsers() { return (game.users ?? []).filter(u => u.isGM); }
-function gmIds() { return gmUsers().map(u => u.id); }
+function isGMNPC(actor) {
+  return owners(actor).length === 0;
+}
+function gmUsers() {
+  return (game.users ?? []).filter((u) => u.isGM);
+}
+function gmIds() {
+  return gmUsers().map((u) => u.id);
+}
 
 const _resolvedAttackMsgIds = new Set();
 
@@ -51,23 +64,45 @@ async function rollPool(pool, mode = "normal") {
 
   const a = await rollOnce();
   const b = await rollOnce();
-  const chosen = mode === "adv"
-    ? (a.successes >= b.successes ? a : b)
-    : (a.successes <= b.successes ? a : b);
+  const chosen =
+    mode === "adv"
+      ? a.successes >= b.successes
+        ? a
+        : b
+      : a.successes <= b.successes
+      ? a
+      : b;
 
-  return { mode, pool, successes: chosen.successes, rolls: [a.roll, b.roll], all: [a, b] };
+  return {
+    mode,
+    pool,
+    successes: chosen.successes,
+    rolls: [a.roll, b.roll],
+    all: [a, b],
+  };
 }
 
 function renderModeDetailSmall(r) {
-  if (r.mode === "normal") return `<div class="v-sub">Обычный · пул ${r.pool}</div>`;
+  if (r.mode === "normal")
+    return `<div class="v-sub">Обычный · пул ${r.pool}</div>`;
   const a = r.all?.[0]?.successes ?? 0;
   const b = r.all?.[1]?.successes ?? 0;
-  return `<div class="v-sub">${r.mode === "adv" ? "Преимущество" : "Помеха"} · пул ${r.pool}</div>
-          <div class="v-sub">#1 ${a} · #2 ${b} · итог ${r.successes}</div>`;
+  return `<div class="v-sub">${
+    r.mode === "adv" ? "Преимущество" : "Помеха"
+  } · пул ${r.pool}</div>
+          <div class="v-sub">1 = ${a} · 2 = ${b} · итог ${r.successes}</div>`;
 }
 
 function prettyAttrLabel(key) {
-  const map = { condition:"Самочувствие", attention:"Внимание", movement:"Движение", combat:"Сражение", thinking:"Мышление", communication:"Общение", will:"Воля" };
+  const map = {
+    condition: "Самочувствие",
+    attention: "Внимание",
+    movement: "Движение",
+    combat: "Сражение",
+    thinking: "Мышление",
+    communication: "Общение",
+    will: "Воля",
+  };
   return map[key] ?? key;
 }
 
@@ -118,12 +153,17 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
 
 function attackDialog({ actor, weaponName }) {
   const keys = listAttributeKeys(actor);
-  const defaultKey = keys.includes("combat") ? "combat" : (keys[0] ?? "combat");
+  const defaultKey = keys.includes("combat") ? "combat" : keys[0] ?? "combat";
   const options = keys
-    .map(k => `<option value="${k}" ${k === defaultKey ? "selected" : ""}>${esc(prettyAttrLabel(k))}</option>`)
+    .map(
+      (k) =>
+        `<option value="${k}" ${k === defaultKey ? "selected" : ""}>${esc(
+          prettyAttrLabel(k)
+        )}</option>`
+    )
     .join("");
 
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     new Dialog({
       title: `Атака: ${weaponName}`,
       content: `<div style="display:grid; gap:8px;">
@@ -132,9 +172,30 @@ function attackDialog({ actor, weaponName }) {
         </label>
       </div>`,
       buttons: {
-        normal: { label: "Обычная", callback: html => resolve({ attrKey: html.find("select[name='attr']").val(), mode: "normal" }) },
-        adv: { label: "С преимуществом", callback: html => resolve({ attrKey: html.find("select[name='attr']").val(), mode: "adv" }) },
-        dis: { label: "С помехой", callback: html => resolve({ attrKey: html.find("select[name='attr']").val(), mode: "dis" }) },
+        normal: {
+          label: "Обычная",
+          callback: (html) =>
+            resolve({
+              attrKey: html.find("select[name='attr']").val(),
+              mode: "normal",
+            }),
+        },
+        adv: {
+          label: "С преимуществом",
+          callback: (html) =>
+            resolve({
+              attrKey: html.find("select[name='attr']").val(),
+              mode: "adv",
+            }),
+        },
+        dis: {
+          label: "С помехой",
+          callback: (html) =>
+            resolve({
+              attrKey: html.find("select[name='attr']").val(),
+              mode: "dis",
+            }),
+        },
       },
       close: () => resolve(null),
     }).render(true);
@@ -142,14 +203,26 @@ function attackDialog({ actor, weaponName }) {
 }
 
 function defenseDialog({ allowDodge = true } = {}) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const buttons = {};
     if (allowDodge) {
-      buttons.dodgeNormal = { label: "Уклонение (обычное)", callback: () => resolve({ type: "dodge", mode: "normal" }) };
-      buttons.dodgeAdv = { label: "Уклонение (с преимуществом)", callback: () => resolve({ type: "dodge", mode: "adv" }) };
-      buttons.dodgeDis = { label: "Уклонение (с помехой)", callback: () => resolve({ type: "dodge", mode: "dis" }) };
+      buttons.dodgeNormal = {
+        label: "Уклонение (обычное)",
+        callback: () => resolve({ type: "dodge", mode: "normal" }),
+      };
+      buttons.dodgeAdv = {
+        label: "Уклонение (с преимуществом)",
+        callback: () => resolve({ type: "dodge", mode: "adv" }),
+      };
+      buttons.dodgeDis = {
+        label: "Уклонение (с помехой)",
+        callback: () => resolve({ type: "dodge", mode: "dis" }),
+      };
     }
-    buttons.block = { label: allowDodge ? "Блок" : "Принять удар (тяж. броня)", callback: () => resolve({ type: "block" }) };
+    buttons.block = {
+      label: allowDodge ? "Блок" : "Принять удар (тяж. броня)",
+      callback: () => resolve({ type: "block" }),
+    };
     new Dialog({
       title: "Защита",
       content: allowDodge
@@ -163,12 +236,24 @@ function defenseDialog({ allowDodge = true } = {}) {
 
 /* ---------- Cards ---------- */
 
-function attackCardTwoCols({ attackerName, defenderName, weaponName, attrKey, atkRoll, weaponDamage, resolved }) {
+function attackCardTwoCols({
+  attackerName,
+  defenderName,
+  weaponName,
+  attrKey,
+  atkRoll,
+  weaponDamage,
+  resolved,
+}) {
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack">
     <div class="v-head">
-      <div class="v-title">${esc(attackerName)} атакует ${esc(defenderName)}</div>
-      <div class="v-sub">Оружие: <b>${esc(weaponName)}</b> · Атрибут: ${esc(prettyAttrLabel(attrKey))}</div>
+      <div class="v-title">${esc(attackerName)} атакует ${esc(
+    defenderName
+  )}</div>
+      <div class="v-sub">Оружие: <b>${esc(weaponName)}</b> · Атрибут: ${esc(
+    prettyAttrLabel(attrKey)
+  )}</div>
     </div>
 
     <div class="v-two">
@@ -186,27 +271,49 @@ function attackCardTwoCols({ attackerName, defenderName, weaponName, attrKey, at
     </div>
 
     <div class="v-actions">
-      <button type="button" class="v-btn" data-action="vitruvium-defense" ${resolved ? "disabled" : ""}>Защита</button>
-      <span class="v-sub">${resolved ? "Защита уже выбрана" : "Нажмите «Защита» владельцем цели"}</span>
+      <button type="button" class="v-btn" data-action="vitruvium-defense" ${
+        resolved ? "disabled" : ""
+      }>Защита</button>
+      <span class="v-sub">${
+        resolved ? "Защита уже выбрана" : "Нажмите «Защита» владельцем цели"
+      }</span>
     </div>
   </div>`;
 }
 
-function defenseRequestOnlyCard({ attackerName, defenderName, weaponName, resolved }) {
+function defenseRequestOnlyCard({
+  attackerName,
+  defenderName,
+  weaponName,
+  resolved,
+}) {
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--request">
     <div class="v-head">
-      <div class="v-title">${esc(attackerName)} атакует ${esc(defenderName)}</div>
-      <div class="v-sub">Оружие: <b>${esc(weaponName)}</b> · <i>результаты атаки скрыты</i></div>
+      <div class="v-title">${esc(attackerName)} атакует ${esc(
+    defenderName
+  )}</div>
+      <div class="v-sub">Оружие: <b>${esc(
+        weaponName
+      )}</b> · <i>результаты атаки скрыты</i></div>
     </div>
     <div class="v-actions">
-      <button type="button" class="v-btn" data-action="vitruvium-defense" ${resolved ? "disabled" : ""}>Защита</button>
-      <span class="v-sub">${resolved ? "Защита уже выбрана" : "Нажмите «Защита» владельцем цели"}</span>
+      <button type="button" class="v-btn" data-action="vitruvium-defense" ${
+        resolved ? "disabled" : ""
+      }>Защита</button>
+      <span class="v-sub">${
+        resolved ? "Защита уже выбрана" : "Нажмите «Защита» владельцем цели"
+      }</span>
     </div>
   </div>`;
 }
 
-function defenseCardTwoCols({ defenderName, reactionLabel, defRoll, armorShown }) {
+function defenseCardTwoCols({
+  defenderName,
+  reactionLabel,
+  defRoll,
+  armorShown,
+}) {
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--defense">
     <div class="v-head">
@@ -229,12 +336,23 @@ function defenseCardTwoCols({ defenderName, reactionLabel, defRoll, armorShown }
   </div>`;
 }
 
-function resolveCardHTML({ attackerName, defenderName, weaponName, hit, damage, atkS, defS, compactLine }) {
+function resolveCardHTML({
+  attackerName,
+  defenderName,
+  weaponName,
+  hit,
+  damage,
+  atkS,
+  defS,
+  compactLine,
+}) {
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
     <div class="v-head">
       <div class="v-title">Результат</div>
-      <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(weaponName)}</div>
+      <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(
+    weaponName
+  )}</div>
     </div>
     <div class="v-two">
       <div class="v-box">
@@ -256,7 +374,14 @@ function resolveCardHTML({ attackerName, defenderName, weaponName, hit, damage, 
 
 /* ---------- Damage ---------- */
 
-function computeDamageCompact({ weaponDamage, atkS, defS, defenseType, armorFull, armorNoShield }) {
+function computeDamageCompact({
+  weaponDamage,
+  atkS,
+  defS,
+  defenseType,
+  armorFull,
+  armorNoShield,
+}) {
   const diff = atkS - defS;
 
   if (defenseType === "block") {
@@ -346,12 +471,21 @@ Hooks.once("ready", () => {
           compactLine: compact,
         }),
         whisper: gmIds(),
-        flags: { vitruvium: { kind: "resolve", defenderTokenUuid: f.defenderTokenUuid, damage } },
-      })
+        flags: {
+          vitruvium: {
+            kind: "resolve",
+            defenderTokenUuid: f.defenderTokenUuid,
+            damage,
+          },
+        },
+      });
 
       // Remove the request message to prevent empty "side-effect" lines in chat
-      try { await msg.delete(); } catch (e) { /* ignore */ }
-;
+      try {
+        await msg.delete();
+      } catch (e) {
+        /* ignore */
+      }
     } catch (e) {
       console.error("Vitruvium | GM resolve hook error", e);
     }
@@ -365,21 +499,27 @@ Hooks.on("renderChatMessage", (message, html) => {
   if (!f) return;
 
   // Apply damage (GM only)
-  html.find("[data-action='vitruvium-apply-damage']").on("click", async (ev) => {
-    ev.preventDefault();
-    if (!game.user.isGM) return;
+  html
+    .find("[data-action='vitruvium-apply-damage']")
+    .on("click", async (ev) => {
+      ev.preventDefault();
+      if (!game.user.isGM) return;
 
-    const flags = message.flags?.vitruvium ?? {};
-    if (flags.kind !== "resolve") return;
+      const flags = message.flags?.vitruvium ?? {};
+      if (flags.kind !== "resolve") return;
 
-    const defender = await actorFromTokenUuid(flags.defenderTokenUuid);
-    if (!defender) return;
+      const defender = await actorFromTokenUuid(flags.defenderTokenUuid);
+      if (!defender) return;
 
-    const dmg = num(flags.damage, 0);
-    const cur = num(defender.system?.attributes?.hp?.value, 0);
-    await defender.update({ "system.attributes.hp.value": Math.max(0, cur - dmg) });
-    html.find("[data-action='vitruvium-apply-damage']").prop("disabled", true);
-  });
+      const dmg = num(flags.damage, 0);
+      const cur = num(defender.system?.attributes?.hp?.value, 0);
+      await defender.update({
+        "system.attributes.hp.value": Math.max(0, cur - dmg),
+      });
+      html
+        .find("[data-action='vitruvium-apply-damage']")
+        .prop("disabled", true);
+    });
 
   // Defense button
   html.find("[data-action='vitruvium-defense']").on("click", async (ev) => {
@@ -398,7 +538,9 @@ Hooks.on("renderChatMessage", (message, html) => {
     if (!defender || !attacker) return;
 
     if (!userCanDefend(defender)) {
-      ui.notifications?.warn("Только владелец цели или ГМ может нажать «Защита».");
+      ui.notifications?.warn(
+        "Только владелец цели или ГМ может нажать «Защита»."
+      );
       return;
     }
 
@@ -409,12 +551,18 @@ Hooks.on("renderChatMessage", (message, html) => {
     let defRoll, armorShown, reactionLabel, defenseType;
     if (choice.type === "block") {
       defenseType = "block";
-      defRoll = await rollPool(num(defender.system?.attributes?.condition, 1), "normal");
+      defRoll = await rollPool(
+        num(defender.system?.attributes?.condition, 1),
+        "normal"
+      );
       armorShown = getArmorTotal(defender, { includeShield: true });
       reactionLabel = allowDodge ? "Блок" : "Принять удар (тяж. броня)";
     } else {
       defenseType = "dodge";
-      defRoll = await rollPool(num(defender.system?.attributes?.movement, 1), choice.mode ?? "normal");
+      defRoll = await rollPool(
+        num(defender.system?.attributes?.movement, 1),
+        choice.mode ?? "normal"
+      );
       armorShown = getArmorTotal(defender, { includeShield: false });
       reactionLabel = `Уклонение (${choice.mode ?? "normal"})`;
     }
@@ -422,7 +570,12 @@ Hooks.on("renderChatMessage", (message, html) => {
     // Public defense roll
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: defender }),
-      content: defenseCardTwoCols({ defenderName: defender.name, reactionLabel, defRoll, armorShown }),
+      content: defenseCardTwoCols({
+        defenderName: defender.name,
+        reactionLabel,
+        defRoll,
+        armorShown,
+      }),
       rolls: defRoll.rolls,
     });
 
@@ -441,8 +594,8 @@ Hooks.on("renderChatMessage", (message, html) => {
           atkSuccesses: flags.atkSuccesses,
           defSuccesses: defRoll.successes,
           defenseType,
-        }
-      }
+        },
+      },
     });
 
     _resolvedAttackMsgIds.add(message.id);
@@ -460,7 +613,10 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     const atkChoice = await attackDialog({ actor: attackerActor, weaponName });
     if (!atkChoice) return;
 
-    const atkPool = num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1);
+    const atkPool = num(
+      attackerActor.system?.attributes?.[atkChoice.attrKey],
+      1
+    );
     const atkRoll = await rollPool(atkPool, atkChoice.mode);
 
     const targetToken = [...game.user.targets][0];
@@ -474,8 +630,12 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         content: `
         <div class="vitruvium-chatcard vitruvium-chatcard--attack">
           <div class="v-head">
-            <div class="v-title">${esc(attackerActor.name)} — атака (без цели)</div>
-            <div class="v-sub">Оружие: <b>${esc(weaponName)}</b> · Атрибут: ${esc(prettyAttrLabel(atkChoice.attrKey))}</div>
+            <div class="v-title">${esc(
+              attackerActor.name
+            )} — атака (без цели)</div>
+            <div class="v-sub">Оружие: <b>${esc(
+              weaponName
+            )}</b> · Атрибут: ${esc(prettyAttrLabel(atkChoice.attrKey))}</div>
           </div>
           <div class="v-two">
             <div class="v-box">
@@ -486,7 +646,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
             <div class="v-box">
               <div class="v-box__label">Урон</div>
               <div class="v-box__big">${total}</div>
-              <div class="v-sub">${weaponDamage} + ${atkRoll.successes} = ${total}</div>
+              <div class="v-sub">${weaponDamage} + ${
+          atkRoll.successes
+        } = ${total}</div>
             </div>
           </div>
         </div>`,
@@ -501,7 +663,12 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
 
     // Public attack message (always includes defense button)
     const publicContent = gmNpcAttack
-      ? defenseRequestOnlyCard({ attackerName: attackerActor.name, defenderName, weaponName, resolved: false })
+      ? defenseRequestOnlyCard({
+          attackerName: attackerActor.name,
+          defenderName,
+          weaponName,
+          resolved: false,
+        })
       : attackCardTwoCols({
           attackerName: attackerActor.name,
           defenderName,
@@ -528,8 +695,8 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
           atkSuccesses: atkRoll.successes,
           atkPool: atkRoll.pool,
           gmNpcAttack,
-        }
-      }
+        },
+      },
     });
 
     // GM-only detailed attack (optional): whisper only, no rolls (avoid leakage)
@@ -547,10 +714,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
           resolved: true,
         }),
         rolls: [],
-        flags: { vitruvium: { kind: "gm-attack-detail" } }
+        flags: { vitruvium: { kind: "gm-attack-detail" } },
       });
     }
-
   } catch (e) {
     console.error("Vitruvium | startWeaponAttackFlow error", e);
     ui.notifications?.error(`Ошибка атаки: ${e?.message ?? e}`);

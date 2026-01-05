@@ -153,7 +153,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
     // speed = movement * 2
     const mv = Number(attrs.movement ?? 1);
-    data.vitruvium.speed = Math.max(mv * 2, 5);
+    data.vitruvium.speed = 5 + mv;
 
     return data;
   }
