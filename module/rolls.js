@@ -15,7 +15,7 @@ export async function rollSuccessDice({
   const renderIcons = (successes) =>
     successes > 0
       ? successIcon.repeat(successes)
-      : `<span class="v-success v-success--none">—</span>`;
+      : `<span class="v-success v-success--none"></span>`;
 
   const countSuccesses = (results) => {
     let successes = 0;

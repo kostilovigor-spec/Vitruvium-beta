@@ -211,6 +211,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .v-mini {
   padding: 0 10px;
+  height: 24px;
 }
 .v-btn {
   padding: 0 12px;
@@ -371,7 +372,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .v-res__input {
   height: 30px;
-  padding: 0 8px;
+  width: 30px;
+  /* padding: 0 6px; */
   font-weight: 900;
   text-align: center;
 }
@@ -394,7 +396,7 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 .v-res__val {
-  min-width: 34px;
+  min-width: 22px;
   text-align: center;
   font-weight: 900;
 }
