@@ -28,7 +28,7 @@ export async function rollSuccessDice({
   };
 
   const doOneRoll = async () => {
-    const roll = await new Roll(`${pool}d6`).evaluate({ async: true });
+    const roll = await new Roll(`${pool}dV`).evaluate({ async: true });
     const results = roll.dice[0].results.map((r) => r.result);
     const successes = countSuccesses(results);
     return { roll, results, successes };

@@ -17,6 +17,10 @@
     "Actor": ["character", "npc"],
     "Item": ["ability", "item"]
   },
-  "esmodules": ["module/system.js"],
+  "esmodules": [
+    "module/system.js",
+    "module/dv-die.js",
+    "module/dice-so-nice.js"
+  ],
   "styles": ["styles/system.css"]
 }

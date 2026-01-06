@@ -28,7 +28,7 @@ function successesIcons(n) {
 }
 
 async function rollPool(pool) {
-  const r = await new Roll(`${pool}d6`).evaluate({ async: true });
+  const r = await new Roll(`${pool}dV`).evaluate();
   // Для Dice So Nice важно показать реальный Roll
   if (game.dice3d) {
     await game.dice3d.showForRoll(r, game.user, true);

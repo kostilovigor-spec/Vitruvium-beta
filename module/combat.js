@@ -45,7 +45,7 @@ async function rollPool(pool, mode = "normal") {
   pool = clamp(num(pool, 1), 1, 20);
 
   const rollOnce = async () => {
-    const roll = new Roll(`${pool}d6`);
+    const roll = new Roll(`${pool}dV`);
     await roll.evaluate();
     let successes = 0;
     for (const r of roll.dice[0].results) {

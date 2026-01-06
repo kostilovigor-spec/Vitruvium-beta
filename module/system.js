@@ -3,6 +3,7 @@ import { VitruviumAbilitySheet } from "./ability-sheet.js";
 import { VitruviumItemSheet } from "./item-sheet.js";
 import { VitruviumNPCSheet } from "./npc-sheet.js";
 import { patchVitruviumInitiative } from "./initiative.js";
+import { VitruviumDie } from "./dv-die.js";
 import "./dice-so-nice.js";
 import { startWeaponAttackFlow } from "./combat.js";
 
@@ -11,6 +12,9 @@ Hooks.once("init", () => {
   patchVitruviumInitiative();
 
   const NS = game.system.id; // у тебя это "Vitruvium"
+
+  CONFIG.Dice.terms["V"] = VitruviumDie;
+  CONFIG.Dice.terms["v"] = VitruviumDie;
 
   // Actor sheet
   Actors.unregisterSheet("core", ActorSheet);
