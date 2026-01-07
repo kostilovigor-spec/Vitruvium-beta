@@ -80,7 +80,7 @@ export async function rollSuccessDice({
     ? r1
     : r2;
 
-  const modeLabel = isAdv ? "Преимущество" : "Недостаток";
+  const modeLabel = isAdv ? "Преимущество" : "Помеха";
   const badge = isAdv ? "Adv" : "Dis";
   const cardClass = isAdv ? "v-card--adv" : "v-card--dis";
 
