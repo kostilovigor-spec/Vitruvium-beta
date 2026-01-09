@@ -4,6 +4,48 @@
 // GM client listens to createChatMessage for that flag and posts the Resolve card (whisper to GM only).
 // No sockets, no blind, no public resolve. Public remains: attack request card + defense roll card.
 
+function dvSuccesses(face) {
+  const v = Number(face);
+  if (!Number.isFinite(v)) return 0;
+  if (v <= 3) return 0;
+  if (v <= 5) return 1;
+  return 2; // 6
+}
+
+function dvFaceKind(face) {
+  const v = Number(face);
+  if (!Number.isFinite(v)) return "blank";
+  if (v <= 3) return "blank";
+  if (v <= 5) return "single";
+  return "double";
+}
+
+function renderFacesInline(results = []) {
+  const arr = Array.isArray(results) ? results : [];
+  if (!arr.length) return "";
+  const iconBlank = "–";
+  const iconSingle = "♦";
+  const iconDouble = "♦♦";
+  const parts = arr.map((v) => {
+    const kind = dvFaceKind(v);
+    const icon =
+      kind === "double"
+        ? iconDouble
+        : kind === "single"
+        ? iconSingle
+        : iconBlank;
+    return `<span class="v-face v-face--${kind}" data-face="${kind}">${icon}</span>`;
+  });
+  return `<div class="v-faces v-faces--inline">${parts.join("")}</div>`;
+}
+
+function chosenResults(r) {
+  if (!r) return [];
+  if (r.mode === "normal") return r.all?.[0]?.results ?? [];
+  const idx = Number.isFinite(r.chosenIndex) ? r.chosenIndex : 0;
+  return r.all?.[idx]?.results ?? [];
+}
+
 function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
 }
@@ -47,14 +89,14 @@ async function rollPool(pool, mode = "normal") {
   const rollOnce = async () => {
     const roll = new Roll(`${pool}dV`);
     await roll.evaluate();
+
+    const results = (roll.dice?.[0]?.results ?? []).map((r) =>
+      Number(r.result)
+    );
     let successes = 0;
-    for (const r of roll.dice[0].results) {
-      const v = r.result;
-      if (v <= 3) continue;
-      if (v <= 5) successes += 1;
-      else successes += 2;
-    }
-    return { roll, successes };
+    for (const v of results) successes += dvSuccesses(v);
+
+    return { roll, results, successes };
   };
 
   if (mode === "normal") {
@@ -79,6 +121,7 @@ async function rollPool(pool, mode = "normal") {
     successes: chosen.successes,
     rolls: [a.roll, b.roll],
     all: [a, b],
+    chosenIndex: chosen === a ? 0 : 1,
   };
 }
 
@@ -245,6 +288,10 @@ function attackCardTwoCols({
   weaponDamage,
   resolved,
 }) {
+  const predictedDamage = Math.max(
+    0,
+    num(weaponDamage, 0) + num(atkRoll?.successes, 0)
+  );
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack">
     <div class="v-head">
@@ -261,12 +308,13 @@ function attackCardTwoCols({
         <div class="v-box__label">Атака</div>
         <div class="v-box__big">${atkRoll.successes}</div>
         ${renderModeDetailSmall(atkRoll)}
+        ${renderFacesInline(chosenResults(atkRoll))}
       </div>
 
       <div class="v-box">
-        <div class="v-box__label">Базовый урон</div>
-        <div class="v-box__big">${weaponDamage}</div>
-        <div class="v-sub">Базовый урон оружия</div>
+        <div class="v-box__label">Урон</div>
+        <div class="v-box__big">${predictedDamage}</div>
+        <div class="v-sub">Базовый урон оружия: ${weaponDamage}</div>
       </div>
     </div>
 
@@ -325,6 +373,7 @@ function defenseCardTwoCols({
       <div class="v-box">
         <div class="v-box__label">Защита</div>
         <div class="v-box__big">${defRoll.successes}</div>
+        ${renderFacesInline(chosenResults(defRoll))}
         ${renderModeDetailSmall(defRoll)}
       </div>
       <div class="v-box">
@@ -642,6 +691,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
               <div class="v-box__label">Атака</div>
               <div class="v-box__big">${atkRoll.successes}</div>
               ${renderModeDetailSmall(atkRoll)}
+        ${renderFacesInline(chosenResults(atkRoll))}
             </div>
             <div class="v-box">
               <div class="v-box__label">Урон</div>

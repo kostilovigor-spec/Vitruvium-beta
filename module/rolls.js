@@ -1,3 +1,36 @@
+/** Vitruvium dV: 1-3 = 0, 4-5 = 1, 6 = 2 */
+function dvSuccesses(face) {
+  const v = Number(face);
+  if (!Number.isFinite(v)) return 0;
+  if (v >= 6) return 2;
+  if (v >= 4) return 1;
+  return 0;
+}
+function dvFaceKind(face) {
+  const v = Number(face);
+  if (!Number.isFinite(v) || v <= 3) return "blank";
+  if (v <= 5) return "single";
+  return "double";
+}
+
+function renderFaces(results = []) {
+  const iconBlank = "–";
+  const iconSingle = "♦";
+  const iconDouble = "♦♦";
+  return `
+    <div class="v-faces v-compact-faces">
+      ${results
+        .map((r) => {
+          const kind = dvFaceKind(r);
+          const icon =
+            kind === "double" ? iconDouble : kind === "single" ? iconSingle : iconBlank;
+          return `<span class="v-face v-face--${kind}" title="${kind}">${icon}</span>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 export async function rollSuccessDice({
   pool = 1,
   actorName = "Персонаж",
@@ -15,58 +48,55 @@ export async function rollSuccessDice({
   const renderIcons = (successes) =>
     successes > 0
       ? successIcon.repeat(successes)
-      : `<span class="v-success v-success--none"></span>`;
+      : `<span class="v-success v-success--none">—</span>`;
 
   const countSuccesses = (results) => {
-    let successes = 0;
-    for (const r of results) {
-      if (r <= 3) continue;
-      if (r <= 5) successes += 1;
-      else successes += 2; // 6 = два обычных успеха
-    }
-    return successes;
+    let successes = results.reduce((acc, r) => acc + dvSuccesses(r), 0);
+return successes;
   };
 
   const doOneRoll = async () => {
-    const roll = await new Roll(`${pool}dV`).evaluate({ async: true });
+    const roll = await new Roll(`${pool}dV`).evaluate();
     const results = roll.dice[0].results.map((r) => r.result);
     const successes = countSuccesses(results);
     return { roll, results, successes };
   };
 
-  // ----- NORMAL -----
-  if (m === "normal") {
-    const r = await doOneRoll();
+  
+// ----- NORMAL -----
+if (m === "normal") {
+  const r = await doOneRoll();
 
-    const content = `
-      <div class="v-card v-card--attr">
-        <div class="v-card__header">
-          <div class="v-card__title">
-            ${escapeHtml(actorName)} — проверка «${escapeHtml(checkName)}»
-          </div>
+  const content = `
+    <div class="v-card v-card--roll">
+      <div class="v-card__header">
+        <div class="v-card__title">
+          ${escapeHtml(actorName)} — проверка «${escapeHtml(checkName)}»
+          <span class="v-card__mode v-card__mode--normal">Normal</span>
         </div>
-
-        <div class="v-card__row">
-          <div class="v-card__value" style="font-size: 18px;"><b>Пул: ${pool}</b></div>
-        </div>
-
-        <div class="v-card__row">
-          <div class="v-card__value v-successes" style="font-size: 18px;">
-            Успехи = ${r.successes} ${renderIcons(r.successes)}
-          </div>
-        </div>
+        <div class="v-card__sub">Пул: ${pool}</div>
       </div>
-    `;
 
-    await ChatMessage.create({
-      speaker: ChatMessage.getSpeaker(),
-      content,
-      rolls: [r.roll],
-    });
+      <div class="v-card__row v-card__row--big">
+        <div class="v-card__biglabel">УСПЕХИ</div>
+        <div class="v-card__bigvalue">${r.successes}</div>
+      </div>
 
-    return r;
-  }
+      ${renderFaces(r.results)}
+    </div>
+  `;
 
+  await ChatMessage.create({
+    speaker: ChatMessage.getSpeaker(),
+    content,
+    rolls: [r.roll],
+  });
+
+  return r;
+}
+
+
+  
   // ----- ADV / DIS -----
   const r1 = await doOneRoll();
   const r2 = await doOneRoll();
@@ -80,54 +110,49 @@ export async function rollSuccessDice({
     ? r1
     : r2;
 
-  const modeLabel = isAdv ? "Преимущество" : "Помеха";
   const badge = isAdv ? "Adv" : "Dis";
+  const modeClass = isAdv ? "v-card__mode--adv" : "v-card__mode--dis";
   const cardClass = isAdv ? "v-card--adv" : "v-card--dis";
 
   const c1 = chosen === r1;
   const c2 = chosen === r2;
 
   const content = `
-    <div class="v-card ${cardClass}">
+    <div class="v-card v-card--roll ${cardClass}">
       <div class="v-card__header">
         <div class="v-card__title">
-          <span class="v-card__mode">${badge}</span>
-          ${escapeHtml(actorName)} — проверка «${escapeHtml(
-    checkName
-  )}» (${modeLabel})
+          ${escapeHtml(actorName)} — проверка «${escapeHtml(checkName)}»
+          <span class="v-card__mode ${modeClass}">${badge}</span>
+        </div>
+        <div class="v-card__sub">Пул: ${pool}</div>
+      </div>
+
+      <div class="v-card__row v-card__row--big">
+        <div class="v-card__biglabel">УСПЕХИ</div>
+        <div class="v-card__bigvalue">${chosen.successes}</div>
+      </div>
+
+      <div class="v-card__compare">
+        <div class="v-card__cmp">
+          <span class="v-card__cmpLabel">Бросок 1</span>
+          <span class="v-card__cmpVal">${r1.successes}</span>
+          ${c1 ? `<span class="v-card__chosen">выбран</span>` : ``}
+        </div>
+        <div class="v-card__cmp">
+          <span class="v-card__cmpLabel">Бросок 2</span>
+          <span class="v-card__cmpVal">${r2.successes}</span>
+          ${c2 ? `<span class="v-card__chosen">выбран</span>` : ``}
         </div>
       </div>
 
-      <div class="v-card__row">
-        <div class="v-card__value" style="font-size: 18px;"><b>Пул: ${pool}</b></div>
-      </div>
-
-      <div class="v-card__row">
-        <div class="v-card__value" style="font-size: 16px;">
-          Бросок 1: <b>${r1.successes}</b> ${renderIcons(r1.successes)}
-          ${c1 ? `<span class="v-card__pick">выбран</span>` : ``}
-        </div>
-      </div>
-
-      <div class="v-card__row">
-        <div class="v-card__value" style="font-size: 16px;">
-          Бросок 2: <b>${r2.successes}</b> ${renderIcons(r2.successes)}
-          ${c2 ? `<span class="v-card__pick">выбран</span>` : ``}
-        </div>
-      </div>
-
-      <div class="v-card__row">
-        <div class="v-card__value v-successes" style="font-size: 18px;">
-          Итог = <b>${chosen.successes}</b> ${renderIcons(chosen.successes)}
-        </div>
-      </div>
+      ${c1 ? renderFaces(r1.results) : renderFaces(r2.results)}
     </div>
   `;
 
   await ChatMessage.create({
     speaker: ChatMessage.getSpeaker(),
     content,
-    // Важно: передаём оба Roll, чтобы Dice So Nice показал оба броска
+    // Dice So Nice: показать оба броска
     rolls: [r1.roll, r2.roll],
   });
 
