@@ -1,31 +1,101 @@
-<form class="{{cssClass}} v-npc" autocomplete="off">
-  <!-- Top: Name -->
-  <header class="v-npc__top">
-    <input
-      class="v-npc__name"
-      type="text"
-      name="name"
-      value="{{actor.name}}"
-      placeholder="Имя NPC"
-    />
-  </header>
+<form class="{{cssClass}} v-sheet v-npc" autocomplete="off">
+  <!-- Hero: portrait + core stats -->
+  <section class="v-npc__hero">
+    <div class="v-npc__portrait">
+      <img
+        class="v-npc__img"
+        src="{{actor.img}}"
+        data-edit="img"
+        title="{{actor.name}}"
+      />
+      <button
+        type="button"
+        class="v-npc__mini v-npc__mini--ghost"
+        data-action="luck-roll"
+      >Luck</button>
+    </div>
 
-  <!-- HP row -->
-  <section class="v-npc__hp">
-    <div class="v-npc__hpLabel">HP</div>
-    <input
-      class="v-npc__hpInput"
-      type="number"
-      name="system.attributes.hp.value"
-      value="{{vitruvium.hp.value}}"
-      min="0"
-      data-dtype="Number"
-    />
-    <div class="v-npc__hpSep">/</div>
-    <div class="v-npc__hpMax">{{vitruvium.hp.max}}</div>
+    <div class="v-npc__meta">
+      <div class="v-npc__namebar">
+        <input
+          class="v-npc__name"
+          type="text"
+          name="name"
+          value="{{actor.name}}"
+          placeholder="NPC"
+        />
+      </div>
+
+      <div class="v-npc__statrow">
+        <div class="v-npc__stat v-npc__stat--hp">
+          <div class="v-npc__statLabel">HP</div>
+          <div class="v-npc__statCtrl">
+            <input
+              class="v-npc__hpInput"
+              type="number"
+              name="system.attributes.hp.value"
+              value="{{vitruvium.hp.value}}"
+              min="0"
+              data-dtype="Number"
+            />
+            <div class="v-npc__hpSep">/</div>
+            <div class="v-npc__hpMax">{{vitruvium.hp.max}}</div>
+          </div>
+        </div>
+
+        <div class="v-npc__stat v-npc__stat--insp">
+          <div class="v-npc__statLabel">Insp</div>
+          <div class="v-npc__statCtrl">
+            <button
+              type="button"
+              class="v-npc__mini"
+              data-action="insp-dec"
+            >-</button>
+            <div class="v-npc__pill">{{vitruvium.inspiration.value}}</div>
+            <button
+              type="button"
+              class="v-npc__mini"
+              data-action="insp-inc"
+            >+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="v-npc__statrow v-npc__statrow--compact">
+        <div class="v-npc__stat v-npc__stat--armor">
+          <div class="v-npc__statLabel">Armor</div>
+          <div class="v-npc__statValue">{{vitruvium.armorTotal}}</div>
+        </div>
+        <div class="v-npc__stat v-npc__stat--speed">
+          <div class="v-npc__statLabel">Speed</div>
+          <div class="v-npc__statValue">{{vitruvium.speed}}</div>
+        </div>
+        <div class="v-npc__stat v-npc__stat--extra">
+          <div class="v-npc__statLabel">Extra</div>
+          <div class="v-npc__statCtrl">
+            <button
+              type="button"
+              class="v-npc__mini"
+              data-action="extra-dec"
+            >-</button>
+            <div class="v-npc__pill">{{vitruvium.extraDice}}</div>
+            <button
+              type="button"
+              class="v-npc__mini"
+              data-action="extra-inc"
+            >+</button>
+            <button
+              type="button"
+              class="v-npc__mini v-npc__mini--ghost"
+              data-action="extra-roll"
+            >Roll</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <!-- Attributes in one line; roll by clicking the number -->
+<!-- Attributes in one line; roll by clicking the number -->
   <section class="v-npc__attrs">
     {{#each vitruvium.attributes as |a|}}
       <div class="v-npc__attr" title="Нажми на число чтобы бросить">
@@ -53,49 +123,6 @@
       </div>
     {{/each}}
   </section>
-
-  <!-- Extra roll (left) and Inspiration (right) in one row -->
-  <section class="v-npc__row">
-    <div class="v-npc__box">
-      <div class="v-npc__boxTitle">Доп. бросок</div>
-      <div class="v-npc__boxCtrl">
-        <button
-          type="button"
-          class="v-npc__mini"
-          data-action="extra-dec"
-        >–</button>
-        <div class="v-npc__pill">{{vitruvium.extraDice}}</div>
-        <button
-          type="button"
-          class="v-npc__mini"
-          data-action="extra-inc"
-        >+</button>
-        <button
-          type="button"
-          class="v-npc__btn"
-          data-action="extra-roll"
-        >Бросить</button>
-      </div>
-    </div>
-
-    <div class="v-npc__box">
-      <div class="v-npc__boxTitle">Вдохновение</div>
-      <div class="v-npc__boxCtrl">
-        <button
-          type="button"
-          class="v-npc__mini"
-          data-action="insp-dec"
-        >–</button>
-        <div class="v-npc__pill">{{vitruvium.inspiration.value}}</div>
-        <button
-          type="button"
-          class="v-npc__mini"
-          data-action="insp-inc"
-        >+</button>
-      </div>
-    </div>
-  </section>
-
   <!-- Bottom: two blocks; left abilities, right items -->
   <section class="v-npc__bottom">
     <div class="v-npc__panel">
@@ -153,6 +180,27 @@
       <div class="v-npc__list">
         {{#each vitruvium.items as |it|}}
           <div class="v-npc__rowItem">
+            {{#if it.system.attackBonus}}
+              <button
+                type="button"
+                class="v-npc__iconbtn"
+                title="Weapon attack"
+                data-action="weapon-attack"
+                data-item-id="{{it._id}}"
+              >
+                <img class="v-npc__icon" src="{{it.img}}" alt="{{it.name}}" />
+              </button>
+            {{else}}
+              <button
+                type="button"
+                class="v-npc__iconbtn"
+                title="Post to chat"
+                data-action="item-chat"
+                data-item-id="{{it._id}}"
+              >
+                <img class="v-npc__icon" src="{{it.img}}" alt="{{it.name}}" />
+              </button>
+            {{/if}}
             <div class="v-npc__rowMain">
               <div class="v-npc__rowTitle">{{it.name}}</div>
               <div class="v-npc__rowMeta">×{{it.system.quantity}}</div>
@@ -160,10 +208,11 @@
             <div class="v-npc__rowBtns">
               <button
                 type="button"
-                class="v-npc__mini"
-                data-action="item-chat"
+                class="v-npc__mini v-npc__mini--equip {{#if it.system.equipped}}is-on{{/if}}"
+                title="Equip"
+                data-action="toggle-equip"
                 data-item-id="{{it._id}}"
-              >В чат</button>
+              >Eq</button>
               <button
                 type="button"
                 class="v-npc__mini"
@@ -183,3 +232,10 @@
     </div>
   </section>
 </form>
+
+
+
+
+
+
+

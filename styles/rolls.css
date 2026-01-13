@@ -1,0 +1,40 @@
+﻿/* Rolls row */
+.v-rollrow {
+  margin-top: 10px;
+}
+.v-rollbox {
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.25);
+}
+.v-rollbox__label {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+.v-rollbox__ctrl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v-rollbox__val {
+  min-width: 34px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* ---------- Roll mode panel ---------- */
+.v-rollmode {
+  display: flex;
+  gap: 8px;
+}
+
