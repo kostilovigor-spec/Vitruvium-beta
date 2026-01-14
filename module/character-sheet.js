@@ -1,5 +1,10 @@
 import { rollSuccessDice } from "./rolls.js";
 import { startWeaponAttackFlow } from "./combat.js";
+import {
+  collectEffectTotals,
+  getEffectValue,
+  getEffectiveAttribute,
+} from "./effects.js";
 
 // import { startAttackFlow } from "./combat.js";
 
@@ -17,6 +22,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       classes: ["vitruvium", "sheet", "actor"],
       template: "systems/vitruvium/templates/actor/character-sheet.hbs",
       width: 640,
+      minWidth: 640,
       height: 720,
       // We keep global auto-submit OFF (it caused annoying resets),
       // and instead manually persist specific fields (HP) below.
@@ -37,22 +43,32 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.vitruvium = data.vitruvium ?? {};
     data.vitruvium.abilities = abilities;
 
+    const effectTotals = collectEffectTotals(this.actor);
+
     const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
     const num = (v, d) => {
       const x = Number(v);
       return Number.isNaN(x) ? d : x;
     };
 
-    const getAttr = (k) => clamp(num(attrs[k], 1), 1, 6);
+    const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
 
     // Inspiration
     const insp = attrs.inspiration ?? { value: 6, max: 6 };
-    const inspValue = clamp(num(insp.value, 6), 0, 99);
-    const inspMax = clamp(num(insp.max, 6), 0, 99);
+    const inspMaxBase = clamp(num(insp.max, 6), 0, 99);
+    const inspMax = clamp(
+      inspMaxBase + getEffectValue(effectTotals, "inspMax"),
+      0,
+      99
+    );
+    const inspValue = clamp(num(insp.value, inspMax), 0, inspMax);
 
     // HP (max always derived)
     const condition = getAttr("condition");
-    const hpMax = condition * 5;
+    const hpMax = Math.max(
+      0,
+      condition * 5 + getEffectValue(effectTotals, "hpMax")
+    );
     const hp = attrs.hp ?? { value: hpMax, max: hpMax };
     const hpValue = clamp(num(hp.value, hpMax), 0, hpMax);
 
@@ -75,43 +91,45 @@ export class VitruviumCharacterSheet extends ActorSheet {
       {
         key: "condition",
         label: "Самочувствие",
-        value: attrs.condition,
+        value: getAttr("condition"),
         icon: icons.condition,
       },
       {
         key: "attention",
         label: "Внимание",
-        value: attrs.attention,
+        value: getAttr("attention"),
         icon: icons.attention,
       },
       {
         key: "movement",
         label: "Движение",
-        value: attrs.movement,
+        value: getAttr("movement"),
         icon: icons.movement,
       },
       {
         key: "combat",
         label: "Сражение",
-        value: attrs.combat,
+        value: getAttr("combat"),
         icon: icons.combat,
       },
       {
         key: "thinking",
         label: "Мышление",
-        value: attrs.thinking,
+        value: getAttr("thinking"),
         icon: icons.thinking,
       },
       {
         key: "communication",
         label: "Общение",
-        value: attrs.communication,
+        value: getAttr("communication"),
         icon: icons.communication,
       },
     ];
 
     const savedMode = this.actor.getFlag(scope, "rollMode");
     data.vitruvium.rollMode = savedMode ?? "normal";
+    const savedTab = this.actor.getFlag(scope, "activeTab");
+    data.vitruvium.activeTab = savedTab === "abi" ? "abi" : "inv";
 
     data.vitruvium = data.vitruvium || {};
     data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
@@ -143,8 +161,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.vitruvium.armorTotal = bonusArmor;
 
     // speed = movement * 2
-    const mv = Number(attrs.movement ?? 1);
-    data.vitruvium.speed = 5 + mv;
+    const mv = getAttr("movement");
+    data.vitruvium.speed = 5 + mv + getEffectValue(effectTotals, "speed");
 
     return data;
   }
@@ -173,6 +191,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const mode = ev.currentTarget.dataset.mode;
       const scope = game.system.id;
       await this.actor.setFlag(scope, "rollMode", mode);
+    });
+
+    // ===== Tabs: persist active tab per actor =====
+    html.find(".v-tabs__toggle").on("change", async (ev) => {
+      const tab = ev.currentTarget.value;
+      if (!tab) return;
+      await this.actor.setFlag(scope, "activeTab", tab);
     });
 
     // ===== Attributes +/- (1..6) =====
@@ -238,7 +263,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
 
       const attrs = this.actor.system.attributes ?? {};
-      let pool = clamp(num(attrs[key], 1), 1, 6);
+      const effectTotals = collectEffectTotals(this.actor);
+      let pool = getEffectiveAttribute(attrs, key, effectTotals);
 
       // Call rolls.js in a backward/forward compatible way
       await rollSuccessDice({
@@ -258,12 +284,19 @@ export class VitruviumCharacterSheet extends ActorSheet {
         value: 6,
         max: 6,
       };
-      const m = clamp(num(insp.max, 6), 0, 99);
-      const v = clamp(num(insp.value, 6) + 1, 0, m);
+      const effectTotals = collectEffectTotals(this.actor);
+      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const effMax = clamp(
+        baseMax + getEffectValue(effectTotals, "inspMax"),
+        0,
+        99
+      );
+      const v = clamp(num(insp.value, 6), 0, effMax);
+      const next = clamp(v + 1, 0, effMax);
 
       await this.actor.update({
-        "system.attributes.inspiration.max": m,
-        "system.attributes.inspiration.value": v,
+        "system.attributes.inspiration.max": baseMax,
+        "system.attributes.inspiration.value": next,
       });
     });
 
@@ -274,12 +307,19 @@ export class VitruviumCharacterSheet extends ActorSheet {
         value: 6,
         max: 6,
       };
-      const m = clamp(num(insp.max, 6), 0, 99);
-      const v = clamp(num(insp.value, 6) - 1, 0, m);
+      const effectTotals = collectEffectTotals(this.actor);
+      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const effMax = clamp(
+        baseMax + getEffectValue(effectTotals, "inspMax"),
+        0,
+        99
+      );
+      const v = clamp(num(insp.value, 6), 0, effMax);
+      const next = clamp(v - 1, 0, effMax);
 
       await this.actor.update({
-        "system.attributes.inspiration.max": m,
-        "system.attributes.inspiration.value": v,
+        "system.attributes.inspiration.max": baseMax,
+        "system.attributes.inspiration.value": next,
       });
     });
 
@@ -362,7 +402,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         {
           name: "Новый предмет",
           type: "item",
-          system: { description: "", quantity: 1 },
+          system: { description: "", quantity: 1, effects: [] },
         },
       ]);
     });
@@ -443,9 +483,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
         {
           name: "Новая способность",
           type: "ability",
-          system: { cost: 1, description: "" },
+          system: { cost: 1, description: "", effects: [], active: false },
         },
       ]);
+    });
+
+    html.find("[data-action='toggle-ability-active']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item || item.type !== "ability") return;
+      const next = !item.system?.active;
+      await item.update({ "system.active": next });
     });
 
     // ===== Ability level (inline edit) =====
@@ -501,7 +550,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
         value: 0,
         max: 6,
       };
-      const inspValue = num(insp.value, 0);
+      const effectTotals = collectEffectTotals(this.actor);
+      const inspMax = clamp(
+        num(insp.max, 6) + getEffectValue(effectTotals, "inspMax"),
+        0,
+        99
+      );
+      const inspValue = clamp(num(insp.value, 0), 0, inspMax);
 
       if (inspValue < cost) {
         ui.notifications?.warn(
@@ -554,8 +609,16 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const computeMaxHp = () => {
         const attrs = this.actor.system.attributes ?? {};
-        const condition = clamp(num(attrs.condition, 1), 1, 6);
-        return condition * 5;
+        const effectTotals = collectEffectTotals(this.actor);
+        const condition = getEffectiveAttribute(
+          attrs,
+          "condition",
+          effectTotals
+        );
+        return Math.max(
+          0,
+          condition * 5 + getEffectValue(effectTotals, "hpMax")
+        );
       };
 
       const normalizeHp = (raw) => {

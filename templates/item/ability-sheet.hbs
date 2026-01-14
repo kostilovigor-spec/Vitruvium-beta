@@ -52,6 +52,20 @@
           <span class="v-abilitysheet__costsuffix">вдохн.</span>
         </div>
       </div>
+
+      <div class="v-abilitysheet__actions">
+        <label class="v-check">
+          <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
+          <span>Активно</span>
+        </label>
+        <button
+          type="button"
+          class="v-mini"
+          data-action="edit-effects"
+        >
+          Эффекты
+        </button>
+      </div>
     </aside>
 
     <!-- RIGHT -->

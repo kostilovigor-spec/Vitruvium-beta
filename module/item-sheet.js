@@ -1,3 +1,5 @@
+import { openEffectsDialog } from "./effects.js";
+
 export class VitruviumItemSheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -34,6 +36,7 @@ export class VitruviumItemSheet extends ItemSheet {
     const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
     const btn = html.find("[data-action='toggle-desc']");
+    const effectsBtn = html.find("[data-action='edit-effects']");
 
     // старт: режим чтения
     edit.hide();
@@ -92,6 +95,11 @@ export class VitruviumItemSheet extends ItemSheet {
       }
 
       setMode(true);
+    });
+
+    effectsBtn.on("click", async (ev) => {
+      ev.preventDefault();
+      await openEffectsDialog(this.item);
     });
   }
 }

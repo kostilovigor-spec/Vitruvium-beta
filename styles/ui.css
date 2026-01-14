@@ -59,16 +59,17 @@
 /* ---------- Grid layout ---------- */
 .v-grid {
   display: grid;
-  grid-template-columns: 160px 420px 1fr; /* left fixed, center fixed, right fills */
+  grid-template-columns: 160px 1fr; /* left fixed, center fills */
   gap: var(--gap);
   align-items: start;
 }
 .v-col {
-  min-width: 0;
+  /* min-width: 0; */
 }
 .v-col--center {
-  width: 450px;
-  max-width: 450px;
+  width: 100%;
+  min-width: 450px;
+  max-width: none;
 }
 
 /* Right column stretches */
@@ -86,13 +87,7 @@
   overflow: auto;
 }
 
-/* Responsive: right column below */
-.v-grid {
-  display: grid;
-  grid-template-columns: 160px 450px minmax(360px, 1fr);
-  gap: var(--gap);
-  align-items: start;
-}
+/* Right column styles retained for legacy layouts */
 
 /* ---------- Panels / cards ---------- */
 .v-panel,
@@ -150,6 +145,94 @@
 }
 .v-panel__head .v-line {
   flex: 1 1 auto;
+}
+
+/* ---------- Tabs (inventory / abilities) ---------- */
+.v-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v-tabs__toggle {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.v-tabs__nav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.v-tabs__tab {
+  height: var(--btn-h);
+  padding: 0 12px;
+  border: 1px solid var(--v-border);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.v-tabs__tab:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+}
+
+#v-tab-inv:checked ~ .v-tabs__nav label[for="v-tab-inv"],
+#v-tab-abi:checked ~ .v-tabs__nav label[for="v-tab-abi"] {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.v-tabpanel {
+  display: none;
+}
+#v-tab-inv:checked ~ .v-tabs__content .v-tabpanel--inv {
+  display: block;
+}
+#v-tab-abi:checked ~ .v-tabs__content .v-tabpanel--abi {
+  display: block;
+}
+
+.v-rollmodepanel {
+  margin-bottom: 8px;
+}
+
+/* ---------- Effects dialog ---------- */
+.v-effects {
+  display: grid;
+  gap: 8px;
+}
+.v-effects__rows {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+}
+.v-effects__row {
+  display: grid;
+  grid-template-columns: 1fr 90px 28px;
+  gap: 8px;
+  align-items: center;
+}
+.v-effects__key {
+  width: 100%;
+}
+.v-effects__val {
+  width: 90px;
+  text-align: center;
+}
+.v-effects__remove {
+  height: 24px;
+  padding: 0;
+}
+.v-effects__footer {
+  display: flex;
+  justify-content: flex-start;
 }
 
 /* ---------- Inputs ---------- */
@@ -814,6 +897,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-abilitysheet__costsuffix {
   font-size: 12px;
   opacity: 0.8;
+}
+
+.v-abilitysheet__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .v-abilitysheet__right {

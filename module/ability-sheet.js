@@ -1,3 +1,5 @@
+import { openEffectsDialog } from "./effects.js";
+
 export class VitruviumAbilitySheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -54,6 +56,8 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $level = html.find("input[name='system.level']");
     const $cost = html.find("input[name='system.cost']");
     const $desc = html.find("textarea[name='system.description']");
+    const $active = html.find("input[name='system.active']");
+    const $effectsBtn = html.find("[data-action='edit-effects']");
 
     // Найдём место для кнопки (или хотя бы header)
     const $headRow = html.find(".v-abilitysheet__headrow");
@@ -141,6 +145,15 @@ export class VitruviumAbilitySheet extends ItemSheet {
       } else {
         await exitEditAndSave();
       }
+    });
+
+    $active.on("change", async (ev) => {
+      await this.item.update({ "system.active": ev.currentTarget.checked });
+    });
+
+    $effectsBtn.on("click", async (ev) => {
+      ev.preventDefault();
+      await openEffectsDialog(this.item);
     });
   }
 }
