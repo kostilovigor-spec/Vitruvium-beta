@@ -1,4 +1,4 @@
-<form class="{{cssClass}} v-sheet" autocomplete="off">
+﻿<form class="{{cssClass}} v-sheet" autocomplete="off">
 
   <div class="v-grid">
 
@@ -121,51 +121,51 @@
             </div>
           </div>
 
-          <div class="v-rollrow">
+          <div class="v-compactrow">
             <div class="v-rollbox">
               <div class="v-rollbox__label">Доп. кубы</div>
               <div class="v-rollbox__ctrl">
+                <div class="v-rollbox__main">
+                  <button
+                    type="button"
+                    class="v-mini"
+                    data-action="extra-dec"
+                  >-</button>
+                  <div class="v-rollbox__val">{{vitruvium.extraDice}}</div>
+                  <button
+                    type="button"
+                    class="v-mini"
+                    data-action="extra-inc"
+                  >+</button>
+                </div>
                 <button
                   type="button"
-                  class="v-mini"
-                  data-action="extra-dec"
-                >–</button>
-                <div class="v-rollbox__val">{{vitruvium.extraDice}}</div>
-                <button
-                  type="button"
-                  class="v-mini"
-                  data-action="extra-inc"
-                >+</button>
-                <button
-                  type="button"
-                  class="v-btn"
+                  class="v-btn v-rollbox__btn"
                   data-action="extra-roll"
                 >Бросить</button>
               </div>
             </div>
 
+            <div class="v-stats3">
+              <div class="v-statbox">
+                <div class="v-statbox__top">
+                  <span class="v-statbox__icon"><i></span>
+                  <span class="v-statbox__label">Броня</span>
+                </div>
+
+                <div class="v-statbox__readonly">{{vitruvium.armorTotal}}</div>
+              </div>
+
+              <div class="v-statbox v-statbox--speed">
+                <div class="v-statbox__top">
+                  <span class="v-statbox__icon"><i></span>
+                  <span class="v-statbox__label">Скорость</span>
+                </div>
+                <div class="v-statbox__readonly">{{vitruvium.speed}}</div>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <div class="v-stats3">
-
-<div class="v-statbox">
-  <div class="v-statbox__top">
-    <span class="v-statbox__icon">🛡</span>
-    <span class="v-statbox__label">Броня</span>
-  </div>
-
-  <div class="v-statbox__readonly">{{vitruvium.armorTotal}}</div>
-</div>
-
-  <div class="v-statbox v-statbox--speed">
-    <div class="v-statbox__top">
-      <span class="v-statbox__icon">👣</span>
-      <span class="v-statbox__label">Скорость</span>
-    </div>
-    <div class="v-statbox__readonly">{{vitruvium.speed}}</div>
-  </div>
-</div>
 
       </section>
 
@@ -457,3 +457,5 @@
     </main>
   </div>
 </form>
+
+

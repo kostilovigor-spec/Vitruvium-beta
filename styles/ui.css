@@ -59,7 +59,7 @@
 /* ---------- Grid layout ---------- */
 .v-grid {
   display: grid;
-  grid-template-columns: 160px 1fr; /* left fixed, center fills */
+  grid-template-columns: 130px 1fr; /* left fixed, center fills */
   gap: var(--gap);
   align-items: start;
 }
@@ -375,25 +375,27 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 .v-attrcard__ctrl .v-mini {
-  min-width: 54px;
+  min-width: 24px;
+  width: 24px;
+  padding: 0;
 }
 
 /* ---------- CENTER: Hero ---------- */
 .v-hero {
   display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: 100px 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .v-hero__portrait {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .v-portrait {
-  width: 140px;
-  height: 140px;
+  width: 96px;
+  height: 96px;
   border-radius: var(--r-lg);
   object-fit: cover;
   border: 1px solid var(--v-border-soft);
@@ -403,32 +405,32 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-namebar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .v-name {
   width: 100%;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
-  margin: 0 0 8px 0;
-  padding: 6px 10px;
+  margin: 0 0 6px 0;
+  padding: 4px 8px;
 }
 .v-lvlmini {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 6px;
 }
 .v-lvlmini__label {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
   opacity: 0.8;
 }
 .v-lvlmini__input {
-  width: 54px;
-  height: 30px;
+  width: 44px;
+  height: 24px;
   text-align: center;
   font-weight: 900;
-  padding: 0 6px;
+  padding: 0 4px;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.4);
@@ -438,28 +440,32 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-resrow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 2px;
+  gap: 6px;
+  margin-top: 0;
 }
 
 .v-res {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
+  padding: 4px 6px;
+  border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 0.25);
 }
+.v-res--hp {
+  grid-template-columns: auto auto auto auto;
+  column-gap: 5px;
+}
 .v-res__label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   opacity: 0.85;
 }
 .v-res__input {
-  height: 30px;
-  width: 30px;
+  height: 24px;
+  width: 24px;
   /* padding: 0 6px; */
   font-weight: 900;
   text-align: center;
@@ -480,10 +486,15 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
+}
+.v-res__btns .v-mini {
+  min-width: 24px;
+  width: 24px;
+  padding: 0;
 }
 .v-res__val {
-  min-width: 22px;
+  min-width: 18px;
   text-align: center;
   font-weight: 900;
 }
@@ -492,14 +503,26 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-stats3 {
   grid-column: 1 / -1;
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 6px;
   justify-content: center; /* centered inside hero area */
 }
 
+.v-compactrow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 6px;
+}
+.v-compactrow .v-stats3 {
+  margin-top: 0;
+  justify-content: flex-end;
+  grid-column: auto;
+}
+
 .v-statbox {
-  width: 120px;
-  padding: 8px;
+  width: 90px;
+  padding: 6px;
   border-radius: var(--r-lg);
   border: 1px solid var(--v-border-soft);
   background: var(--v-bg-soft);
@@ -508,15 +531,15 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-statbox__top {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 .v-statbox__icon {
-  width: 18px;
+  width: 14px;
   text-align: center;
   opacity: 0.9;
 }
 .v-statbox__label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   opacity: 0.85;
 }
@@ -528,9 +551,9 @@ input[type="number"]::-webkit-inner-spin-button {
   margin-top: 6px;
 }
 .v-statbox__value {
-  width: 52px;
-  height: 30px;
-  padding: 0 6px;
+  width: 44px;
+  height: 24px;
+  padding: 0 4px;
   text-align: center;
   font-weight: 900;
   border-radius: 14px;
@@ -538,26 +561,26 @@ input[type="number"]::-webkit-inner-spin-button {
   background: rgba(255, 255, 255, 0.4);
 }
 .v-statbox__bonus {
-  min-width: 34px;
-  height: 30px;
+  min-width: 28px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.4);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 900;
   opacity: 0.85;
 }
 .v-statbox__hint {
-  margin-top: 6px;
-  font-size: 11px;
+  margin-top: 4px;
+  font-size: 10px;
   opacity: 0.75;
 }
 .v-statbox__readonly {
-  margin-top: 8px;
-  height: 30px;
+  margin-top: 6px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -565,6 +588,16 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.35);
   font-weight: 900;
+}
+
+.v-hero .v-btn,
+.v-hero .v-mini {
+  height: 24px;
+  font-size: 11px;
+}
+
+.v-rollmodepanel {
+  padding: 8px;
 }
 
 /* ---------- Compact inventory list (inv + abilities) ---------- */
