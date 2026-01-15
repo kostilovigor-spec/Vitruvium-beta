@@ -1,0 +1,49 @@
+<form class="{{cssClass}} v-sheet v-abilitysheet v-skill" autocomplete="off">
+
+  <!-- HEADER -->
+  <header class="v-abilitysheet__header">
+    <div class="v-abilitysheet__headrow">
+      <input
+        class="v-abilitysheet__name"
+        type="text"
+        name="name"
+        value="{{item.name}}"
+        placeholder="Название навыка"
+      />
+    </div>
+  </header>
+
+  <!-- BODY: 2 columns -->
+  <section class="v-abilitysheet__body">
+    <!-- LEFT -->
+    <aside class="v-abilitysheet__left">
+      <img
+        class="v-abilitysheet__img"
+        src="{{item.img}}"
+        data-edit="img"
+        title="Нажмите, чтобы изменить иконку"
+      />
+
+      <div class="v-abilitysheet__actions">
+        <button
+          type="button"
+          class="v-mini"
+          data-action="edit-effects"
+        >
+          Эффекты
+        </button>
+      </div>
+    </aside>
+
+    <!-- RIGHT -->
+    <main class="v-abilitysheet__right">
+      <div class="v-abilitysheet__descrhead">Описание</div>
+      <textarea
+        class="v-abilitysheet__desc"
+        name="system.description"
+        placeholder="Коротко и по делу: что делает навык."
+      >{{system.description}}</textarea>
+    </main>
+  </section>
+
+</form>

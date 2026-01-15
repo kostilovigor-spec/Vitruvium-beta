@@ -36,17 +36,9 @@
   opacity: 0.92;
 }
 
-/* =========================================================
-.vitruvium-chatcard__top {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
 .vitruvium-chatcard__img {
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   border-radius: 12px;
   object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.18);
@@ -54,24 +46,14 @@
   flex: 0 0 auto;
 }
 
-.vitruvium-chatcard__head h3 {
-  margin: 0;
-}
-.vitruvium-chatcard__head p {
-  margin: 4px 0 0 0;
-}
-
-   Vitruvium вЂ” CHAT CARDS (rolls / luck / extra dice / combat)
-   NOTE: Scoped to chat only: does NOT affect character sheets.
-   ========================================================= */
 .chat-message .v-card {
   margin: 0;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.16);
+  border: 1px solid rgba(0, 0, 0, 0.16);
   background: rgba(255, 245, 225, 0.55);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-  color: rgba(0,0,0,0.92);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.92);
 }
 
 .chat-message .v-card__header {
@@ -92,7 +74,7 @@
 
 .chat-message .v-card__sub {
   font-size: 11px;
-  color: rgba(0,0,0,0.70);
+  color: rgba(0, 0, 0, 0.7);
 }
 
 .chat-message .v-card__mode {
@@ -100,16 +82,24 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.18);
-  background: rgba(255,255,255,0.55);
-  color: rgba(0,0,0,0.75);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+  color: rgba(0, 0, 0, 0.75);
   line-height: 1.2;
 }
-.chat-message .v-card__mode--adv { background: rgba(255,255,255,0.55); }
-.chat-message .v-card__mode--dis { background: rgba(255,255,255,0.55); }
-.chat-message .v-card__mode--normal { background: rgba(255,255,255,0.55); }
+.chat-message .v-card__mode--adv {
+  background: rgba(255, 255, 255, 0.55);
+}
+.chat-message .v-card__mode--dis {
+  background: rgba(255, 255, 255, 0.55);
+}
+.chat-message .v-card__mode--normal {
+  background: rgba(255, 255, 255, 0.55);
+}
 
-.chat-message .v-card__row { margin-top: 8px; }
+.chat-message .v-card__row {
+  margin-top: 8px;
+}
 
 .chat-message .v-card__row--big {
   display: flex;
@@ -118,8 +108,8 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.14);
-  background: rgba(255,255,255,0.40);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .chat-message .v-card__biglabel {
@@ -127,7 +117,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(0,0,0,0.70);
+  color: rgba(0, 0, 0, 0.7);
 }
 
 .chat-message .v-card__bigvalue {
@@ -140,9 +130,9 @@
   font-size: 28px;
   font-weight: 900;
   border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.16);
-  background: rgba(255,255,255,0.55);
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 /* Advantage / disadvantage compare block */
@@ -159,13 +149,13 @@
   gap: 8px;
   padding: 6px 8px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.32);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .chat-message .v-card__cmpLabel {
   font-size: 11px;
-  color: rgba(0,0,0,0.65);
+  color: rgba(0, 0, 0, 0.65);
 }
 
 .chat-message .v-card__cmpVal {
@@ -195,8 +185,8 @@
   min-width: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.16);
-  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
@@ -204,16 +194,16 @@
 }
 
 .chat-message .v-face--blank {
-  color: rgba(0,0,0,0.55);
-  background: rgba(255,255,255,0.42);
+  color: rgba(0, 0, 0, 0.55);
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .chat-message .v-face--single {
-  color: rgba(0,0,0,0.92);
+  color: rgba(0, 0, 0, 0.92);
 }
 
 .chat-message .v-face--double {
-  color: rgba(0,0,0,0.92);
+  color: rgba(0, 0, 0, 0.92);
 }
 
 /* Optional: smaller faces when embedded inside compact combat boxes */

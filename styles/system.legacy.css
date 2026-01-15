@@ -919,8 +919,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .vitruvium-chatcard__img {
-  width: 46px;
-  height: 46px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
   object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.18);

@@ -47,7 +47,7 @@ export const collectEffectTotals = (actor) => {
       if (!item.system?.equipped) continue;
     } else if (item.type === "ability") {
       if (!item.system?.active) continue;
-    } else {
+    } else if (item.type !== "skill") {
       continue;
     }
 
@@ -94,7 +94,9 @@ export const openEffectsDialog = async (item) => {
   const hint =
     item.type === "item"
       ? `<div class="v-subtle">Работает, пока предмет надет.</div>`
-      : `<div class="v-subtle">Работает, пока способность активна.</div>`;
+      : item.type === "ability"
+      ? `<div class="v-subtle">Работает, пока способность активна.</div>`
+      : `<div class="v-subtle">Работает всегда.</div>`;
   const content = `
     <form class="v-effects">
       <div class="v-effects__rows">${rowsHtml}</div>

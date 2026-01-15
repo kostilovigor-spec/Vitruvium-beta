@@ -42,6 +42,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
     );
     data.vitruvium = data.vitruvium ?? {};
     data.vitruvium.abilities = abilities;
+    data.vitruvium.skills = (this.actor.items ?? []).filter(
+      (i) => i.type === "skill"
+    );
 
     const effectTotals = collectEffectTotals(this.actor);
 
@@ -129,7 +132,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
     const savedMode = this.actor.getFlag(scope, "rollMode");
     data.vitruvium.rollMode = savedMode ?? "normal";
     const savedTab = this.actor.getFlag(scope, "activeTab");
-    data.vitruvium.activeTab = savedTab === "abi" ? "abi" : "inv";
+    data.vitruvium.activeTab =
+      savedTab === "abi" || savedTab === "skill" ? savedTab : "inv";
 
     data.vitruvium = data.vitruvium || {};
     data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
@@ -452,10 +456,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
         ? esc(desc).replace(/\n/g, "<br>")
         : `<span class="hint">Описание не задано.</span>`;
 
-      const qty = Number(item.system?.quantity ?? 1);
-      const qtyText = Number.isFinite(qty) ? ` ×${qty}` : "";
+      const isItem = item.type === "item";
+      const qty = isItem ? Number(item.system?.quantity ?? 1) : null;
+      const qtyText =
+        isItem && Number.isFinite(qty) ? ` ×${qty}` : "";
 
       const img = item.img || "icons/svg/item-bag.svg";
+      const typeLabel =
+        item.type === "ability"
+          ? "способность"
+          : item.type === "skill"
+          ? "навык"
+          : "предмет";
 
       const content = `
     <div class="vitruvium-chatcard v-itemcard">
@@ -463,7 +475,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
         <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
         <div class="v-itemcard__head">
           <div class="v-itemcard__title">${esc(item.name)}${qtyText}</div>
-          <div class="v-itemcard__sub">${esc(this.actor.name)} · предмет</div>
+          <div class="v-itemcard__sub">${esc(
+            this.actor.name
+          )} · ${typeLabel}</div>
         </div>
       </div>
       <div class="v-itemcard__desc">${descHtml}</div>
@@ -484,6 +498,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
           name: "Новая способность",
           type: "ability",
           system: { cost: 1, description: "", effects: [], active: false },
+        },
+      ]);
+    });
+
+    html.find("[data-action='create-skill']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новый навык",
+          type: "skill",
+          system: { description: "", effects: [] },
         },
       ]);
     });

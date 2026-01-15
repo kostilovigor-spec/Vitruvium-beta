@@ -1,6 +1,7 @@
 import { VitruviumCharacterSheet } from "./character-sheet.js";
 import { VitruviumAbilitySheet } from "./ability-sheet.js";
 import { VitruviumItemSheet } from "./item-sheet.js";
+import { VitruviumSkillSheet } from "./skill-sheet.js";
 import { VitruviumNPCSheet } from "./npc-sheet.js";
 import { patchVitruviumInitiative } from "./initiative.js";
 import { VitruviumDie } from "./dv-die.js";
@@ -39,6 +40,11 @@ Hooks.once("init", () => {
 
   Items.registerSheet(NS, VitruviumItemSheet, {
     types: ["item"],
+    makeDefault: true,
+  });
+
+  Items.registerSheet(NS, VitruviumSkillSheet, {
+    types: ["skill"],
     makeDefault: true,
   });
 });

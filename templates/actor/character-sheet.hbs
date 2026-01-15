@@ -210,7 +210,7 @@
           name="v-tabs"
           value="inv"
           class="v-tabs__toggle"
-          {{#unless (eq vitruvium.activeTab "abi")}}checked{{/unless}}
+          {{#if (eq vitruvium.activeTab "inv")}}checked{{/if}}
         />
         <input
           type="radio"
@@ -220,10 +220,19 @@
           class="v-tabs__toggle"
           {{#if (eq vitruvium.activeTab "abi")}}checked{{/if}}
         />
+        <input
+          type="radio"
+          id="v-tab-skill"
+          name="v-tabs"
+          value="skill"
+          class="v-tabs__toggle"
+          {{#if (eq vitruvium.activeTab "skill")}}checked{{/if}}
+        />
 
         <div class="v-tabs__nav" role="tablist">
           <label class="v-tabs__tab" for="v-tab-inv" role="tab" data-tab="inv">Инвентарь</label>
           <label class="v-tabs__tab" for="v-tab-abi" role="tab" data-tab="abi">Способности</label>
+          <label class="v-tabs__tab" for="v-tab-skill" role="tab" data-tab="skill">Навыки</label>
         </div>
 
         <div class="v-tabs__content">
@@ -374,6 +383,66 @@
                       title="Удалить"
                       data-action="delete-item"
                       data-item-id="{{ab._id}}"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+
+                </div>
+              {{/each}}
+            </div>
+          </section>
+
+          <section
+            class="v-panel v-tabpanel v-tabpanel--skill"
+            id="v-tabpanel-skill"
+            role="tabpanel"
+          >
+            <div class="v-panel__head">
+              <div class="v-h2">Навыки</div>
+              <div class="v-line"></div>
+              <button
+                type="button"
+                class="v-btn v-btn--ghost"
+                data-action="create-skill"
+              >+ Навык</button>
+            </div>
+            <div class="v-inv__list v-skill__list">
+              {{#each vitruvium.skills as |sk|}}
+                <div class="v-inv__row v-skill__row" data-item-id="{{sk._id}}">
+
+                  <button
+                    type="button"
+                    class="v-inv__iconbtn"
+                    title="Показать в чат"
+                    data-action="item-chat"
+                    data-item-id="{{sk._id}}"
+                  >
+                    <img class="v-inv__icon" src="{{sk.img}}" alt="{{sk.name}}" />
+                  </button>
+
+                  <div class="v-inv__name" title="{{sk.name}}">
+                    <div class="v-inv__title">{{sk.name}}</div>
+                    <div class="v-inv__meta">пассивно</div>
+                  </div>
+
+                  <div class="v-inv__actions">
+                    <button
+                      type="button"
+                      class="v-inv__a"
+                      title="Редактировать"
+                      data-action="edit-item"
+                      data-item-id="{{sk._id}}"
+                    >
+                      <i class="fas fa-feather-alt"></i>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="v-inv__a v-inv__a--danger"
+                      title="Удалить"
+                      data-action="delete-item"
+                      data-item-id="{{sk._id}}"
                     >
                       <i class="fas fa-trash"></i>
                     </button>

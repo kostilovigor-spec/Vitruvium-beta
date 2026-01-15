@@ -32,7 +32,7 @@
     }
   },
   "Item": {
-    "types": ["ability", "item"],
+    "types": ["ability", "item", "skill"],
     "ability": {
       "cost": 1,
       "level": 1,
@@ -48,6 +48,10 @@
       "damage": 0,
       "isShield": false,
       "isHeavyArmor": false,
+      "description": "",
+      "effects": []
+    },
+    "skill": {
       "description": "",
       "effects": []
     }
