@@ -47,7 +47,7 @@ export const collectEffectTotals = (actor) => {
       if (!item.system?.equipped) continue;
     } else if (item.type === "ability") {
       if (!item.system?.active) continue;
-    } else if (item.type !== "skill") {
+    } else if (item.type !== "skill" && item.type !== "state") {
       continue;
     }
 

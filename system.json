@@ -15,7 +15,7 @@
   "template": "template.json",
   "documentTypes": {
     "Actor": ["character", "npc"],
-    "Item": ["ability", "item", "skill"]
+    "Item": ["ability", "item", "skill", "state"]
   },
   "esmodules": [
     "module/system.js",

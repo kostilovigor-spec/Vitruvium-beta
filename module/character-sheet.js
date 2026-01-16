@@ -46,6 +46,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.vitruvium.skills = (this.actor.items ?? []).filter(
       (i) => i.type === "skill"
     );
+    data.vitruvium.states = (this.actor.items ?? []).filter(
+      (i) => i.type === "state"
+    );
 
     const effectTotals = collectEffectTotals(this.actor);
 
@@ -134,7 +137,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.vitruvium.rollMode = savedMode ?? "normal";
     const savedTab = this.actor.getFlag(scope, "activeTab");
     data.vitruvium.activeTab =
-      savedTab === "abi" || savedTab === "skill" ? savedTab : "inv";
+      savedTab === "abi" || savedTab === "skill" || savedTab === "state"
+        ? savedTab
+        : "inv";
 
     data.vitruvium = data.vitruvium || {};
     data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
@@ -459,16 +464,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const isItem = item.type === "item";
       const qty = isItem ? Number(item.system?.quantity ?? 1) : null;
-      const qtyText =
-        isItem && Number.isFinite(qty) ? ` ×${qty}` : "";
+      const qtyText = isItem && Number.isFinite(qty) ? ` ×${qty}` : "";
 
       const img = item.img || "icons/svg/item-bag.svg";
       const typeLabel =
         item.type === "ability"
-          ? "способность"
+          ? "Способность"
           : item.type === "skill"
-          ? "навык"
-          : "предмет";
+          ? "Навык"
+          : item.type === "state"
+          ? "Состояние"
+          : "Предмет";
 
       const content = `
     <div class="vitruvium-chatcard v-itemcard">
@@ -516,15 +522,27 @@ export class VitruviumCharacterSheet extends ActorSheet {
       ]);
     });
 
-    html.find("[data-action='toggle-ability-active']").on("click", async (ev) => {
+    html.find("[data-action='create-state']").on("click", async (ev) => {
       ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      const item = this.actor.items.get(id);
-      if (!item || item.type !== "ability") return;
-      const next = !item.system?.active;
-      await item.update({ "system.active": next });
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новое состояние",
+          type: "state",
+          system: { description: "", effects: [] },
+        },
+      ]);
     });
 
+    html
+      .find("[data-action='toggle-ability-active']")
+      .on("click", async (ev) => {
+        ev.preventDefault();
+        const id = ev.currentTarget.dataset.itemId;
+        const item = this.actor.items.get(id);
+        if (!item || item.type !== "ability") return;
+        const next = !item.system?.active;
+        await item.update({ "system.active": next });
+      });
     // ===== Ability level (inline edit) =====
     html.find("[data-action='set-ability-level']").on("change", async (ev) => {
       ev.preventDefault();

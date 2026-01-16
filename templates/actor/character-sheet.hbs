@@ -9,7 +9,7 @@
         {{#each vitruvium.attributes as |a|}}
           <div class="v-attrcard">
             <div class="v-attrcard__label">
-              <span class="v-attrcard__icon">{{a.icon}}</span>
+              <span class="v-attrcard__icon"><i class="fas {{a.icon}}"></i></span>
               <span class="v-attrcard__text">{{a.label}}</span>
             </div>
 
@@ -228,11 +228,20 @@
           class="v-tabs__toggle"
           {{#if (eq vitruvium.activeTab "skill")}}checked{{/if}}
         />
+        <input
+          type="radio"
+          id="v-tab-state"
+          name="v-tabs"
+          value="state"
+          class="v-tabs__toggle"
+          {{#if (eq vitruvium.activeTab "state")}}checked{{/if}}
+        />
 
         <div class="v-tabs__nav" role="tablist">
           <label class="v-tabs__tab" for="v-tab-inv" role="tab" data-tab="inv">Инвентарь</label>
           <label class="v-tabs__tab" for="v-tab-abi" role="tab" data-tab="abi">Способности</label>
           <label class="v-tabs__tab" for="v-tab-skill" role="tab" data-tab="skill">Навыки</label>
+          <label class="v-tabs__tab" for="v-tab-state" role="tab" data-tab="state">Состояния</label>
         </div>
 
         <div class="v-tabs__content">
@@ -443,6 +452,66 @@
                       title="Удалить"
                       data-action="delete-item"
                       data-item-id="{{sk._id}}"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+
+                </div>
+              {{/each}}
+            </div>
+          </section>
+
+          <section
+            class="v-panel v-tabpanel v-tabpanel--state"
+            id="v-tabpanel-state"
+            role="tabpanel"
+          >
+            <div class="v-panel__head">
+              <div class="v-h2">Состояния</div>
+              <div class="v-line"></div>
+              <button
+                type="button"
+                class="v-btn v-btn--ghost"
+                data-action="create-state"
+              >+ Состояние</button>
+            </div>
+            <div class="v-inv__list v-state__list">
+              {{#each vitruvium.states as |st|}}
+                <div class="v-inv__row v-state__row" data-item-id="{{st._id}}">
+
+                  <button
+                    type="button"
+                    class="v-inv__iconbtn"
+                    title="Показать в чат"
+                    data-action="item-chat"
+                    data-item-id="{{st._id}}"
+                  >
+                    <img class="v-inv__icon" src="{{st.img}}" alt="{{st.name}}" />
+                  </button>
+
+                  <div class="v-inv__name" title="{{st.name}}">
+                    <div class="v-inv__title">{{st.name}}</div>
+                    <div class="v-inv__meta">пассивно</div>
+                  </div>
+
+                  <div class="v-inv__actions">
+                    <button
+                      type="button"
+                      class="v-inv__a"
+                      title="Редактировать"
+                      data-action="edit-item"
+                      data-item-id="{{st._id}}"
+                    >
+                      <i class="fas fa-feather-alt"></i>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="v-inv__a v-inv__a--danger"
+                      title="Удалить"
+                      data-action="delete-item"
+                      data-item-id="{{st._id}}"
                     >
                       <i class="fas fa-trash"></i>
                     </button>

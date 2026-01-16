@@ -32,7 +32,7 @@
     }
   },
   "Item": {
-    "types": ["ability", "item", "skill"],
+    "types": ["ability", "item", "skill", "state"],
     "ability": {
       "cost": 1,
       "level": 1,
@@ -52,6 +52,10 @@
       "effects": []
     },
     "skill": {
+      "description": "",
+      "effects": []
+    },
+    "state": {
       "description": "",
       "effects": []
     }

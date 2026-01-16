@@ -184,7 +184,8 @@
 
 #v-tab-inv:checked ~ .v-tabs__nav label[for="v-tab-inv"],
 #v-tab-abi:checked ~ .v-tabs__nav label[for="v-tab-abi"],
-#v-tab-skill:checked ~ .v-tabs__nav label[for="v-tab-skill"] {
+#v-tab-skill:checked ~ .v-tabs__nav label[for="v-tab-skill"],
+#v-tab-state:checked ~ .v-tabs__nav label[for="v-tab-state"] {
   background: rgba(0, 0, 0, 0.08);
   border-color: rgba(0, 0, 0, 0.3);
 }
@@ -199,6 +200,9 @@
   display: block;
 }
 #v-tab-skill:checked ~ .v-tabs__content .v-tabpanel--skill {
+  display: block;
+}
+#v-tab-state:checked ~ .v-tabs__content .v-tabpanel--state {
   display: block;
 }
 

@@ -47,6 +47,11 @@ Hooks.once("init", () => {
     types: ["skill"],
     makeDefault: true,
   });
+
+  Items.registerSheet(NS, VitruviumSkillSheet, {
+    types: ["state"],
+    makeDefault: true,
+  });
 });
 
 Hooks.once("init", () => {
