@@ -5,6 +5,7 @@ import {
   getEffectValue,
   getEffectiveAttribute,
 } from "./effects.js";
+import { playAutomatedAnimation } from "./auto-animations.js";
 
 // import { startAttackFlow } from "./combat.js";
 
@@ -488,6 +489,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
         speaker: ChatMessage.getSpeaker({ actor: this.actor }),
         content,
       });
+
+      await playAutomatedAnimation({ actor: this.actor, item });
     });
 
     // ===== Abilities (Items: ability) =====
@@ -593,6 +596,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
       await this.actor.update({
         "system.attributes.inspiration.value": inspValue - cost,
       });
+
+      await playAutomatedAnimation({ actor: this.actor, item });
       const img = item.img ?? "icons/svg/mystery-man.svg";
 
       const content = `

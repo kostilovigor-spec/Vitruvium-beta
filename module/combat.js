@@ -1,3 +1,5 @@
+import { playAutomatedAnimation } from "./auto-animations.js";
+
 // Vitruvium combat.js — v13 (chat-button flow, GM-resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card.
 // Fix: When defender clicks "Защита", their client posts a GM-whisper "resolveRequest" message.
@@ -671,6 +673,8 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     const targetToken = [...game.user.targets][0];
     const attackerToken = canvas.tokens.controlled?.[0] ?? null;
     const attackerTokenUuid = attackerToken?.document?.uuid ?? null;
+
+    await playAutomatedAnimation({ actor: attackerActor, item: weaponItem });
 
     if (!targetToken?.document?.uuid || !targetToken?.actor) {
       const total = Math.max(0, weaponDamage + atkRoll.successes);
