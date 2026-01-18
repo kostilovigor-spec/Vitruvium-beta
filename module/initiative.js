@@ -1,4 +1,5 @@
 ﻿// systems/Vitruvium/module/initiative.js
+import { collectEffectTotals, getEffectValue } from "./effects.js";
 
 function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
@@ -208,8 +209,13 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
     if (!c || !a) continue;
 
     const move = clamp(num(a.system?.attributes?.movement, 1), 1, 6);
-    let appliedLuck = Math.min(luck, move);
-    let appliedUnluck = Math.min(unluck, move);
+    const effectTotals = collectEffectTotals(a);
+    const attrAdv = Math.max(0, getEffectValue(effectTotals, "adv_movement"));
+    const attrDis = Math.max(0, getEffectValue(effectTotals, "dis_movement"));
+    const totalLuck = luck + attrAdv;
+    const totalUnluck = unluck + attrDis;
+    let appliedLuck = totalLuck;
+    let appliedUnluck = totalUnluck;
     const diff = appliedLuck - appliedUnluck;
     if (diff > 0) {
       appliedLuck = diff;
@@ -218,13 +224,19 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
       appliedUnluck = Math.abs(diff);
       appliedLuck = 0;
     }
+    appliedLuck = Math.min(appliedLuck, move);
+    appliedUnluck = Math.min(appliedUnluck, move);
     const lineModeText =
       fullMode === "adv" || fullMode === "dis"
         ? fullText
         : modeLabel(appliedLuck, appliedUnluck);
     const lineModeTag = lineModeText === "Обычный" ? "" : ` (${lineModeText})`;
 
-    const r1 = await rollPool(move, { luck, unluck, fullMode });
+    const r1 = await rollPool(move, {
+      luck: totalLuck,
+      unluck: totalUnluck,
+      fullMode,
+    });
     const s1 = r1.successes;
 
     // initiative = число успехов (пока без тай-брейка)
@@ -367,5 +379,6 @@ export function patchVitruviumInitiative() {
   // на всякий случай сохраним оригинал, если захочешь вернуть
   Combat.prototype.rollInitiative._vitruviumOriginal = original;
 }
+
 
 

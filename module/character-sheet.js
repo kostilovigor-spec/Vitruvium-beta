@@ -74,7 +74,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
     const condition = getAttr("condition");
     const hpMax = Math.max(
       0,
-      condition * 5 + getEffectValue(effectTotals, "hpMax")
+      condition * 8 + getEffectValue(effectTotals, "hpMax")
     );
     const hp = attrs.hp ?? { value: hpMax, max: hpMax };
     const hpValue = clamp(num(hp.value, hpMax), 0, hpMax);
@@ -269,7 +269,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       // Auto HP max = 5 * condition (and clamp hp.value)
       if (key === "condition") {
-        const newMaxHp = next * 5;
+        const newMaxHp = next * 8;
         patch["system.attributes.hp.max"] = newMaxHp;
 
         const curHp = clamp(
@@ -294,7 +294,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const patch = { [`system.attributes.${key}`]: next };
 
       if (key === "condition") {
-        const newMaxHp = next * 5;
+        const newMaxHp = next * 8;
         patch["system.attributes.hp.max"] = newMaxHp;
 
         const curHp = clamp(
@@ -318,8 +318,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const attrs = this.actor.system.attributes ?? {};
       const effectTotals = collectEffectTotals(this.actor);
       let pool = getEffectiveAttribute(attrs, key, effectTotals);
-      const rollLuck = getRollLuck();
-      const rollUnluck = getRollUnluck();
+      const advKey = `adv_${key}`;
+      const disKey = `dis_${key}`;
+      const effectAdv = Math.max(0, getEffectValue(effectTotals, advKey));
+      const effectDis = Math.max(0, getEffectValue(effectTotals, disKey));
+      const rollLuck = getRollLuck() + effectAdv;
+      const rollUnluck = getRollUnluck() + effectDis;
       const rollFullMode = getRollFullMode();
 
       // Call rolls.js in a backward/forward compatible way
@@ -719,7 +723,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         );
         return Math.max(
           0,
-          condition * 5 + getEffectValue(effectTotals, "hpMax")
+          condition * 8 + getEffectValue(effectTotals, "hpMax")
         );
       };
 

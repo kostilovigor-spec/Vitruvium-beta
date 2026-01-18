@@ -1,5 +1,5 @@
 import { playAutomatedAnimation } from "./auto-animations.js";
-import { normalizeEffects } from "./effects.js";
+import { normalizeEffects, collectEffectTotals, getEffectValue } from "./effects.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM-resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card.
@@ -762,13 +762,16 @@ Hooks.on("renderChatMessage", (message, html) => {
     const choice = await defenseDialog({ allowDodge, actor: defender });
     if (!choice) return;
 
+    const effectTotals = collectEffectTotals(defender);
     let defRoll, armorShown, reactionLabel, defenseType;
     const fullText = fullModeLabel(choice.fullMode);
     if (choice.type === "block") {
       defenseType = "block";
       const poolVal = num(defender.system?.attributes?.condition, 1);
-      let appliedLuck = Math.min(choice.luck ?? 0, poolVal);
-      let appliedUnluck = Math.min(choice.unluck ?? 0, poolVal);
+      const attrAdv = Math.max(0, getEffectValue(effectTotals, "adv_condition"));
+      const attrDis = Math.max(0, getEffectValue(effectTotals, "dis_condition"));
+      let appliedLuck = (choice.luck ?? 0) + attrAdv;
+      let appliedUnluck = (choice.unluck ?? 0) + attrDis;
       const diff = appliedLuck - appliedUnluck;
       if (diff > 0) {
         appliedLuck = diff;
@@ -777,14 +780,18 @@ Hooks.on("renderChatMessage", (message, html) => {
         appliedUnluck = Math.abs(diff);
         appliedLuck = 0;
       }
+      appliedLuck = Math.min(appliedLuck, poolVal);
+      appliedUnluck = Math.min(appliedUnluck, poolVal);
       const modeText =
         choice.fullMode === "adv" || choice.fullMode === "dis"
           ? fullText
           : modeLabel(appliedLuck, appliedUnluck);
       const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
+      const totalLuck = (choice.luck ?? 0) + attrAdv;
+      const totalUnluck = (choice.unluck ?? 0) + attrDis;
       defRoll = await rollPool(poolVal, {
-        luck: choice.luck,
-        unluck: choice.unluck,
+        luck: totalLuck,
+        unluck: totalUnluck,
         fullMode: choice.fullMode,
       });
       armorShown = getArmorTotal(defender, { includeShield: true });
@@ -793,8 +800,12 @@ Hooks.on("renderChatMessage", (message, html) => {
     } else {
       defenseType = "dodge";
       const poolVal = num(defender.system?.attributes?.movement, 1);
-      let appliedLuck = Math.min(choice.luck ?? 0, poolVal);
-      let appliedUnluck = Math.min(choice.unluck ?? 0, poolVal);
+      const attrAdv = Math.max(0, getEffectValue(effectTotals, "adv_movement"));
+      const attrDis = Math.max(0, getEffectValue(effectTotals, "dis_movement"));
+      const dodgeAdv = Math.max(0, getEffectValue(effectTotals, "dodgeAdv"));
+      const dodgeDis = Math.max(0, getEffectValue(effectTotals, "dodgeDis"));
+      let appliedLuck = (choice.luck ?? 0) + attrAdv + dodgeAdv;
+      let appliedUnluck = (choice.unluck ?? 0) + attrDis + dodgeDis;
       const diff = appliedLuck - appliedUnluck;
       if (diff > 0) {
         appliedLuck = diff;
@@ -803,14 +814,18 @@ Hooks.on("renderChatMessage", (message, html) => {
         appliedUnluck = Math.abs(diff);
         appliedLuck = 0;
       }
+      appliedLuck = Math.min(appliedLuck, poolVal);
+      appliedUnluck = Math.min(appliedUnluck, poolVal);
       const modeText =
         choice.fullMode === "adv" || choice.fullMode === "dis"
           ? fullText
           : modeLabel(appliedLuck, appliedUnluck);
       const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
+      const totalLuck = (choice.luck ?? 0) + attrAdv + dodgeAdv;
+      const totalUnluck = (choice.unluck ?? 0) + attrDis + dodgeDis;
       defRoll = await rollPool(poolVal, {
-        luck: choice.luck,
-        unluck: choice.unluck,
+        luck: totalLuck,
+        unluck: totalUnluck,
         fullMode: choice.fullMode,
       });
       armorShown = getArmorTotal(defender, { includeShield: false });
@@ -867,9 +882,18 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
       attackerActor.system?.attributes?.[atkChoice.attrKey],
       1
     );
+    const effectTotals = collectEffectTotals(attackerActor);
+    const attrAdv = Math.max(
+      0,
+      getEffectValue(effectTotals, `adv_${atkChoice.attrKey}`)
+    );
+    const attrDis = Math.max(
+      0,
+      getEffectValue(effectTotals, `dis_${atkChoice.attrKey}`)
+    );
     const weaponMods = getWeaponRollMods(weaponItem);
-    const totalLuck = num(atkChoice.luck, 0) + weaponMods.adv;
-    const totalUnluck = num(atkChoice.unluck, 0) + weaponMods.dis;
+    const totalLuck = num(atkChoice.luck, 0) + weaponMods.adv + attrAdv;
+    const totalUnluck = num(atkChoice.unluck, 0) + weaponMods.dis + attrDis;
     const atkRoll = await rollPool(atkPool, {
       luck: totalLuck,
       unluck: totalUnluck,
