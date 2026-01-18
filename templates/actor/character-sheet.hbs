@@ -176,30 +176,55 @@
         </div>
 
         <div class="v-rollmode" role="group" aria-label="Режим бросков">
-          <button
-            type="button"
-            class="v-mini {{#if (eq vitruvium.rollMode 'adv')}}is-active{{/if}}"
-            data-action="set-rollmode"
-            data-mode="adv"
-          >Adv</button>
+          <div class="v-rollmode__group">
+            <div class="v-rollmode__label">Преимущество</div>
+            <div class="v-rollmode__ctrl">
+              <button type="button" class="v-mini" data-action="luck-dec">-</button>
+              <div class="v-rollmode__val">{{vitruvium.rollLuck}}</div>
+              <button type="button" class="v-mini" data-action="luck-inc">+</button>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            class="v-mini {{#if (eq vitruvium.rollMode 'normal')}}is-active{{/if}}"
-            data-action="set-rollmode"
-            data-mode="normal"
-          >Normal</button>
+          <div class="v-rollmode__group">
+            <div class="v-rollmode__label">Помеха</div>
+            <div class="v-rollmode__ctrl">
+              <button type="button" class="v-mini" data-action="unluck-dec">-</button>
+              <div class="v-rollmode__val">{{vitruvium.rollUnluck}}</div>
+              <button type="button" class="v-mini" data-action="unluck-inc">+</button>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            class="v-mini {{#if (eq vitruvium.rollMode 'dis')}}is-active{{/if}}"
-            data-action="set-rollmode"
-            data-mode="dis"
-          >Dis</button>
+          <div class="v-rollmode__group">
+            <div class="v-rollmode__label">Удачливый</div>
+            <div class="v-rollmode__ctrl">
+              <button
+                type="button"
+                class="v-mini {{#if (eq vitruvium.rollFullMode "normal")}}is-active{{/if}}"
+                data-action="fullmode-set"
+                data-mode="normal"
+              >Обычн.</button>
+              <button
+                type="button"
+                class="v-mini {{#if (eq vitruvium.rollFullMode "adv")}}is-active{{/if}}"
+                data-action="fullmode-set"
+                data-mode="adv"
+              >Удачл.</button>
+              <button
+                type="button"
+                class="v-mini {{#if (eq vitruvium.rollFullMode "dis")}}is-active{{/if}}"
+                data-action="fullmode-set"
+                data-mode="dis"
+              >Неудачл.</button>
+            </div>
+          </div>
+
+          <button type="button" class="v-mini v-rollmode__reset" data-action="luck-reset">
+            Нормальный
+          </button>
         </div>
 
         <div class="v-subtle" style="margin-top: 6px;">
-          Влияет на все броски (атрибуты, удача, доп. кубы).
+          Каждый счетчик преимущества/помехи перебрасывает один куб (атрибуты, удача, доп. кубы). Удачливый/неудачливый бросок игнорирует счетчики.
         </div>
       </section>
 

@@ -210,6 +210,42 @@
   margin-bottom: 8px;
 }
 
+.v-rollmode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v-rollmode__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.35);
+}
+.v-rollmode__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.v-rollmode__ctrl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.v-rollmode__val {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 900;
+}
+.v-rollmode__reset {
+  height: var(--btn-h);
+}
+
 /* ---------- Effects dialog ---------- */
 .v-effects {
   display: grid;

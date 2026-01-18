@@ -8,6 +8,8 @@ const EFFECT_TARGETS = [
   { key: "hpMax", label: "Макс. HP" },
   { key: "inspMax", label: "Макс. вдохновение" },
   { key: "speed", label: "Скорость" },
+  { key: "weaponAdv", label: "Атака оружием: преимущество" },
+  { key: "weaponDis", label: "Атака оружием: помеха" },
 ];
 
 const EFFECT_KEYS = new Set(EFFECT_TARGETS.map((t) => t.key));

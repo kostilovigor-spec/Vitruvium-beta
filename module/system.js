@@ -81,33 +81,63 @@ Hooks.once("ready", () => {
               dodge: {
                 label: "Уклониться (движение)",
                 callback: async () => {
-                  // режим
-                  const mode = await new Promise((r) => {
+                  const roll = await new Promise((r) => {
                     new Dialog({
                       title: "Уклонение",
-                      content: `<p>Режим броска:</p>`,
+                      content: `<div style="display:grid; gap:8px;">
+                        <div>Укажи количество удачливых/неудачливых перебросов.</div>
+                        <label>Удачливый бросок
+                          <select name="fullMode" style="width:100%">
+                            <option value="normal">Обычный</option>
+                            <option value="adv">Удачливый (полный переброс)</option>
+                            <option value="dis">Неудачливый (полный переброс)</option>
+                          </select>
+                        </label>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                          <label>Преимущество
+                            <input type="number" name="luck" value="0" min="0" max="20" step="1" style="width:100%"/>
+                          </label>
+                          <label>Помеха
+                            <input type="number" name="unluck" value="0" min="0" max="20" step="1" style="width:100%"/>
+                          </label>
+                        </div>
+                        <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
+                      </div>`,
                       buttons: {
-                        normal: {
-                          label: "Обычная",
-                          callback: () => r("normal"),
+                        roll: {
+                          label: "Бросить",
+                          callback: (html) =>
+                            r({
+                              luck: Math.max(
+                                0,
+                                Math.min(
+                                  20,
+                                  Number(html.find("input[name='luck']").val()) || 0
+                                )
+                              ),
+                              unluck: Math.max(
+                                0,
+                                Math.min(
+                                  20,
+                                  Number(html.find("input[name='unluck']").val()) || 0
+                                )
+                              ),
+                              fullMode: html.find("select[name='fullMode']").val(),
+                            }),
                         },
-                        dis: { label: "С помехой", callback: () => r("dis") },
-                        adv: {
-                          label: "С преимуществом",
-                          callback: () => r("adv"),
-                        },
+                        cancel: { label: "Отмена", callback: () => r(null) },
                       },
-                      default: "normal",
+                      default: "roll",
                       close: () => r(null),
                     }).render(true);
                   });
-                  if (!mode) return resolve(null);
-                  resolve({ type: "dodge", mode });
+                  if (!roll) return resolve(null);
+                  resolve({ type: "dodge", ...roll });
                 },
               },
               block: {
                 label: "Блок (сопротивление, но попадание всегда)",
-                callback: () => resolve({ type: "block", mode: "normal" }),
+                callback: () => resolve({ type: "block", luck: 0, unluck: 0 }),
               },
             },
             default: "dodge",

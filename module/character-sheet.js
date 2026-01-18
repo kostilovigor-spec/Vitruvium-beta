@@ -133,8 +133,15 @@ export class VitruviumCharacterSheet extends ActorSheet {
       },
     ];
 
-    const savedMode = this.actor.getFlag(scope, "rollMode");
-    data.vitruvium.rollMode = savedMode ?? "normal";
+    const savedLuck = this.actor.getFlag(scope, "rollLuck");
+    const savedUnluck = this.actor.getFlag(scope, "rollUnluck");
+    data.vitruvium.rollLuck = clamp(num(savedLuck, 0), 0, 20);
+    data.vitruvium.rollUnluck = clamp(num(savedUnluck, 0), 0, 20);
+    const savedFullMode = this.actor.getFlag(scope, "rollFullMode");
+    data.vitruvium.rollFullMode =
+      savedFullMode === "adv" || savedFullMode === "dis"
+        ? savedFullMode
+        : "normal";
     const savedTab = this.actor.getFlag(scope, "activeTab");
     data.vitruvium.activeTab =
       savedTab === "abi" || savedTab === "skill" || savedTab === "state"
@@ -195,12 +202,51 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
     const scope = game.system.id;
 
-    // ===== Roll mode (normal / adv / dis) saved in flags =====
-    html.find("[data-action='set-rollmode']").on("click", async (ev) => {
+    const getRollLuck = () =>
+      clamp(num(this.actor.getFlag(scope, "rollLuck"), 0), 0, 20);
+    const getRollUnluck = () =>
+      clamp(num(this.actor.getFlag(scope, "rollUnluck"), 0), 0, 20);
+    const getRollFullMode = () => {
+      const mode = this.actor.getFlag(scope, "rollFullMode");
+      return mode === "adv" || mode === "dis" ? mode : "normal";
+    };
+
+    html.find("[data-action='luck-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      const next = clamp(getRollLuck() + 1, 0, 20);
+      await this.actor.setFlag(scope, "rollLuck", next);
+    });
+
+    html.find("[data-action='luck-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      const next = clamp(getRollLuck() - 1, 0, 20);
+      await this.actor.setFlag(scope, "rollLuck", next);
+    });
+
+    html.find("[data-action='unluck-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      const next = clamp(getRollUnluck() + 1, 0, 20);
+      await this.actor.setFlag(scope, "rollUnluck", next);
+    });
+
+    html.find("[data-action='unluck-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      const next = clamp(getRollUnluck() - 1, 0, 20);
+      await this.actor.setFlag(scope, "rollUnluck", next);
+    });
+
+    html.find("[data-action='luck-reset']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.setFlag(scope, "rollLuck", 0);
+      await this.actor.setFlag(scope, "rollUnluck", 0);
+      await this.actor.setFlag(scope, "rollFullMode", "normal");
+    });
+
+    html.find("[data-action='fullmode-set']").on("click", async (ev) => {
       ev.preventDefault();
       const mode = ev.currentTarget.dataset.mode;
-      const scope = game.system.id;
-      await this.actor.setFlag(scope, "rollMode", mode);
+      const next = mode === "adv" || mode === "dis" ? mode : "normal";
+      await this.actor.setFlag(scope, "rollFullMode", next);
     });
 
     // ===== Tabs: persist active tab per actor =====
@@ -269,19 +315,21 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const key = btn.dataset.attr;
       const label = btn.dataset.label ?? key;
-      const scope = game.system.id;
-      const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
-
       const attrs = this.actor.system.attributes ?? {};
       const effectTotals = collectEffectTotals(this.actor);
       let pool = getEffectiveAttribute(attrs, key, effectTotals);
+      const rollLuck = getRollLuck();
+      const rollUnluck = getRollUnluck();
+      const rollFullMode = getRollFullMode();
 
       // Call rolls.js in a backward/forward compatible way
       await rollSuccessDice({
         pool,
         actorName: this.actor.name,
         checkName: label,
-        mode: rollMode,
+        luck: rollLuck,
+        unluck: rollUnluck,
+        fullMode: rollFullMode,
         label: `Проверка: ${label}`, // harmless if rolls.js ignores it
       });
     });
@@ -351,15 +399,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find("[data-action='extra-roll']").on("click", async (ev) => {
       ev.preventDefault();
 
-      const scope = game.system.id;
-      const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      const rollLuck = getRollLuck();
+      const rollUnluck = getRollUnluck();
+      const rollFullMode = getRollFullMode();
 
       await rollSuccessDice({
         pool: cur,
         actorName: this.actor.name,
         checkName: "Дополнительные кубы",
-        mode: rollMode,
+        luck: rollLuck,
+        unluck: rollUnluck,
+        fullMode: rollFullMode,
       });
     });
 
@@ -367,14 +418,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find("[data-action='luck-roll']").on("click", async (ev) => {
       ev.preventDefault();
 
-      const scope = game.system.id;
-      const rollMode = this.actor.getFlag(scope, "rollMode") ?? "normal";
+      const rollLuck = getRollLuck();
+      const rollUnluck = getRollUnluck();
+      const rollFullMode = getRollFullMode();
 
       await rollSuccessDice({
         pool: 1,
         actorName: this.actor.name,
         checkName: "Бросок удачи",
-        mode: rollMode,
+        luck: rollLuck,
+        unluck: rollUnluck,
+        fullMode: rollFullMode,
       });
     });
 

@@ -1,4 +1,4 @@
-// systems/Vitruvium/module/initiative.js
+﻿// systems/Vitruvium/module/initiative.js
 
 function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
@@ -23,22 +23,148 @@ function countSuccesses(roll) {
 }
 
 function successesIcons(n) {
-  // если у тебя уже есть иконки успехов — замени здесь на свои
-  return Array.from({ length: Math.max(0, n) }, () => "✦").join(" ");
+  // если у тебя уже есть иконки успехов - замени здесь на свои
+  return Array.from({ length: Math.max(0, n) }, () => "?").join(" ");
 }
 
-async function rollPool(pool) {
-  const r = await new Roll(`${pool}dV`).evaluate();
-  // Для Dice So Nice важно показать реальный Roll
+async function rollDieOnce() {
+  const r = await new Roll("1dV").evaluate();
   if (game.dice3d) {
     await game.dice3d.showForRoll(r, game.user, true);
   }
-  return r;
+  const result = r.dice?.[0]?.results?.[0]?.result ?? 1;
+  return { roll: r, result: Number(result) };
+}
+
+function pickIndex(results, preferHighest) {
+  let idx = 0;
+  for (let i = 1; i < results.length; i++) {
+    if (preferHighest) {
+      if (results[i] > results[idx]) idx = i;
+    } else if (results[i] < results[idx]) {
+      idx = i;
+    }
+  }
+  return idx;
+}
+
+function modeLabel(luck = 0, unluck = 0) {
+  const l = Number(luck) || 0;
+  const u = Number(unluck) || 0;
+  if (l <= 0 && u <= 0) return "Обычный";
+  const adv = l === 1 ? "С преимуществом" : `С ${l} преимуществами`;
+  const dis = u === 1 ? "С помехой" : `С ${u} помехами`;
+  if (l > 0 && u <= 0) return adv;
+  if (u > 0 && l <= 0) return dis;
+  return `${adv} / ${dis}`;
+}
+
+function fullModeLabel(mode) {
+  const m = String(mode ?? "normal");
+  if (m === "adv") return "Удачливый (полный переброс)";
+  if (m === "dis") return "Неудачливый (полный переброс)";
+  return "Обычный";
+}
+
+async function rollPool(pool, { luck = 0, unluck = 0, fullMode = "normal" } = {}) {
+  pool = clamp(num(pool, 1), 1, 20);
+  const full = String(fullMode ?? "normal");
+
+  const rollOnce = async () => {
+    const roll = await new Roll(`${pool}dV`).evaluate();
+    if (game.dice3d) {
+      await game.dice3d.showForRoll(roll, game.user, true);
+    }
+    const results = (roll.dice?.[0]?.results ?? []).map((r) =>
+      Number(r.result)
+    );
+    const successRoll = {
+      dice: [{ results: results.map((result) => ({ result })) }],
+    };
+    const successes = countSuccesses(successRoll);
+    return { roll, results, successes };
+  };
+
+  if (full === "adv" || full === "dis") {
+    const a = await rollOnce();
+    const b = await rollOnce();
+    const chosen =
+      full === "adv"
+        ? b.successes > a.successes
+          ? b
+          : a
+        : b.successes < a.successes
+        ? b
+        : a;
+    return {
+      roll: chosen.roll,
+      rolls: [a.roll, b.roll],
+      results: chosen.results,
+      successes: chosen.successes,
+      luck: 0,
+      unluck: 0,
+      fullMode: full,
+    };
+  }
+
+  const roll = await new Roll(`${pool}dV`).evaluate();
+  if (game.dice3d) {
+    await game.dice3d.showForRoll(roll, game.user, true);
+  }
+
+  const results = (roll.dice?.[0]?.results ?? []).map((r) =>
+    Number(r.result)
+  );
+  const rolls = [roll];
+
+  const applyReroll = async (index, preferHigher) => {
+    const before = results[index];
+    const rr = await rollDieOnce();
+    const after = rr.result;
+    results[index] = preferHigher ? Math.max(before, after) : Math.min(before, after);
+    rolls.push(rr.roll);
+  };
+
+  let luckCount = clamp(Math.round(num(luck, 0)), 0, 20);
+  let unluckCount = clamp(Math.round(num(unluck, 0)), 0, 20);
+  const diff = luckCount - unluckCount;
+  if (diff > 0) {
+    luckCount = diff;
+    unluckCount = 0;
+  } else if (diff < 0) {
+    unluckCount = Math.abs(diff);
+    luckCount = 0;
+  }
+  luckCount = Math.min(luckCount, pool);
+  unluckCount = Math.min(unluckCount, pool);
+
+  for (let i = 0; i < luckCount; i++) {
+    const idx = pickIndex(results, false);
+    await applyReroll(idx, true);
+  }
+  for (let i = 0; i < unluckCount; i++) {
+    const idx = pickIndex(results, true);
+    await applyReroll(idx, false);
+  }
+
+  const successRoll = {
+    dice: [{ results: results.map((result) => ({ result })) }],
+  };
+  const successes = countSuccesses(successRoll);
+  return {
+    roll,
+    rolls,
+    results,
+    successes,
+    luck: luckCount,
+    unluck: unluckCount,
+    fullMode: "normal",
+  };
 }
 
 async function luckRollShow(actorName, targetName) {
   const r = await rollPool(1);
-  const s = countSuccesses(r); // 0,1,2
+  const s = r.successes; // 0,1,2
   const ok = s > 0;
   const content = `
     <div class="v-card v-card--luck">
@@ -62,9 +188,19 @@ function isPC(combatant) {
   return a.hasPlayerOwner || a.type === "character";
 }
 
-export async function vitruviumRollInitiative(combat, ids, mode = "normal") {
+export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
   const updates = [];
   const chatLines = [];
+
+  const luck = clamp(num(rollOpts.luck, 0), 0, 20);
+  const unluck = clamp(num(rollOpts.unluck, 0), 0, 20);
+  const fullMode = String(rollOpts.fullMode ?? "normal");
+  const fullText = fullModeLabel(fullMode);
+  const modeText =
+    fullMode === "adv" || fullMode === "dis"
+      ? fullText
+      : modeLabel(luck, unluck);
+  const modeTag = modeText === "Обычный" ? "" : ` (${modeText})`;
 
   for (const id of ids) {
     const c = combat.combatants.get(id);
@@ -72,38 +208,30 @@ export async function vitruviumRollInitiative(combat, ids, mode = "normal") {
     if (!c || !a) continue;
 
     const move = clamp(num(a.system?.attributes?.movement, 1), 1, 6);
-
-    // Advantage/Disadvantage: 2 броска, берём лучший/худший
-    let r1 = await rollPool(move);
-    let s1 = countSuccesses(r1);
-
-    let chosen = { roll: r1, succ: s1, other: null };
-
-    if (mode === "adv" || mode === "dis") {
-      const r2 = await rollPool(move);
-      const s2 = countSuccesses(r2);
-
-      if (mode === "adv") {
-        chosen =
-          s2 > s1
-            ? { roll: r2, succ: s2, other: { roll: r1, succ: s1 } }
-            : { roll: r1, succ: s1, other: { roll: r2, succ: s2 } };
-      } else {
-        chosen =
-          s2 < s1
-            ? { roll: r2, succ: s2, other: { roll: r1, succ: s1 } }
-            : { roll: r1, succ: s1, other: { roll: r2, succ: s2 } };
-      }
+    let appliedLuck = Math.min(luck, move);
+    let appliedUnluck = Math.min(unluck, move);
+    const diff = appliedLuck - appliedUnluck;
+    if (diff > 0) {
+      appliedLuck = diff;
+      appliedUnluck = 0;
+    } else if (diff < 0) {
+      appliedUnluck = Math.abs(diff);
+      appliedLuck = 0;
     }
+    const lineModeText =
+      fullMode === "adv" || fullMode === "dis"
+        ? fullText
+        : modeLabel(appliedLuck, appliedUnluck);
+    const lineModeTag = lineModeText === "Обычный" ? "" : ` (${lineModeText})`;
+
+    const r1 = await rollPool(move, { luck, unluck, fullMode });
+    const s1 = r1.successes;
 
     // initiative = число успехов (пока без тай-брейка)
-    updates.push({ _id: id, initiative: chosen.succ });
+    updates.push({ _id: id, initiative: s1 });
 
-    const modeTag = mode === "adv" ? " (adv)" : mode === "dis" ? " (dis)" : "";
     chatLines.push(
-      `<div><b>${c.name}</b>: Движение ${move}${modeTag} → успехи: <b>${
-        chosen.succ
-      }</b> ${successesIcons(chosen.succ)}</div>`
+      `<div><b>${c.name}</b>: Движение ${move}${lineModeTag} - успехи: <b>${s1}</b> ${successesIcons(s1)}</div>`
     );
   }
 
@@ -112,27 +240,25 @@ export async function vitruviumRollInitiative(combat, ids, mode = "normal") {
     await combat.updateEmbeddedDocuments("Combatant", updates);
 
   // Тай-брейк PC vs NPC при равной инициативе:
-  // делаем лёгкий сдвиг ±0.01, чтобы Foundry отсортировал.
+  // делаем лёгкий сдвиг +0.01, чтобы Foundry отсортировал.
   await vitruviumResolvePcNpcTies(combat);
 
   // Сообщение в чат о бросках
   const head =
-    mode === "adv"
-      ? "Инициатива (Движение, преимущество)"
-      : mode === "dis"
-      ? "Инициатива (Движение, помеха)"
-      : "Инициатива (Движение)";
+    modeText === "Обычный"
+      ? "Инициатива (Движение)"
+      : `Инициатива (Движение, ${modeText})`;
   const content = `
     <div class="v-card v-card--attr">
       <div class="v-card__header">
-        <div class="v-card__title">◈ ${head}</div>
+        <div class="v-card__title">? ${head}</div>
       </div>
       <div class="v-card__row">
         <div class="v-card__label">Результаты</div>
         <div class="v-card__value">${chatLines.join("")}</div>
       </div>
       <div class="v-card__footer">
-        <span class="v-rule">При равенстве PC↔NPC: бросок удачи игрока решает порядок</span>
+        <span class="v-rule">При равенстве PC-NPC: бросок удачи игрока решает порядок</span>
       </div>
     </div>
   `;
@@ -185,31 +311,54 @@ export function patchVitruviumInitiative() {
     // ids может быть undefined => роллим всех
     const rollIds = ids?.length ? ids : this.combatants.map((c) => c.id);
 
-    // выбор режима: normal/adv/dis
-    const mode = await new Promise((resolve) => {
+    const choice = await new Promise((resolve) => {
       new Dialog({
         title: "Vitruvium: Инициатива",
-        content: `<p>Как бросать инициативу (Движение)?</p>`,
+        content: `<div style="display:grid; gap:8px;">
+          <div>Как бросать инициативу (Движение)?</div>
+          <label>Удачливый бросок
+            <select name="fullMode" style="width:100%">
+              <option value="normal">Обычный</option>
+              <option value="adv">Удачливый (полный переброс)</option>
+              <option value="dis">Неудачливый (полный переброс)</option>
+            </select>
+          </label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <label>Преимущество
+              <input type="number" name="luck" value="0" min="0" max="20" step="1" style="width:100%"/>
+            </label>
+            <label>Помеха
+              <input type="number" name="unluck" value="0" min="0" max="20" step="1" style="width:100%"/>
+            </label>
+          </div>
+          <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
+        </div>`,
         buttons: {
-          dis: {
-            label: "Помеха",
-            callback: () => resolve("dis"),
+          roll: {
+            label: "Бросить",
+            callback: (html) =>
+              resolve({
+                luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+                unluck: clamp(
+                  num(html.find("input[name='unluck']").val(), 0),
+                  0,
+                  20
+                ),
+                fullMode: html.find("select[name='fullMode']").val(),
+              }),
           },
-          normal: {
-            label: "Обычно",
-            callback: () => resolve("normal"),
-          },
-          adv: {
-            label: "Преимущество",
-            callback: () => resolve("adv"),
+          cancel: {
+            label: "Отмена",
+            callback: () => resolve(null),
           },
         },
-        default: "normal",
-        close: () => resolve("normal"),
+        default: "roll",
+        close: () => resolve(null),
       }).render(true);
     });
 
-    await vitruviumRollInitiative(this, rollIds, mode);
+    if (!choice) return this;
+    await vitruviumRollInitiative(this, rollIds, choice);
 
     if (updateTurn) await this.update({ turn: 0 });
     return this;
@@ -218,3 +367,5 @@ export function patchVitruviumInitiative() {
   // на всякий случай сохраним оригинал, если захочешь вернуть
   Combat.prototype.rollInitiative._vitruviumOriginal = original;
 }
+
+

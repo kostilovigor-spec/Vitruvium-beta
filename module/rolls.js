@@ -6,6 +6,7 @@ function dvSuccesses(face) {
   if (v >= 4) return 1;
   return 0;
 }
+
 function dvFaceKind(face) {
   const v = Number(face);
   if (!Number.isFinite(v) || v <= 3) return "blank";
@@ -14,149 +15,18 @@ function dvFaceKind(face) {
 }
 
 function renderFaces(results = []) {
-  const iconBlank = "–";
-  const iconSingle = "♦";
-  const iconDouble = "♦♦";
   return `
     <div class="v-faces v-compact-faces">
       ${results
         .map((r) => {
           const kind = dvFaceKind(r);
           const icon =
-            kind === "double" ? iconDouble : kind === "single" ? iconSingle : iconBlank;
-          return `<span class="v-face v-face--${kind}" title="${kind}">${icon}</span>`;
+            kind === "double" ? "●●" : kind === "single" ? "●" : "○";
+          return `<span class="v-face v-face--${kind}" title="${r}">${icon}</span>`;
         })
         .join("")}
     </div>
   `;
-}
-
-export async function rollSuccessDice({
-  pool = 1,
-  actorName = "Персонаж",
-  checkName = "Проверка",
-  mode = "normal", // "normal" | "adv" | "dis"
-} = {}) {
-  pool = Number(pool);
-  if (Number.isNaN(pool)) pool = 1;
-  pool = Math.min(Math.max(pool, 1), 20);
-
-  const m = String(mode ?? "normal");
-
-  // Один тип значка успеха
-  const successIcon = `<span class="v-success">♦</span>`;
-  const renderIcons = (successes) =>
-    successes > 0
-      ? successIcon.repeat(successes)
-      : `<span class="v-success v-success--none">—</span>`;
-
-  const countSuccesses = (results) => {
-    let successes = results.reduce((acc, r) => acc + dvSuccesses(r), 0);
-return successes;
-  };
-
-  const doOneRoll = async () => {
-    const roll = await new Roll(`${pool}dV`).evaluate();
-    const results = roll.dice[0].results.map((r) => r.result);
-    const successes = countSuccesses(results);
-    return { roll, results, successes };
-  };
-
-  
-// ----- NORMAL -----
-if (m === "normal") {
-  const r = await doOneRoll();
-
-  const content = `
-    <div class="v-card v-card--roll">
-      <div class="v-card__header">
-        <div class="v-card__title">
-          ${escapeHtml(actorName)} — проверка «${escapeHtml(checkName)}»
-          <span class="v-card__mode v-card__mode--normal">Normal</span>
-        </div>
-        <div class="v-card__sub">Пул: ${pool}</div>
-      </div>
-
-      <div class="v-card__row v-card__row--big">
-        <div class="v-card__biglabel">УСПЕХИ</div>
-        <div class="v-card__bigvalue">${r.successes}</div>
-      </div>
-
-      ${renderFaces(r.results)}
-    </div>
-  `;
-
-  await ChatMessage.create({
-    speaker: ChatMessage.getSpeaker(),
-    content,
-    rolls: [r.roll],
-  });
-
-  return r;
-}
-
-
-  
-  // ----- ADV / DIS -----
-  const r1 = await doOneRoll();
-  const r2 = await doOneRoll();
-
-  const isAdv = m === "adv";
-  const chosen = isAdv
-    ? r1.successes >= r2.successes
-      ? r1
-      : r2
-    : r1.successes <= r2.successes
-    ? r1
-    : r2;
-
-  const badge = isAdv ? "Adv" : "Dis";
-  const modeClass = isAdv ? "v-card__mode--adv" : "v-card__mode--dis";
-  const cardClass = isAdv ? "v-card--adv" : "v-card--dis";
-
-  const c1 = chosen === r1;
-  const c2 = chosen === r2;
-
-  const content = `
-    <div class="v-card v-card--roll ${cardClass}">
-      <div class="v-card__header">
-        <div class="v-card__title">
-          ${escapeHtml(actorName)} — проверка «${escapeHtml(checkName)}»
-          <span class="v-card__mode ${modeClass}">${badge}</span>
-        </div>
-        <div class="v-card__sub">Пул: ${pool}</div>
-      </div>
-
-      <div class="v-card__row v-card__row--big">
-        <div class="v-card__biglabel">УСПЕХИ</div>
-        <div class="v-card__bigvalue">${chosen.successes}</div>
-      </div>
-
-      <div class="v-card__compare">
-        <div class="v-card__cmp">
-          <span class="v-card__cmpLabel">Бросок 1</span>
-          <span class="v-card__cmpVal">${r1.successes}</span>
-          ${c1 ? `<span class="v-card__chosen">выбран</span>` : ``}
-        </div>
-        <div class="v-card__cmp">
-          <span class="v-card__cmpLabel">Бросок 2</span>
-          <span class="v-card__cmpVal">${r2.successes}</span>
-          ${c2 ? `<span class="v-card__chosen">выбран</span>` : ``}
-        </div>
-      </div>
-
-      ${c1 ? renderFaces(r1.results) : renderFaces(r2.results)}
-    </div>
-  `;
-
-  await ChatMessage.create({
-    speaker: ChatMessage.getSpeaker(),
-    content,
-    // Dice So Nice: показать оба броска
-    rolls: [r1.roll, r2.roll],
-  });
-
-  return chosen;
 }
 
 function escapeHtml(s) {
@@ -166,4 +36,206 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function clamp(n, min, max) {
+  return Math.min(Math.max(n, min), max);
+}
+
+async function rollDieOnce() {
+  const roll = await new Roll("1dV").evaluate();
+  const result = roll.dice?.[0]?.results?.[0]?.result ?? 1;
+  return { roll, result: Number(result) };
+}
+
+function pickIndex(results, preferHighest) {
+  let idx = 0;
+  for (let i = 1; i < results.length; i++) {
+    if (preferHighest) {
+      if (results[i] > results[idx]) idx = i;
+    } else if (results[i] < results[idx]) {
+      idx = i;
+    }
+  }
+  return idx;
+}
+
+function formatAdvantage(count) {
+  return count === 1 ? "С преимуществом" : `С ${count} преимуществами`;
+}
+
+function formatDisadvantage(count) {
+  return count === 1 ? "С помехой" : `С ${count} помехами`;
+}
+
+export async function rollSuccessDice({
+  pool = 1,
+  actorName = "Актор",
+  checkName = "Проверка",
+  mode = "normal", // legacy: "normal" | "adv" | "dis"
+  luck = 0,
+  unluck = 0,
+  fullMode = "normal", // "normal" | "adv" | "dis" (full reroll)
+} = {}) {
+  pool = Number(pool);
+  if (Number.isNaN(pool)) pool = 1;
+  pool = clamp(pool, 1, 20);
+
+  const full = String(fullMode ?? "normal");
+
+  const rollOnce = async () => {
+    const roll = await new Roll(`${pool}dV`).evaluate();
+    const results = (roll.dice?.[0]?.results ?? []).map((r) =>
+      Number(r.result)
+    );
+    const successes = results.reduce((acc, r) => acc + dvSuccesses(r), 0);
+    return { roll, results, successes };
+  };
+
+  if (full === "adv" || full === "dis") {
+    const a = await rollOnce();
+    const b = await rollOnce();
+    const chosen =
+      full === "adv"
+        ? b.successes > a.successes
+          ? b
+          : a
+        : b.successes < a.successes
+        ? b
+        : a;
+
+    const modeLabel =
+      full === "adv"
+        ? "Удачливый (полный переброс)"
+        : "Неудачливый (полный переброс)";
+    const modeClass = full === "adv" ? "v-card__mode--adv" : "v-card__mode--dis";
+    const cardClass = full === "adv" ? "v-card--adv" : "v-card--dis";
+
+    const content = `
+      <div class="v-card v-card--roll ${cardClass}">
+        <div class="v-card__header">
+          <div class="v-card__title">
+            ${escapeHtml(actorName)} бросает <${escapeHtml(checkName)}>
+            <span class="v-card__mode ${modeClass}">${modeLabel}</span>
+          </div>
+          <div class="v-card__sub">Пул: ${pool}</div>
+        </div>
+
+        <div class="v-card__row v-card__row--big">
+          <div class="v-card__biglabel">Успехи</div>
+          <div class="v-card__bigvalue">${chosen.successes}</div>
+        </div>
+
+        ${renderFaces(chosen.results)}
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker(),
+      content,
+      rolls: [a.roll, b.roll],
+    });
+
+    return {
+      roll: chosen.roll,
+      results: chosen.results,
+      successes: chosen.successes,
+      rerolls: [],
+      fullMode: full,
+    };
+  }
+
+  let luckCount = Number(luck ?? 0);
+  let unluckCount = Number(unluck ?? 0);
+  if (!Number.isFinite(luckCount)) luckCount = 0;
+  if (!Number.isFinite(unluckCount)) unluckCount = 0;
+
+  if (luckCount === 0 && unluckCount === 0) {
+    const m = String(mode ?? "normal");
+    if (m === "adv") luckCount = 1;
+    if (m === "dis") unluckCount = 1;
+  }
+
+  luckCount = clamp(Math.round(luckCount), 0, 20);
+  unluckCount = clamp(Math.round(unluckCount), 0, 20);
+  const diff = luckCount - unluckCount;
+  if (diff > 0) {
+    luckCount = diff;
+    unluckCount = 0;
+  } else if (diff < 0) {
+    unluckCount = Math.abs(diff);
+    luckCount = 0;
+  }
+  luckCount = Math.min(luckCount, pool);
+  unluckCount = Math.min(unluckCount, pool);
+
+  const roll = await new Roll(`${pool}dV`).evaluate();
+  const results = (roll.dice?.[0]?.results ?? []).map((r) => Number(r.result));
+  const rerollRolls = [];
+
+  const applyReroll = async (index, preferHigher) => {
+    const before = results[index];
+    const rr = await rollDieOnce();
+    const after = rr.result;
+    const chosen = preferHigher ? Math.max(before, after) : Math.min(before, after);
+    results[index] = chosen;
+    rerollRolls.push(rr.roll);
+    return { index, before, after, chosen };
+  };
+
+  const rerolls = [];
+  for (let i = 0; i < luckCount; i++) {
+    const idx = pickIndex(results, false);
+    const info = await applyReroll(idx, true);
+    rerolls.push({ kind: "luck", ...info });
+  }
+  for (let i = 0; i < unluckCount; i++) {
+    const idx = pickIndex(results, true);
+    const info = await applyReroll(idx, false);
+    rerolls.push({ kind: "unluck", ...info });
+  }
+
+  const successes = results.reduce((acc, r) => acc + dvSuccesses(r), 0);
+
+  const parts = [];
+  if (luckCount > 0) parts.push(formatAdvantage(luckCount));
+  if (unluckCount > 0) parts.push(formatDisadvantage(unluckCount));
+  const modeLabel = parts.length ? parts.join(" / ") : "Обычный";
+
+  let modeClass = "v-card__mode--normal";
+  let cardClass = "";
+  if (luckCount > 0 && unluckCount === 0) {
+    modeClass = "v-card__mode--adv";
+    cardClass = "v-card--adv";
+  } else if (unluckCount > 0 && luckCount === 0) {
+    modeClass = "v-card__mode--dis";
+    cardClass = "v-card--dis";
+  }
+
+  const content = `
+    <div class="v-card v-card--roll ${cardClass}">
+      <div class="v-card__header">
+        <div class="v-card__title">
+          ${escapeHtml(actorName)} бросает <${escapeHtml(checkName)}>
+          <span class="v-card__mode ${modeClass}">${modeLabel}</span>
+        </div>
+        <div class="v-card__sub">Пул: ${pool}</div>
+      </div>
+
+      <div class="v-card__row v-card__row--big">
+        <div class="v-card__biglabel">Успехи</div>
+        <div class="v-card__bigvalue">${successes}</div>
+      </div>
+
+      ${renderFaces(results)}
+    </div>
+  `;
+
+  await ChatMessage.create({
+    speaker: ChatMessage.getSpeaker(),
+    content,
+    rolls: [roll, ...rerollRolls],
+  });
+
+  return { roll, results, successes, rerolls };
 }

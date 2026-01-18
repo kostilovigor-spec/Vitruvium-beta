@@ -1,4 +1,5 @@
 import { playAutomatedAnimation } from "./auto-animations.js";
+import { normalizeEffects } from "./effects.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM-resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card.
@@ -41,11 +42,46 @@ function renderFacesInline(results = []) {
   return `<div class="v-faces v-faces--inline">${parts.join("")}</div>`;
 }
 
+async function rollDieOnce() {
+  const roll = new Roll("1dV");
+  await roll.evaluate();
+  const result = roll.dice?.[0]?.results?.[0]?.result ?? 1;
+  return { roll, result: Number(result) };
+}
+
+function pickIndex(results, preferHighest) {
+  let idx = 0;
+  for (let i = 1; i < results.length; i++) {
+    if (preferHighest) {
+      if (results[i] > results[idx]) idx = i;
+    } else if (results[i] < results[idx]) {
+      idx = i;
+    }
+  }
+  return idx;
+}
+
+function modeLabel(luck = 0, unluck = 0) {
+  const l = Number(luck) || 0;
+  const u = Number(unluck) || 0;
+  if (l <= 0 && u <= 0) return "Обычный";
+  const adv = l === 1 ? "С преимуществом" : `С ${l} преимуществами`;
+  const dis = u === 1 ? "С помехой" : `С ${u} помехами`;
+  if (l > 0 && u <= 0) return adv;
+  if (u > 0 && l <= 0) return dis;
+  return `${adv} / ${dis}`;
+}
+
+function fullModeLabel(mode) {
+  const m = String(mode ?? "normal");
+  if (m === "adv") return "Удачливый (полный переброс)";
+  if (m === "dis") return "Неудачливый (полный переброс)";
+  return "Обычный";
+}
+
 function chosenResults(r) {
   if (!r) return [];
-  if (r.mode === "normal") return r.all?.[0]?.results ?? [];
-  const idx = Number.isFinite(r.chosenIndex) ? r.chosenIndex : 0;
-  return r.all?.[idx]?.results ?? [];
+  return r.results ?? r.all?.[0]?.results ?? [];
 }
 
 function clamp(n, min, max) {
@@ -87,55 +123,106 @@ const _resolvedAttackMsgIds = new Set();
 
 async function rollPool(pool, mode = "normal") {
   pool = clamp(num(pool, 1), 1, 20);
+  const opts = typeof mode === "object" && mode ? mode : {};
+  const fullMode = String(opts.fullMode ?? "normal");
+  let luck = clamp(Math.round(num(opts.luck, 0)), 0, 20);
+  let unluck = clamp(Math.round(num(opts.unluck, 0)), 0, 20);
 
   const rollOnce = async () => {
     const roll = new Roll(`${pool}dV`);
     await roll.evaluate();
-
     const results = (roll.dice?.[0]?.results ?? []).map((r) =>
       Number(r.result)
     );
     let successes = 0;
     for (const v of results) successes += dvSuccesses(v);
-
     return { roll, results, successes };
   };
 
-  if (mode === "normal") {
+  if (fullMode === "adv" || fullMode === "dis") {
     const a = await rollOnce();
-    return { mode, pool, successes: a.successes, rolls: [a.roll], all: [a] };
+    const b = await rollOnce();
+    const chosen =
+      fullMode === "adv"
+        ? b.successes > a.successes
+          ? b
+          : a
+        : b.successes < a.successes
+        ? b
+        : a;
+    return {
+      pool,
+      successes: chosen.successes,
+      rolls: [a.roll, b.roll],
+      results: chosen.results,
+      luck: 0,
+      unluck: 0,
+      fullMode,
+    };
   }
 
-  const a = await rollOnce();
-  const b = await rollOnce();
-  const chosen =
-    mode === "adv"
-      ? a.successes >= b.successes
-        ? a
-        : b
-      : a.successes <= b.successes
-      ? a
-      : b;
+  const diff = luck - unluck;
+  if (diff > 0) {
+    luck = diff;
+    unluck = 0;
+  } else if (diff < 0) {
+    unluck = Math.abs(diff);
+    luck = 0;
+  }
+  luck = Math.min(luck, pool);
+  unluck = Math.min(unluck, pool);
+
+  const roll = new Roll(`${pool}dV`);
+  await roll.evaluate();
+
+  const results = (roll.dice?.[0]?.results ?? []).map((r) =>
+    Number(r.result)
+  );
+  const rolls = [roll];
+  const rerolls = [];
+
+  const applyReroll = async (index, preferHigher) => {
+    const before = results[index];
+    const rr = await rollDieOnce();
+    const after = rr.result;
+    const chosen = preferHigher ? Math.max(before, after) : Math.min(before, after);
+    results[index] = chosen;
+    rolls.push(rr.roll);
+    return { index, before, after, chosen };
+  };
+
+  for (let i = 0; i < luck; i++) {
+    const idx = pickIndex(results, false);
+    rerolls.push({ kind: "luck", ...(await applyReroll(idx, true)) });
+  }
+  for (let i = 0; i < unluck; i++) {
+    const idx = pickIndex(results, true);
+    rerolls.push({ kind: "unluck", ...(await applyReroll(idx, false)) });
+  }
+
+  let successes = 0;
+  for (const v of results) successes += dvSuccesses(v);
 
   return {
-    mode,
     pool,
-    successes: chosen.successes,
-    rolls: [a.roll, b.roll],
-    all: [a, b],
-    chosenIndex: chosen === a ? 0 : 1,
+    successes,
+    rolls,
+    results,
+    luck,
+    unluck,
+    fullMode: "normal",
+    rerolls,
   };
 }
 
 function renderModeDetailSmall(r) {
-  if (r.mode === "normal")
-    return `<div class="v-sub">Обычный · пул ${r.pool}</div>`;
-  const a = r.all?.[0]?.successes ?? 0;
-  const b = r.all?.[1]?.successes ?? 0;
-  return `<div class="v-sub">${
-    r.mode === "adv" ? "Преимущество" : "Помеха"
-  } · пул ${r.pool}</div>
-          <div class="v-sub">1 = ${a} · 2 = ${b} · итог ${r.successes}</div>`;
+  if (!r) return "";
+  const fullText = fullModeLabel(r.fullMode);
+  const text =
+    r.fullMode === "adv" || r.fullMode === "dis"
+      ? fullText
+      : modeLabel(r.luck, r.unluck);
+  return `<div class="v-sub">${text} · пул ${r.pool}</div>`;
 }
 
 function prettyAttrLabel(key) {
@@ -172,6 +259,17 @@ function getWeaponDamage(actor, weaponItem = null) {
   return best;
 }
 
+function getWeaponRollMods(weaponItem) {
+  const effects = normalizeEffects(weaponItem?.system?.effects);
+  let adv = 0;
+  let dis = 0;
+  for (const eff of effects) {
+    if (eff.key === "weaponAdv") adv += clamp(num(eff.value, 0), 0, 20);
+    if (eff.key === "weaponDis") dis += clamp(num(eff.value, 0), 0, 20);
+  }
+  return { adv, dis };
+}
+
 function hasHeavyArmorEquipped(actor) {
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
@@ -199,6 +297,16 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
 function attackDialog({ actor, weaponName }) {
   const keys = listAttributeKeys(actor);
   const defaultKey = keys.includes("combat") ? "combat" : keys[0] ?? "combat";
+  const scope = game.system?.id ?? "Vitruvium";
+  const defaultLuck = clamp(num(actor?.getFlag(scope, "rollLuck"), 0), 0, 20);
+  const defaultUnluck = clamp(
+    num(actor?.getFlag(scope, "rollUnluck"), 0),
+    0,
+    20
+  );
+  const savedFullMode = actor?.getFlag(scope, "rollFullMode");
+  const defaultFullMode =
+    savedFullMode === "adv" || savedFullMode === "dis" ? savedFullMode : "normal";
   const options = keys
     .map(
       (k) =>
@@ -215,64 +323,119 @@ function attackDialog({ actor, weaponName }) {
         <label>Атрибут атаки
           <select name="attr" style="width:100%">${options}</select>
         </label>
+        <label>Удачливый бросок
+          <select name="fullMode" style="width:100%">
+            <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""}>Обычный</option>
+            <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""}>Удачливый (полный переброс)</option>
+            <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""}>Неудачливый (полный переброс)</option>
+          </select>
+        </label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <label>Преимущество
+            <input type="number" name="luck" value="${defaultLuck}" min="0" max="20" step="1" style="width:100%"/>
+          </label>
+          <label>Помеха
+            <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
+          </label>
+        </div>
+        <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
       </div>`,
       buttons: {
-        normal: {
-          label: "Обычная",
+        roll: {
+          label: "Бросить",
           callback: (html) =>
             resolve({
               attrKey: html.find("select[name='attr']").val(),
-              mode: "normal",
+              luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+              unluck: clamp(
+                num(html.find("input[name='unluck']").val(), 0),
+                0,
+                20
+              ),
+              fullMode: html.find("select[name='fullMode']").val(),
             }),
         },
-        adv: {
-          label: "С преимуществом",
-          callback: (html) =>
-            resolve({
-              attrKey: html.find("select[name='attr']").val(),
-              mode: "adv",
-            }),
-        },
-        dis: {
-          label: "С помехой",
-          callback: (html) =>
-            resolve({
-              attrKey: html.find("select[name='attr']").val(),
-              mode: "dis",
-            }),
+        cancel: {
+          label: "Отмена",
+          callback: () => resolve(null),
         },
       },
+      default: "roll",
       close: () => resolve(null),
     }).render(true);
   });
 }
 
-function defenseDialog({ allowDodge = true } = {}) {
+function defenseDialog({ allowDodge = true, actor = null } = {}) {
   return new Promise((resolve) => {
+    const scope = game.system?.id ?? "Vitruvium";
+    const defaultLuck = actor
+      ? clamp(num(actor.getFlag(scope, "rollLuck"), 0), 0, 20)
+      : 0;
+    const defaultUnluck = actor
+      ? clamp(num(actor.getFlag(scope, "rollUnluck"), 0), 0, 20)
+      : 0;
+    const savedFullMode = actor?.getFlag(scope, "rollFullMode");
+    const defaultFullMode =
+      savedFullMode === "adv" || savedFullMode === "dis"
+        ? savedFullMode
+        : "normal";
     const buttons = {};
     if (allowDodge) {
-      buttons.dodgeNormal = {
-        label: "Уклонение (обычное)",
-        callback: () => resolve({ type: "dodge", mode: "normal" }),
-      };
-      buttons.dodgeAdv = {
-        label: "Уклонение (с преимуществом)",
-        callback: () => resolve({ type: "dodge", mode: "adv" }),
-      };
-      buttons.dodgeDis = {
-        label: "Уклонение (с помехой)",
-        callback: () => resolve({ type: "dodge", mode: "dis" }),
+      buttons.dodge = {
+        label: "Уклонение",
+        callback: (html) =>
+          resolve({
+            type: "dodge",
+            luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+            unluck: clamp(
+              num(html.find("input[name='unluck']").val(), 0),
+              0,
+              20
+            ),
+            fullMode: html.find("select[name='fullMode']").val(),
+          }),
       };
     }
     buttons.block = {
       label: allowDodge ? "Блок" : "Принять удар (тяж. броня)",
-      callback: () => resolve({ type: "block" }),
+      callback: (html) =>
+        resolve({
+          type: "block",
+          luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+          unluck: clamp(
+            num(html.find("input[name='unluck']").val(), 0),
+            0,
+            20
+          ),
+          fullMode: html.find("select[name='fullMode']").val(),
+        }),
     };
     new Dialog({
       title: "Защита",
-      content: allowDodge
-        ? `<p>Выберите реакцию защиты</p>`
-        : `<p><b>Тяжёлые доспехи:</b> уклонение недоступно. Можно только принять удар.</p>`,
+      content: `<div style="display:grid; gap:8px;">
+        <div>${
+          allowDodge
+            ? "Выберите реакцию защиты"
+            : "<b>Тяжёлые доспехи:</b> уклонение недоступно. Можно только принять удар."
+        }</div>
+        <label>Удачливый бросок
+          <select name="fullMode" style="width:100%">
+            <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""}>Обычный</option>
+            <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""}>Удачливый (полный переброс)</option>
+            <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""}>Неудачливый (полный переброс)</option>
+          </select>
+        </label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <label>Преимущество
+            <input type="number" name="luck" value="${defaultLuck}" min="0" max="20" step="1" style="width:100%"/>
+          </label>
+          <label>Помеха
+            <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
+          </label>
+        </div>
+        <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
+      </div>`,
       buttons,
       close: () => resolve(null),
     }).render(true);
@@ -596,26 +759,62 @@ Hooks.on("renderChatMessage", (message, html) => {
     }
 
     const allowDodge = !hasHeavyArmorEquipped(defender);
-    const choice = await defenseDialog({ allowDodge });
+    const choice = await defenseDialog({ allowDodge, actor: defender });
     if (!choice) return;
 
     let defRoll, armorShown, reactionLabel, defenseType;
+    const fullText = fullModeLabel(choice.fullMode);
     if (choice.type === "block") {
       defenseType = "block";
-      defRoll = await rollPool(
-        num(defender.system?.attributes?.condition, 1),
-        "normal"
-      );
+      const poolVal = num(defender.system?.attributes?.condition, 1);
+      let appliedLuck = Math.min(choice.luck ?? 0, poolVal);
+      let appliedUnluck = Math.min(choice.unluck ?? 0, poolVal);
+      const diff = appliedLuck - appliedUnluck;
+      if (diff > 0) {
+        appliedLuck = diff;
+        appliedUnluck = 0;
+      } else if (diff < 0) {
+        appliedUnluck = Math.abs(diff);
+        appliedLuck = 0;
+      }
+      const modeText =
+        choice.fullMode === "adv" || choice.fullMode === "dis"
+          ? fullText
+          : modeLabel(appliedLuck, appliedUnluck);
+      const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
+      defRoll = await rollPool(poolVal, {
+        luck: choice.luck,
+        unluck: choice.unluck,
+        fullMode: choice.fullMode,
+      });
       armorShown = getArmorTotal(defender, { includeShield: true });
-      reactionLabel = allowDodge ? "Блок" : "Принять удар (тяж. броня)";
+      const baseLabel = allowDodge ? "Блок" : "Принять удар (тяж. броня)";
+      reactionLabel = `${baseLabel}${modeSuffix}`;
     } else {
       defenseType = "dodge";
-      defRoll = await rollPool(
-        num(defender.system?.attributes?.movement, 1),
-        choice.mode ?? "normal"
-      );
+      const poolVal = num(defender.system?.attributes?.movement, 1);
+      let appliedLuck = Math.min(choice.luck ?? 0, poolVal);
+      let appliedUnluck = Math.min(choice.unluck ?? 0, poolVal);
+      const diff = appliedLuck - appliedUnluck;
+      if (diff > 0) {
+        appliedLuck = diff;
+        appliedUnluck = 0;
+      } else if (diff < 0) {
+        appliedUnluck = Math.abs(diff);
+        appliedLuck = 0;
+      }
+      const modeText =
+        choice.fullMode === "adv" || choice.fullMode === "dis"
+          ? fullText
+          : modeLabel(appliedLuck, appliedUnluck);
+      const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
+      defRoll = await rollPool(poolVal, {
+        luck: choice.luck,
+        unluck: choice.unluck,
+        fullMode: choice.fullMode,
+      });
       armorShown = getArmorTotal(defender, { includeShield: false });
-      reactionLabel = `Уклонение (${choice.mode ?? "normal"})`;
+      reactionLabel = `Уклонение${modeSuffix}`;
     }
 
     // Public defense roll
@@ -668,7 +867,14 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
       attackerActor.system?.attributes?.[atkChoice.attrKey],
       1
     );
-    const atkRoll = await rollPool(atkPool, atkChoice.mode);
+    const weaponMods = getWeaponRollMods(weaponItem);
+    const totalLuck = num(atkChoice.luck, 0) + weaponMods.adv;
+    const totalUnluck = num(atkChoice.unluck, 0) + weaponMods.dis;
+    const atkRoll = await rollPool(atkPool, {
+      luck: totalLuck,
+      unluck: totalUnluck,
+      fullMode: atkChoice.fullMode,
+    });
 
     const targetToken = [...game.user.targets][0];
     const attackerToken = canvas.tokens.controlled?.[0] ?? null;
@@ -745,7 +951,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
           weaponName,
           weaponDamage,
           atkAttrKey: atkChoice.attrKey,
-          atkMode: atkRoll.mode,
+          atkLuck: atkRoll.luck,
+          atkUnluck: atkRoll.unluck,
+          atkFullMode: atkRoll.fullMode,
           atkSuccesses: atkRoll.successes,
           atkPool: atkRoll.pool,
           gmNpcAttack,
