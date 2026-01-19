@@ -177,7 +177,7 @@
 
         <div class="v-rollmode" role="group" aria-label="Режим бросков">
           <div class="v-rollmode__group">
-            <div class="v-rollmode__label">Преимущество</div>
+            <div class="v-rollmode__label">Adv</div>
             <div class="v-rollmode__ctrl">
               <button type="button" class="v-mini" data-action="luck-dec">-</button>
               <div class="v-rollmode__val">{{vitruvium.rollLuck}}</div>
@@ -186,7 +186,7 @@
           </div>
 
           <div class="v-rollmode__group">
-            <div class="v-rollmode__label">Помеха</div>
+            <div class="v-rollmode__label">Dis</div>
             <div class="v-rollmode__ctrl">
               <button type="button" class="v-mini" data-action="unluck-dec">-</button>
               <div class="v-rollmode__val">{{vitruvium.rollUnluck}}</div>
@@ -195,26 +195,26 @@
           </div>
 
           <div class="v-rollmode__group">
-            <div class="v-rollmode__label">Удачливый</div>
+            <div class="v-rollmode__label">Luck</div>
             <div class="v-rollmode__ctrl">
               <button
                 type="button"
                 class="v-mini {{#if (eq vitruvium.rollFullMode "normal")}}is-active{{/if}}"
                 data-action="fullmode-set"
                 data-mode="normal"
-              >Обычн.</button>
+              >Norm</button>
               <button
                 type="button"
                 class="v-mini {{#if (eq vitruvium.rollFullMode "adv")}}is-active{{/if}}"
                 data-action="fullmode-set"
                 data-mode="adv"
-              >Удачл.</button>
+              >Luck</button>
               <button
                 type="button"
                 class="v-mini {{#if (eq vitruvium.rollFullMode "dis")}}is-active{{/if}}"
                 data-action="fullmode-set"
                 data-mode="dis"
-              >Неудачл.</button>
+              >Unluck</button>
             </div>
           </div>
 

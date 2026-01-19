@@ -466,14 +466,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
     // ===== Items (type: item) =====
     html.find("[data-action='create-item']").on("click", async (ev) => {
       ev.preventDefault();
-      await this.actor.createEmbeddedDocuments("Item", [
-        {
-          name: "Новый предмет",
-          type: "item",
-          system: { description: "", quantity: 1, effects: [] },
-        },
-      ]);
-    });
+        await this.actor.createEmbeddedDocuments("Item", [
+          {
+            name: "Новый предмет",
+            type: "item",
+            system: { description: "", quantity: 1, price: 0, effects: [] },
+          },
+        ]);
+      });
 
     // ===== Toggle item equipped state =====
     html.find("[data-action='toggle-equip']").on("click", async (ev) => {

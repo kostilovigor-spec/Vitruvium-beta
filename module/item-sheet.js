@@ -1,4 +1,4 @@
-import { openEffectsDialog } from "./effects.js";
+import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
 
 export class VitruviumItemSheet extends ItemSheet {
   static get defaultOptions() {
@@ -26,6 +26,8 @@ export class VitruviumItemSheet extends ItemSheet {
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
     data.vitruvium.descriptionHTML = safe;
+    data.vitruvium.effectTargets = EFFECT_TARGETS;
+    data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
 
     return data;
   }
@@ -33,73 +35,105 @@ export class VitruviumItemSheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
+    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+    const num = (v, d) => {
+      const x = Number(v);
+      return Number.isNaN(x) ? d : x;
+    };
+
+    const form = html.closest("form");
     const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
     const btn = html.find("[data-action='toggle-desc']");
-    const effectsBtn = html.find("[data-action='edit-effects']");
-
-    // старт: режим чтения
-    edit.hide();
-    view.show();
-    btn.text("Редактировать описание");
 
     const setMode = (isEdit) => {
-      if (isEdit) {
-        view.hide();
-        edit.show();
-        btn.text("Готово");
-        edit.trigger("focus");
-      } else {
-        edit.hide();
-        view.show();
-        btn.text("Редактировать описание");
-      }
+      form.toggleClass("is-edit", isEdit);
+      btn.toggleClass("is-active", isEdit);
+      btn.attr("title", isEdit ? "Готово" : "Редактировать");
+      if (isEdit) edit.trigger("focus");
     };
 
-    let editing = false;
+    if (this._editing === undefined) this._editing = false;
+    setMode(this._editing);
 
     btn.on("click", async (ev) => {
       ev.preventDefault();
 
       // переключаем режим
-      editing = !editing;
+      this._editing = !this._editing;
+      setMode(this._editing);
 
-      // если выключаем редактирование — сохраняем напрямую в Item
-      if (!editing) {
+      // если выключаем редактирование - сохраняем напрямую в Item
+      if (!this._editing) {
         const text = String(edit.val() ?? "");
         await this.item.update({ "system.description": text });
         // После update Foundry перерендерит лист, и getData() снова заполнит descriptionHTML
         return;
       }
-      const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
-      const num = (v, d) => {
-        const x = Number(v);
-        return Number.isNaN(x) ? d : x;
-      };
-
-      // Clamp item bonuses to 0..6 (only for item type)
-      if (this.item.type === "item") {
-        html
-          .find("input[name='system.attackBonus']")
-          .on("change", async (ev) => {
-            const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
-            await this.item.update({ "system.attackBonus": v });
-          });
-
-        html
-          .find("input[name='system.armorBonus']")
-          .on("change", async (ev) => {
-            const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
-            await this.item.update({ "system.armorBonus": v });
-          });
-      }
-
-      setMode(true);
     });
 
-    effectsBtn.on("click", async (ev) => {
+    // Clamp item bonuses to 0..6 (only for item type)
+    if (this.item.type === "item") {
+      html.find("input[name='system.attackBonus']").on("change", async (ev) => {
+        const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
+        await this.item.update({ "system.attackBonus": v });
+      });
+
+      html.find("input[name='system.armorBonus']").on("change", async (ev) => {
+        const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
+        await this.item.update({ "system.armorBonus": v });
+      });
+    }
+
+    const renderEffectRow = (effect = {}) => {
+      const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
+      const value = Number.isFinite(effect.value) ? effect.value : 0;
+      const options = EFFECT_TARGETS.map((opt, idx) => {
+        const selected =
+          key ? opt.key === key : idx === 0 ? true : false;
+        return `<option value="${opt.key}"${
+          selected ? " selected" : ""
+        }>${opt.label}</option>`;
+      }).join("");
+
+      return `
+        <div class="v-effects__row">
+          <select class="v-effects__key">${options}</select>
+          <input type="number" class="v-effects__val" value="${value}" step="1" />
+          <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+        </div>
+      `;
+    };
+
+    const updateEffects = async () => {
+      const next = [];
+      html.find(".v-effects__row").each((_, row) => {
+        const $row = $(row);
+        const key = String($row.find(".v-effects__key").val() ?? "");
+        const value = num($row.find(".v-effects__val").val(), 0);
+        if (!EFFECT_TARGETS.find((t) => t.key === key)) return;
+        if (!Number.isFinite(value) || value === 0) return;
+        next.push({ key, value });
+      });
+      await this.item.update({ "system.effects": next });
+    };
+
+    html.on("click", "[data-action='add-effect']", (ev) => {
       ev.preventDefault();
-      await openEffectsDialog(this.item);
+      html.find(".v-effects__rows").append(renderEffectRow());
+    });
+
+    html.on("click", ".v-effects__remove", (ev) => {
+      ev.preventDefault();
+      $(ev.currentTarget).closest(".v-effects__row").remove();
+      if (!html.find(".v-effects__row").length) {
+        html.find(".v-effects__rows").append(renderEffectRow());
+      }
+      updateEffects();
+    });
+
+    html.on("change", ".v-effects__key, .v-effects__val", () => {
+      updateEffects();
     });
   }
 }

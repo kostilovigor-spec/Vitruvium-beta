@@ -768,21 +768,34 @@ input[type="number"]::-webkit-inner-spin-button {
    ITEM SHEET (item-sheet.hbs)
    ========================================================= */
 .v-item__header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 128px 1fr auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 10px;
 }
-.v-item__title {
-  display: flex;
+.v-item__editbtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--v-border);
+  background: rgba(255, 255, 255, 0.55);
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.v-item__editbtn.is-active {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+.v-item__title {
+  display: contents;
 }
 .v-item__iconbox {
-  width: 64px;
-  height: 64px;
+  width: 128px;
+  height: 128px;
   border-radius: var(--r-lg);
   overflow: hidden;
   border: 1px solid var(--v-border-soft);
@@ -804,6 +817,76 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-item__body {
   display: grid;
   gap: 10px;
+}
+
+.v-item__headmain,
+.v-item__headcenter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.v-item__namewrap {
+  display: grid;
+  gap: 4px;
+}
+
+.v-item__nameinput {
+  width: 100%;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+.v-item__nameview {
+  font-size: 18px;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.v-item__statsrow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.v-item__stat {
+  display: grid;
+  gap: 4px;
+}
+
+.v-item__stat span {
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+.v-item__stat input {
+  height: 28px;
+  padding: 0 6px;
+  text-align: center;
+  font-weight: 900;
+}
+.v-item__field-text {
+  min-height: 28px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.25);
+}
+.v-item__field-input {
+  display: none;
+}
+.v-item.is-edit .v-item__field-input {
+  display: block;
+}
+.v-item.is-edit .v-item__field-text {
+  display: none;
 }
 
 .v-item__actions {
@@ -863,6 +946,14 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 0.22);
 }
+.v-item__panel {
+  padding: 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.22);
+  display: grid;
+  gap: 10px;
+}
 .v-item__deschead {
   display: flex;
   align-items: center;
@@ -879,6 +970,88 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .v-item__descedit {
   width: 100%;
+}
+.v-item__descedit {
+  display: none;
+}
+.v-item.is-edit .v-item__descedit {
+  display: block;
+}
+.v-item.is-edit .v-item__descview {
+  display: none;
+}
+
+.v-item__flags {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.v-item__flag {
+  padding: 4px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.2);
+}
+.v-item__toggles {
+  display: none;
+}
+.v-item.is-edit .v-item__toggles {
+  display: grid;
+  gap: 6px;
+}
+.v-item.is-edit .v-item__flags {
+  display: none;
+}
+
+.v-itemtabs {
+  margin-top: 10px;
+}
+.v-itemtabs__toggle {
+  display: none;
+}
+.v-itemtabs__nav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.v-itemtabs__tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+#v-item-tab-desc:checked ~ .v-itemtabs__nav label[for="v-item-tab-desc"],
+#v-item-tab-effects:checked ~ .v-itemtabs__nav label[for="v-item-tab-effects"] {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+.v-itemtabs__panel {
+  display: none;
+}
+#v-item-tab-desc:checked ~ .v-itemtabs__content .v-itemtabs__panel--desc {
+  display: block;
+}
+#v-item-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects {
+  display: block;
+}
+
+.v-item__effectshead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v-item__headright {
+  display: grid;
+  gap: 8px;
+  min-width: 140px;
 }
     /* ABILITY SHEET (ability-sheet.hbs)
     ========================================================= */ */

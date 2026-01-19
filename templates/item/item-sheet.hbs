@@ -1,19 +1,6 @@
 <form class="{{cssClass}} v-sheet v-item" autocomplete="off">
 
-  <!-- Title -->
   <header class="v-item__header">
-    <input
-      class="v-item__title"
-      type="text"
-      name="name"
-      value="{{item.name}}"
-      placeholder="Название предмета"
-    />
-  </header>
-
-  <!-- Body: icon left, description right -->
-  <section class="v-item__body">
-
     <div class="v-item__iconbox">
       <img
         class="v-item__icon"
@@ -21,47 +8,26 @@
         data-edit="img"
         title="{{item.name}}"
       />
-
-      <div class="v-item__qty">
-        <span class="v-item__qtylabel">Кол-во</span>
-        <input
-          class="v-item__qtyinput"
-          type="number"
-          name="system.quantity"
-          value="{{system.quantity}}"
-          data-dtype="Number"
-          min="0"
-        />
-      </div>
     </div>
 
-    <div class="v-item__descbox">
-      <div class="v-item__deschead">
-        <div class="v-h2">Описание</div>
-        <div class="v-line"></div>
+    <div class="v-item__headcenter">
+      <div class="v-item__namewrap">
+        <div class="v-item__field-text v-item__nameview">{{item.name}}</div>
+        <input
+          class="v-item__field-input v-item__nameinput"
+          type="text"
+          name="name"
+          value="{{item.name}}"
+          placeholder="Название предмета"
+        />
       </div>
 
-      <!-- Read-only view -->
-      <div class="v-item__descview" data-role="desc-view">
-        {{#if system.description}}
-          <div class="v-item__desccontent">{{{vitruvium.descriptionHTML}}}</div>
-        {{else}}
-          <div class="v-item__descplaceholder">Описание не задано.</div>
-        {{/if}}
-      </div>
-
-      <!-- Edit view (hidden by default) -->
-      <textarea
-        class="v-item__descedit"
-        name="system.description"
-        data-role="desc-edit"
-      >{{system.description}}</textarea>
-
-      <!-- Bonuses -->
-      <div class="v-row v-row--bonuses">
-        <div class="v-bonus">
-          <div class="v-bonus__label">Урон оружия</div>
+      <div class="v-item__statsrow">
+        <label class="v-item__stat">
+          <span>Урон</span>
+          <div class="v-item__field-text">{{system.attackBonus}}</div>
           <input
+            class="v-item__field-input"
             type="number"
             name="system.attackBonus"
             value="{{system.attackBonus}}"
@@ -69,11 +35,13 @@
             min="0"
             max="6"
           >
-        </div>
+        </label>
 
-        <div class="v-bonus">
-          <div class="v-bonus__label">Броня</div>
+        <label class="v-item__stat">
+          <span>Броня</span>
+          <div class="v-item__field-text">{{system.armorBonus}}</div>
           <input
+            class="v-item__field-input"
             type="number"
             name="system.armorBonus"
             value="{{system.armorBonus}}"
@@ -81,46 +49,150 @@
             min="0"
             max="6"
           >
-        </div>
-      </div>
-
-      <div class="v-item__actions">
-        <button
-          type="button"
-          class="v-btn v-btn--ghost"
-          data-action="toggle-desc"
-        >
-          Редактировать описание
-        </button>
-        <button
-          type="button"
-          class="v-btn v-btn--ghost"
-          data-action="edit-effects"
-        >
-          Эффекты
-        </button>
-      </div>
-
-      <!-- Toggles -->
-      <div class="v-item__toggles">
-        <label class="v-check">
-          <input type="checkbox" name="system.equipped" {{#if system.equipped}}checked{{/if}}>
-          <span>Надето</span>
-        </label>
-
-        <label class="v-check">
-          <input type="checkbox" name="system.isShield" {{checked system.isShield}}>
-          <span>Щит</span>
-        </label>
-
-        <label class="v-check">
-          <input type="checkbox" name="system.isHeavyArmor" {{checked system.isHeavyArmor}}>
-          <span>Тяжёлые доспехи</span>
         </label>
       </div>
-
     </div>
 
+    <div class="v-item__headright">
+      <label class="v-item__stat">
+        <span>Цена</span>
+        <div class="v-item__field-text">{{system.price}}</div>
+        <input
+          class="v-item__field-input"
+          type="number"
+          name="system.price"
+          value="{{system.price}}"
+          data-dtype="Number"
+          min="0"
+        >
+      </label>
+
+      <label class="v-item__stat">
+        <span>Кол-во</span>
+        <div class="v-item__field-text">{{system.quantity}}</div>
+        <input
+          class="v-item__field-input"
+          type="number"
+          name="system.quantity"
+          value="{{system.quantity}}"
+          data-dtype="Number"
+          min="0"
+        >
+      </label>
+    </div>
+  </header>
+
+  <section class="v-itemtabs">
+    <input
+      type="radio"
+      id="v-item-tab-desc"
+      name="v-item-tabs"
+      class="v-itemtabs__toggle"
+      checked
+    />
+    <input
+      type="radio"
+      id="v-item-tab-effects"
+      name="v-item-tabs"
+      class="v-itemtabs__toggle"
+    />
+
+    <div class="v-itemtabs__nav" role="tablist">
+      <button
+        type="button"
+        class="v-item__editbtn"
+        data-action="toggle-desc"
+        title="Редактировать"
+      >
+        <i class="fas fa-pen"></i>
+      </button>
+      <label class="v-itemtabs__tab" for="v-item-tab-desc" role="tab">Описание</label>
+      <label class="v-itemtabs__tab" for="v-item-tab-effects" role="tab">Эффекты</label>
+    </div>
+
+    <div class="v-itemtabs__content">
+      <section class="v-itemtabs__panel v-itemtabs__panel--desc" role="tabpanel">
+        <div class="v-item__panel">
+          <div class="v-item__deschead">
+            <div class="v-h2">Описание</div>
+            <div class="v-line"></div>
+          </div>
+
+          <div class="v-item__descview" data-role="desc-view">
+            {{#if system.description}}
+              <div class="v-item__desccontent">{{{vitruvium.descriptionHTML}}}</div>
+            {{else}}
+              <div class="v-item__descplaceholder">Описание не задано.</div>
+            {{/if}}
+          </div>
+
+          <textarea
+            class="v-item__descedit"
+            name="system.description"
+            data-role="desc-edit"
+          >{{system.description}}</textarea>
+
+          <div class="v-item__flags">
+            <div class="v-item__flag">Надето: {{#if system.equipped}}Да{{else}}Нет{{/if}}</div>
+            <div class="v-item__flag">Щит: {{#if system.isShield}}Да{{else}}Нет{{/if}}</div>
+            <div class="v-item__flag">Тяжёлые доспехи: {{#if system.isHeavyArmor}}Да{{else}}Нет{{/if}}</div>
+          </div>
+
+          <div class="v-item__toggles">
+            <label class="v-check">
+              <input type="checkbox" name="system.equipped" {{#if system.equipped}}checked{{/if}}>
+              <span>Надето</span>
+            </label>
+
+            <label class="v-check">
+              <input type="checkbox" name="system.isShield" {{checked system.isShield}}>
+              <span>Щит</span>
+            </label>
+
+            <label class="v-check">
+              <input type="checkbox" name="system.isHeavyArmor" {{checked system.isHeavyArmor}}>
+              <span>Тяжёлые доспехи</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="v-itemtabs__panel v-itemtabs__panel--effects" role="tabpanel">
+        <div class="v-item__panel">
+          <div class="v-item__effectshead">
+            <div class="v-h2">Эффекты</div>
+            <div class="v-line"></div>
+            <button type="button" class="v-mini" data-action="add-effect">+</button>
+          </div>
+
+          <div class="v-effects__rows">
+            {{#if vitruvium.effects.length}}
+              {{#each vitruvium.effects as |eff|}}
+                <div class="v-effects__row">
+                  <select class="v-effects__key">
+                    {{#each ../vitruvium.effectTargets as |opt|}}
+                      <option value="{{opt.key}}" {{#if (eq opt.key eff.key)}}selected{{/if}}>{{opt.label}}</option>
+                    {{/each}}
+                  </select>
+                  <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
+                  <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+                </div>
+              {{/each}}
+            {{else}}
+              <div class="v-effects__row">
+                <select class="v-effects__key">
+                  {{#each vitruvium.effectTargets as |opt|}}
+                    <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
+                  {{/each}}
+                </select>
+                <input type="number" class="v-effects__val" value="0" step="1" />
+                <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+              </div>
+            {{/if}}
+          </div>
+        </div>
+      </section>
+    </div>
   </section>
 
 </form>

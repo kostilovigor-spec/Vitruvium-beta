@@ -1,4 +1,4 @@
-const EFFECT_TARGETS = [
+export const EFFECT_TARGETS = [
   { key: "condition", label: "Самочувствие" },
   { key: "attention", label: "Внимание" },
   { key: "movement", label: "Движение" },
