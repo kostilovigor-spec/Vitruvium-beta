@@ -4,18 +4,22 @@
   "description": "Custom system with adventures are coming soon!",
   "version": "0.1.1",
   "authors": [{ "name": "Dangalor" }],
-  "minimumCoreVersion": "12",
-  "compatibleCoreVersion": "13",
   "compatibility": {
     "minimum": "12",
     "verified": "13",
     "maximum": "13"
   },
-
-  "template": "template.json",
   "documentTypes": {
-    "Actor": ["character", "npc"],
-    "Item": ["ability", "item", "skill", "state"]
+    "Actor": {
+      "character": {},
+      "npc": {}
+    },
+    "Item": {
+      "ability": {},
+      "item": {},
+      "skill": {},
+      "state": {}
+    }
   },
   "esmodules": [
     "module/system.js",

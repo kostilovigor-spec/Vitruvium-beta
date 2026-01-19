@@ -1,4 +1,4 @@
-import { playAutomatedAnimation } from "./auto-animations.js";
+﻿import { playAutomatedAnimation } from "./auto-animations.js";
 import { normalizeEffects, collectEffectTotals, getEffectValue } from "./effects.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM-resolve via createChatMessage hook)
@@ -599,8 +599,11 @@ function computeDamageCompact({
   const diff = atkS - defS;
 
   if (defenseType === "block") {
-    const dmg = Math.max(0, weaponDamage + diff - armorFull);
-    const compact = `${weaponDamage} + (${atkS}−${defS}) − ${armorFull} = ${dmg}`;
+    const baseReduction = Math.ceil(armorFull / 2);
+    const baseAfter = Math.max(0, weaponDamage - baseReduction);
+    const diffAfter = Math.max(0, diff - armorFull);
+    const dmg = baseAfter + diffAfter;
+    const compact = `${weaponDamage} - ceil(${armorFull}/2) + max(0, (${atkS}-${defS})-${armorFull}) = ${dmg}`;
     return { damage: dmg, compact, hit: true };
   }
 
@@ -1008,3 +1011,4 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     ui.notifications?.error(`Ошибка атаки: ${e?.message ?? e}`);
   }
 }
+
