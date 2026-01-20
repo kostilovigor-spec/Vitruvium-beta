@@ -133,15 +133,6 @@ export class VitruviumCharacterSheet extends ActorSheet {
       },
     ];
 
-    const savedLuck = this.actor.getFlag(scope, "rollLuck");
-    const savedUnluck = this.actor.getFlag(scope, "rollUnluck");
-    data.vitruvium.rollLuck = clamp(num(savedLuck, 0), 0, 20);
-    data.vitruvium.rollUnluck = clamp(num(savedUnluck, 0), 0, 20);
-    const savedFullMode = this.actor.getFlag(scope, "rollFullMode");
-    data.vitruvium.rollFullMode =
-      savedFullMode === "adv" || savedFullMode === "dis"
-        ? savedFullMode
-        : "normal";
     const savedTab = this.actor.getFlag(scope, "activeTab");
     data.vitruvium.activeTab =
       savedTab === "abi" || savedTab === "skill" || savedTab === "state"
@@ -202,52 +193,51 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
     const scope = game.system.id;
 
-    const getRollLuck = () =>
-      clamp(num(this.actor.getFlag(scope, "rollLuck"), 0), 0, 20);
-    const getRollUnluck = () =>
-      clamp(num(this.actor.getFlag(scope, "rollUnluck"), 0), 0, 20);
-    const getRollFullMode = () => {
-      const mode = this.actor.getFlag(scope, "rollFullMode");
-      return mode === "adv" || mode === "dis" ? mode : "normal";
-    };
-
-    html.find("[data-action='luck-inc']").on("click", async (ev) => {
-      ev.preventDefault();
-      const next = clamp(getRollLuck() + 1, 0, 20);
-      await this.actor.setFlag(scope, "rollLuck", next);
-    });
-
-    html.find("[data-action='luck-dec']").on("click", async (ev) => {
-      ev.preventDefault();
-      const next = clamp(getRollLuck() - 1, 0, 20);
-      await this.actor.setFlag(scope, "rollLuck", next);
-    });
-
-    html.find("[data-action='unluck-inc']").on("click", async (ev) => {
-      ev.preventDefault();
-      const next = clamp(getRollUnluck() + 1, 0, 20);
-      await this.actor.setFlag(scope, "rollUnluck", next);
-    });
-
-    html.find("[data-action='unluck-dec']").on("click", async (ev) => {
-      ev.preventDefault();
-      const next = clamp(getRollUnluck() - 1, 0, 20);
-      await this.actor.setFlag(scope, "rollUnluck", next);
-    });
-
-    html.find("[data-action='luck-reset']").on("click", async (ev) => {
-      ev.preventDefault();
-      await this.actor.setFlag(scope, "rollLuck", 0);
-      await this.actor.setFlag(scope, "rollUnluck", 0);
-      await this.actor.setFlag(scope, "rollFullMode", "normal");
-    });
-
-    html.find("[data-action='fullmode-set']").on("click", async (ev) => {
-      ev.preventDefault();
-      const mode = ev.currentTarget.dataset.mode;
-      const next = mode === "adv" || mode === "dis" ? mode : "normal";
-      await this.actor.setFlag(scope, "rollFullMode", next);
-    });
+    const rollModeDialog = async (title) =>
+      new Promise((resolve) => {
+        const defaultLuck = 0;
+        const defaultUnluck = 0;
+        const defaultFullMode = "normal";
+        new Dialog({
+          title,
+          content: `<div style="display:grid; gap:8px;">
+            <label>Удачливый бросок
+              <select name="fullMode" style="width:100%">
+                <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""}>Обычный</option>
+                <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""}>Удачливый (полный переброс)</option>
+                <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""}>Неудачливый (полный переброс)</option>
+              </select>
+            </label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <label>Преимущество
+                <input type="number" name="luck" value="${defaultLuck}" min="0" max="20" step="1" style="width:100%"/>
+              </label>
+              <label>Помеха
+                <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
+              </label>
+            </div>
+            <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
+          </div>`,
+          buttons: {
+            roll: {
+              label: "Бросить",
+              callback: (html) =>
+                resolve({
+                  luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+                  unluck: clamp(
+                    num(html.find("input[name='unluck']").val(), 0),
+                    0,
+                    20
+                  ),
+                  fullMode: html.find("select[name='fullMode']").val(),
+                }),
+            },
+            cancel: { label: "Отмена", callback: () => resolve(null) },
+          },
+          default: "roll",
+          close: () => resolve(null),
+        }).render(true);
+      });
 
     // ===== Tabs: persist active tab per actor =====
     html.find(".v-tabs__toggle").on("change", async (ev) => {
@@ -322,9 +312,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const disKey = `dis_${key}`;
       const effectAdv = Math.max(0, getEffectValue(effectTotals, advKey));
       const effectDis = Math.max(0, getEffectValue(effectTotals, disKey));
-      const rollLuck = getRollLuck() + effectAdv;
-      const rollUnluck = getRollUnluck() + effectDis;
-      const rollFullMode = getRollFullMode();
+      const choice = await rollModeDialog(`Проверка: ${label}`);
+      if (!choice) return;
+      const rollLuck = choice.luck + effectAdv;
+      const rollUnluck = choice.unluck + effectDis;
+      const rollFullMode = choice.fullMode;
 
       // Call rolls.js in a backward/forward compatible way
       await rollSuccessDice({
@@ -404,9 +396,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
       ev.preventDefault();
 
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
-      const rollLuck = getRollLuck();
-      const rollUnluck = getRollUnluck();
-      const rollFullMode = getRollFullMode();
+      const choice = await rollModeDialog("Доп. кубы");
+      if (!choice) return;
+      const rollLuck = choice.luck;
+      const rollUnluck = choice.unluck;
+      const rollFullMode = choice.fullMode;
 
       await rollSuccessDice({
         pool: cur,
@@ -422,9 +416,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find("[data-action='luck-roll']").on("click", async (ev) => {
       ev.preventDefault();
 
-      const rollLuck = getRollLuck();
-      const rollUnluck = getRollUnluck();
-      const rollFullMode = getRollFullMode();
+      const choice = await rollModeDialog("Бросок удачи");
+      if (!choice) return;
+      const rollLuck = choice.luck;
+      const rollUnluck = choice.unluck;
+      const rollFullMode = choice.fullMode;
 
       await rollSuccessDice({
         pool: 1,

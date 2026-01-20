@@ -297,16 +297,9 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
 function attackDialog({ actor, weaponName }) {
   const keys = listAttributeKeys(actor);
   const defaultKey = keys.includes("combat") ? "combat" : keys[0] ?? "combat";
-  const scope = game.system?.id ?? "Vitruvium";
-  const defaultLuck = clamp(num(actor?.getFlag(scope, "rollLuck"), 0), 0, 20);
-  const defaultUnluck = clamp(
-    num(actor?.getFlag(scope, "rollUnluck"), 0),
-    0,
-    20
-  );
-  const savedFullMode = actor?.getFlag(scope, "rollFullMode");
-  const defaultFullMode =
-    savedFullMode === "adv" || savedFullMode === "dis" ? savedFullMode : "normal";
+  const defaultLuck = 0;
+  const defaultUnluck = 0;
+  const defaultFullMode = "normal";
   const options = keys
     .map(
       (k) =>
@@ -368,18 +361,9 @@ function attackDialog({ actor, weaponName }) {
 
 function defenseDialog({ allowDodge = true, actor = null } = {}) {
   return new Promise((resolve) => {
-    const scope = game.system?.id ?? "Vitruvium";
-    const defaultLuck = actor
-      ? clamp(num(actor.getFlag(scope, "rollLuck"), 0), 0, 20)
-      : 0;
-    const defaultUnluck = actor
-      ? clamp(num(actor.getFlag(scope, "rollUnluck"), 0), 0, 20)
-      : 0;
-    const savedFullMode = actor?.getFlag(scope, "rollFullMode");
-    const defaultFullMode =
-      savedFullMode === "adv" || savedFullMode === "dis"
-        ? savedFullMode
-        : "normal";
+    const defaultLuck = 0;
+    const defaultUnluck = 0;
+    const defaultFullMode = "normal";
     const buttons = {};
     if (allowDodge) {
       buttons.dodge = {

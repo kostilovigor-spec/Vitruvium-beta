@@ -169,65 +169,6 @@
 
       </section>
 
-      <section class="v-panel-adv v-rollmodepanel">
-        <div class="v-panel__head">
-          <div class="v-h2">Режим бросков</div>
-          <div class="v-line"></div>
-        </div>
-
-        <div class="v-rollmode" role="group" aria-label="Режим бросков">
-          <div class="v-rollmode__group">
-            <div class="v-rollmode__label">Adv</div>
-            <div class="v-rollmode__ctrl">
-              <button type="button" class="v-mini" data-action="luck-dec">-</button>
-              <div class="v-rollmode__val">{{vitruvium.rollLuck}}</div>
-              <button type="button" class="v-mini" data-action="luck-inc">+</button>
-            </div>
-          </div>
-
-          <div class="v-rollmode__group">
-            <div class="v-rollmode__label">Dis</div>
-            <div class="v-rollmode__ctrl">
-              <button type="button" class="v-mini" data-action="unluck-dec">-</button>
-              <div class="v-rollmode__val">{{vitruvium.rollUnluck}}</div>
-              <button type="button" class="v-mini" data-action="unluck-inc">+</button>
-            </div>
-          </div>
-
-          <div class="v-rollmode__group">
-            <div class="v-rollmode__label">Luck</div>
-            <div class="v-rollmode__ctrl">
-              <button
-                type="button"
-                class="v-mini {{#if (eq vitruvium.rollFullMode "normal")}}is-active{{/if}}"
-                data-action="fullmode-set"
-                data-mode="normal"
-              >Norm</button>
-              <button
-                type="button"
-                class="v-mini {{#if (eq vitruvium.rollFullMode "adv")}}is-active{{/if}}"
-                data-action="fullmode-set"
-                data-mode="adv"
-              >Luck</button>
-              <button
-                type="button"
-                class="v-mini {{#if (eq vitruvium.rollFullMode "dis")}}is-active{{/if}}"
-                data-action="fullmode-set"
-                data-mode="dis"
-              >Unluck</button>
-            </div>
-          </div>
-
-          <button type="button" class="v-mini v-rollmode__reset" data-action="luck-reset">
-            Нормальный
-          </button>
-        </div>
-
-        <div class="v-subtle" style="margin-top: 6px;">
-          Каждый счетчик преимущества/помехи перебрасывает один куб (атрибуты, удача, доп. кубы). Удачливый/неудачливый бросок игнорирует счетчики.
-        </div>
-      </section>
-
       <section class="v-tabs">
         <input
           type="radio"
