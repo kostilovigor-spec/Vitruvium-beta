@@ -20,6 +20,16 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
     // Унифицируем доступ к system
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
+    if (!Number.isFinite(Number(sys.rollDamageDice))) sys.rollDamageDice = 0;
+    if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
+    if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
+      const legacyMode = String(sys.rollMode ?? "none");
+      const legacyDice = Number.isFinite(Number(sys.rollDice))
+        ? Number(sys.rollDice)
+        : 0;
+      if (legacyMode === "damage") sys.rollDamageDice = legacyDice;
+      if (legacyMode === "save") sys.rollSaveDice = legacyDice;
+    }
     data.system = sys;
 
     return data;
@@ -56,6 +66,8 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $level = html.find("input[name='system.level']");
     const $cost = html.find("input[name='system.cost']");
     const $desc = html.find("textarea[name='system.description']");
+    const $rollDamage = html.find("input[name='system.rollDamageDice']");
+    const $rollSave = html.find("input[name='system.rollSaveDice']");
     const $active = html.find("input[name='system.active']");
     const $effectsBtn = html.find("[data-action='edit-effects']");
 
@@ -87,7 +99,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
       $level.prop("readonly", isReadonly);
       $cost.prop("readonly", isReadonly);
       $desc.prop("readonly", isReadonly);
-
       // косметика (если хочешь — можно использовать в CSS)
       $name.toggleClass("is-readonly", isReadonly);
       $level.toggleClass("is-readonly", isReadonly);
@@ -119,12 +130,24 @@ export class VitruviumAbilitySheet extends ItemSheet {
         6
       );
       const newDesc = String($desc.val() ?? "");
+      const newRollDamageDice = clamp(
+        num($rollDamage.val(), num(this.item.system?.rollDamageDice, 0)),
+        0,
+        20
+      );
+      const newRollSaveDice = clamp(
+        num($rollSave.val(), num(this.item.system?.rollSaveDice, 0)),
+        0,
+        20
+      );
 
       // Одним апдейтом
       await this.item.update({
         name: newName,
         "system.level": newLevel,
         "system.cost": newCost,
+        "system.rollDamageDice": newRollDamageDice,
+        "system.rollSaveDice": newRollSaveDice,
         "system.description": newDesc,
       });
 
@@ -154,6 +177,18 @@ export class VitruviumAbilitySheet extends ItemSheet {
     $effectsBtn.on("click", async (ev) => {
       ev.preventDefault();
       await openEffectsDialog(this.item);
+    });
+
+    const clampRollDice = async (input, field) => {
+      const value = clamp(num(input.val(), 0), 0, 20);
+      await this.item.update({ [field]: value });
+    };
+
+    $rollDamage.on("change", async (ev) => {
+      await clampRollDice($(ev.currentTarget), "system.rollDamageDice");
+    });
+    $rollSave.on("change", async (ev) => {
+      await clampRollDice($(ev.currentTarget), "system.rollSaveDice");
     });
   }
 }

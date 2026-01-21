@@ -1,9 +1,9 @@
 import { rollSuccessDice } from "./rolls.js";
-import { startWeaponAttackFlow } from "./combat.js";
 import {
   collectEffectTotals,
   getEffectValue,
   getEffectiveAttribute,
+  getGlobalRollModifiers,
 } from "./effects.js";
 import { playAutomatedAnimation } from "./auto-animations.js";
 
@@ -21,7 +21,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["vitruvium", "sheet", "actor"],
-      template: "systems/vitruvium/templates/actor/character-sheet.hbs",
+      template: "systems/Vitruvium/templates/actor/character-sheet.hbs",
       width: 640,
       minWidth: 640,
       height: 720,
@@ -307,16 +307,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const label = btn.dataset.label ?? key;
       const attrs = this.actor.system.attributes ?? {};
       const effectTotals = collectEffectTotals(this.actor);
+      const globalMods = getGlobalRollModifiers(effectTotals);
       let pool = getEffectiveAttribute(attrs, key, effectTotals);
-      const advKey = `adv_${key}`;
-      const disKey = `dis_${key}`;
-      const effectAdv = Math.max(0, getEffectValue(effectTotals, advKey));
-      const effectDis = Math.max(0, getEffectValue(effectTotals, disKey));
       const choice = await rollModeDialog(`Проверка: ${label}`);
       if (!choice) return;
-      const rollLuck = choice.luck + effectAdv;
-      const rollUnluck = choice.unluck + effectDis;
-      const rollFullMode = choice.fullMode;
+      const rollLuck = choice.luck + globalMods.adv;
+      const rollUnluck = choice.unluck + globalMods.dis;
+      const rollFullMode =
+        globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
       // Call rolls.js in a backward/forward compatible way
       await rollSuccessDice({
@@ -398,9 +396,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. кубы");
       if (!choice) return;
-      const rollLuck = choice.luck;
-      const rollUnluck = choice.unluck;
-      const rollFullMode = choice.fullMode;
+      const effectTotals = collectEffectTotals(this.actor);
+      const globalMods = getGlobalRollModifiers(effectTotals);
+      const rollLuck = choice.luck + globalMods.adv;
+      const rollUnluck = choice.unluck + globalMods.dis;
+      const rollFullMode =
+        globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
       await rollSuccessDice({
         pool: cur,
@@ -418,9 +419,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const choice = await rollModeDialog("Бросок удачи");
       if (!choice) return;
-      const rollLuck = choice.luck;
-      const rollUnluck = choice.unluck;
-      const rollFullMode = choice.fullMode;
+      const effectTotals = collectEffectTotals(this.actor);
+      const globalMods = getGlobalRollModifiers(effectTotals);
+      const rollLuck = choice.luck + globalMods.adv;
+      const rollUnluck = choice.unluck + globalMods.dis;
+      const rollFullMode =
+        globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
       await rollSuccessDice({
         pool: 1,
@@ -430,33 +434,6 @@ export class VitruviumCharacterSheet extends ActorSheet {
         unluck: rollUnluck,
         fullMode: rollFullMode,
       });
-    });
-
-    // ===== Attack button =====
-    html.find("[data-action='attack']").on("click", async (ev) => {
-      ev.preventDefault();
-
-      console.log("Vitruvium | Attack button clicked");
-
-      // Нужно: контролить свой токен
-      const myToken = canvas.tokens.controlled?.[0];
-      if (!myToken) {
-        ui.notifications?.warn(
-          "Выбери свой токен на сцене (controlled), затем выбери цель (target)."
-        );
-        return;
-      }
-
-      // Нужно: выбрать цель (target)
-      const target = [...game.user.targets]?.[0];
-      if (!target) {
-        ui.notifications?.warn(
-          "Выбери цель (target) перед атакой (клавиша T)."
-        );
-        return;
-      }
-
-      await startAttackFlow(this.actor);
     });
 
     // ===== Items (type: item) =====
@@ -644,6 +621,16 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const sys = item.system ?? {};
       const cost = Math.max(0, num(sys.cost, 0));
       const desc = String(sys.description ?? "");
+      const damageDice = clamp(num(sys.rollDamageDice, 0), 0, 20);
+      const saveDice = clamp(num(sys.rollSaveDice, 0), 0, 20);
+      let useAsAttack = damageDice > 0 || saveDice > 0;
+      if (!useAsAttack) {
+        const legacyMode = String(sys.rollMode ?? "none");
+        const legacyDice = clamp(num(sys.rollDice, 0), 0, 20);
+        if (legacyMode === "damage" || legacyMode === "save") {
+          useAsAttack = legacyDice > 0;
+        }
+      }
 
       // Current inspiration
       const insp = this.actor.system.attributes?.inspiration ?? {
@@ -668,6 +655,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
       await this.actor.update({
         "system.attributes.inspiration.value": inspValue - cost,
       });
+
+      if (useAsAttack) {
+        await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+        return;
+      }
 
       await playAutomatedAnimation({ actor: this.actor, item });
       const img = item.img ?? "icons/svg/mystery-man.svg";

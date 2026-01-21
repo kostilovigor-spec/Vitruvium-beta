@@ -53,6 +53,36 @@
         </div>
       </div>
 
+      <div class="v-abilitysheet__roll">
+        <div class="v-abilitysheet__costlabel">Бросок способности</div>
+        <div class="v-abilitysheet__rollrow">
+          <span class="v-abilitysheet__rolllabel">Урон</span>
+          <input
+            class="v-abilitysheet__costinput v-abilitysheet__rolldice"
+            type="number"
+            name="system.rollDamageDice"
+            value="{{system.rollDamageDice}}"
+            data-dtype="Number"
+            min="0"
+            max="20"
+          />
+          <span class="v-abilitysheet__costsuffix">dV</span>
+        </div>
+        <div class="v-abilitysheet__rollrow">
+          <span class="v-abilitysheet__rolllabel">Сложность</span>
+          <input
+            class="v-abilitysheet__costinput v-abilitysheet__rolldice"
+            type="number"
+            name="system.rollSaveDice"
+            value="{{system.rollSaveDice}}"
+            data-dtype="Number"
+            min="0"
+            max="20"
+          />
+          <span class="v-abilitysheet__costsuffix">dV</span>
+        </div>
+      </div>
+
       <div class="v-abilitysheet__actions">
         <label class="v-check">
           <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>

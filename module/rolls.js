@@ -42,7 +42,16 @@ function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
 }
 
-async function rollDieOnce() {
+async function rollDieOnce(roller) {
+  if (typeof roller === "function") {
+    const custom = await roller();
+    const result = Number(custom?.result ?? custom);
+    return {
+      roll: custom?.roll ?? null,
+      result: Number.isFinite(result) ? result : 1,
+    };
+  }
+
   const roll = await new Roll("1dV").evaluate();
   const result = roll.dice?.[0]?.results?.[0]?.result ?? 1;
   return { roll, result: Number(result) };
@@ -76,14 +85,34 @@ export async function rollSuccessDice({
   luck = 0,
   unluck = 0,
   fullMode = "normal", // "normal" | "adv" | "dis" (full reroll)
+  roller = null,
+  dieRoller = null,
+  silent = false,
 } = {}) {
   pool = Number(pool);
   if (Number.isNaN(pool)) pool = 1;
   pool = clamp(pool, 1, 20);
 
   const full = String(fullMode ?? "normal");
+  const useRoller = typeof roller === "function" ? roller : null;
+  const useDieRoller = typeof dieRoller === "function" ? dieRoller : null;
 
   const rollOnce = async () => {
+    if (useRoller) {
+      const custom = await useRoller(pool);
+      const results = Array.isArray(custom?.results)
+        ? custom.results.map((r) => Number(r))
+        : [];
+      const successes = Number.isFinite(custom?.successes)
+        ? custom.successes
+        : results.reduce((acc, r) => acc + dvSuccesses(r), 0);
+      return {
+        roll: custom?.roll ?? null,
+        results,
+        successes,
+      };
+    }
+
     const roll = await new Roll(`${pool}dV`).evaluate();
     const results = (roll.dice?.[0]?.results ?? []).map((r) =>
       Number(r.result)
@@ -130,11 +159,14 @@ export async function rollSuccessDice({
       </div>
     `;
 
-    await ChatMessage.create({
-      speaker: ChatMessage.getSpeaker(),
-      content,
-      rolls: [a.roll, b.roll],
-    });
+    if (!silent) {
+      const rollsForChat = [a.roll, b.roll].filter(Boolean);
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker(),
+        content,
+        rolls: rollsForChat,
+      });
+    }
 
     return {
       roll: chosen.roll,
@@ -169,17 +201,18 @@ export async function rollSuccessDice({
   luckCount = Math.min(luckCount, pool);
   unluckCount = Math.min(unluckCount, pool);
 
-  const roll = await new Roll(`${pool}dV`).evaluate();
-  const results = (roll.dice?.[0]?.results ?? []).map((r) => Number(r.result));
+  const base = await rollOnce();
+  const roll = base.roll;
+  const results = Array.isArray(base.results) ? base.results : [];
   const rerollRolls = [];
 
   const applyReroll = async (index, preferHigher) => {
     const before = results[index];
-    const rr = await rollDieOnce();
+    const rr = await rollDieOnce(useDieRoller);
     const after = rr.result;
     const chosen = preferHigher ? Math.max(before, after) : Math.min(before, after);
     results[index] = chosen;
-    rerollRolls.push(rr.roll);
+    if (rr.roll) rerollRolls.push(rr.roll);
     return { index, before, after, chosen };
   };
 
@@ -231,11 +264,14 @@ export async function rollSuccessDice({
     </div>
   `;
 
-  await ChatMessage.create({
-    speaker: ChatMessage.getSpeaker(),
-    content,
-    rolls: [roll, ...rerollRolls],
-  });
+  if (!silent) {
+    const rollsForChat = [roll, ...rerollRolls].filter(Boolean);
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker(),
+      content,
+      rolls: rollsForChat,
+    });
+  }
 
   return { roll, results, successes, rerolls };
 }

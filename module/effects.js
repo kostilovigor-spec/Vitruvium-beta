@@ -5,18 +5,10 @@ export const EFFECT_TARGETS = [
   { key: "combat", label: "Сражение" },
   { key: "thinking", label: "Мышление" },
   { key: "communication", label: "Общение" },
-  { key: "adv_condition", label: "Преимущество: Самочувствие" },
-  { key: "dis_condition", label: "Помеха: Самочувствие" },
-  { key: "adv_attention", label: "Преимущество: Внимание" },
-  { key: "dis_attention", label: "Помеха: Внимание" },
-  { key: "adv_movement", label: "Преимущество: Движение" },
-  { key: "dis_movement", label: "Помеха: Движение" },
-  { key: "adv_combat", label: "Преимущество: Сражение" },
-  { key: "dis_combat", label: "Помеха: Сражение" },
-  { key: "adv_thinking", label: "Преимущество: Мышление" },
-  { key: "dis_thinking", label: "Помеха: Мышление" },
-  { key: "adv_communication", label: "Преимущество: Общение" },
-  { key: "dis_communication", label: "Помеха: Общение" },
+  { key: "rollAdv", label: "Все броски: преимущество" },
+  { key: "rollDis", label: "Все броски: помеха" },
+  { key: "rollFullAdv", label: "Все броски: удачливый (полный переброс)" },
+  { key: "rollFullDis", label: "Все броски: неудачливый (полный переброс)" },
   { key: "hpMax", label: "Макс. HP" },
   { key: "inspMax", label: "Макс. вдохновение" },
   { key: "speed", label: "Скорость" },
@@ -83,6 +75,17 @@ export const getEffectiveAttribute = (attrs, key, totals) => {
   const base = clampValue(numValue(attrs?.[key], 1), 1, 6);
   const total = base + getEffectValue(totals, key);
   return clampValue(total, 1, 6);
+};
+
+export const getGlobalRollModifiers = (totals) => {
+  const adv = Math.max(0, getEffectValue(totals, "rollAdv"));
+  const dis = Math.max(0, getEffectValue(totals, "rollDis"));
+  const fullAdv = Math.max(0, getEffectValue(totals, "rollFullAdv"));
+  const fullDis = Math.max(0, getEffectValue(totals, "rollFullDis"));
+  let fullMode = "normal";
+  if (fullAdv > fullDis) fullMode = "adv";
+  else if (fullDis > fullAdv) fullMode = "dis";
+  return { adv, dis, fullMode };
 };
 
 const renderEffectRow = (effect = {}) => {

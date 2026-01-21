@@ -37,6 +37,8 @@
       "cost": 1,
       "level": 1,
       "active": false,
+      "rollDamageDice": 0,
+      "rollSaveDice": 0,
       "description": "",
       "effects": []
     },
