@@ -581,20 +581,54 @@ function computeDamageCompact({
   armorNoShield,
 }) {
   const diff = atkS - defS;
+  /*
+    ВАРИАНТ A (предыдущая модель):
+    Броня уменьшает и базовый урон, и разницу успехов на половину своего значения.
+    Если броня > 0, половина не может быть меньше 1.
 
+    const halfArmor = (armorVal) => {
+      const base = Math.floor(num(armorVal, 0) / 2);
+      if (num(armorVal, 0) <= 0) return 0;
+      return Math.max(1, base);
+    };
+
+    if (defenseType === "block") {
+      const armorHalf = halfArmor(armorFull);
+      const baseAfter = Math.max(0, weaponDamage - armorHalf);
+      const diffAfter = Math.max(0, diff - armorHalf);
+      const dmg = baseAfter + diffAfter;
+      const compact = `${weaponDamage} - floor(${armorFull}/2) + max(0, (${atkS}-${defS})-floor(${armorFull}/2)) = ${dmg}`;
+      return { damage: dmg, compact, hit: true };
+    }
+
+    const hit = atkS > defS;
+    const armorHalf = halfArmor(armorNoShield);
+    const baseAfter = Math.max(0, weaponDamage - armorHalf);
+    const bonus = Math.max(0, diff - armorHalf);
+    const dmg = Math.max(0, baseAfter + bonus);
+    const compact = `${weaponDamage} - floor(${armorNoShield}/2) + max(0, (${atkS}-${defS})-floor(${armorNoShield}/2)) = ${dmg}`;
+    return { damage: dmg, compact, hit };
+  */
+
+  // ВАРИАНТ B (текущий):
+  // Броня уменьшает итоговый урон: (урон оружия + разница успехов).
+  // Для уклонения при промахе учитывается только половина брони (но не меньше 1).
   if (defenseType === "block") {
-    const baseReduction = Math.ceil(armorFull / 2);
-    const baseAfter = Math.max(0, weaponDamage - baseReduction);
-    const diffAfter = Math.max(0, diff - armorFull);
-    const dmg = baseAfter + diffAfter;
-    const compact = `${weaponDamage} - ceil(${armorFull}/2) + max(0, (${atkS}-${defS})-${armorFull}) = ${dmg}`;
+    const total = weaponDamage + diff;
+    const dmg = Math.max(0, total - num(armorFull, 0));
+    const compact = `${weaponDamage} + (${atkS}-${defS}) - ${armorFull} = ${dmg}`;
     return { damage: dmg, compact, hit: true };
   }
 
   const hit = atkS > defS;
-  const bonus = Math.max(0, diff - armorNoShield);
-  const dmg = Math.max(0, weaponDamage + bonus);
-  const compact = `${weaponDamage} + ${bonus} = ${dmg}`;
+  const armorBase = num(armorNoShield, 0);
+  const armorHalf =
+    armorBase > 0 ? Math.max(1, Math.floor(armorBase / 2)) : 0;
+  const appliedArmor = hit ? armorBase : armorHalf;
+  const total = weaponDamage + diff;
+  const dmg = Math.max(0, total - appliedArmor);
+  const armorLabel = hit ? `${armorNoShield}` : `floor(${armorNoShield}/2)`;
+  const compact = `${weaponDamage} + (${atkS}-${defS}) - ${armorLabel} = ${dmg}`;
   return { damage: dmg, compact, hit };
 }
 
