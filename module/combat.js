@@ -553,6 +553,26 @@ function abilityAttackCard({
 }) {
   const hasDamage = damageDice > 0;
   const hasSave = saveDice > 0;
+  const boxes = [
+    hasDamage
+      ? `<div class="v-box">
+        <div class="v-box__label">Урон</div>
+        <div class="v-box__big">${damageRoll.successes}</div>
+        ${renderModeDetailSmall(damageRoll)}
+        ${renderFacesInline(chosenResults(damageRoll))}
+      </div>`
+      : null,
+    hasSave
+      ? `<div class="v-box">
+        <div class="v-box__label">Сложность</div>
+        <div class="v-box__big">${saveRoll.successes}</div>
+        ${renderModeDetailSmall(saveRoll)}
+        ${renderFacesInline(chosenResults(saveRoll))}
+      </div>`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("");
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--ability">
     <div class="v-head">
@@ -568,32 +588,7 @@ function abilityAttackCard({
     </div>
 
     <div class="v-two">
-      ${
-        hasDamage
-          ? `<div class="v-box">
-        <div class="v-box__label">Урон</div>
-        <div class="v-box__big">${damageRoll.successes}</div>
-        ${renderModeDetailSmall(damageRoll)}
-        ${renderFacesInline(chosenResults(damageRoll))}
-      </div>`
-          : `<div class="v-box">
-        <div class="v-box__label">Урон</div>
-        <div class="v-box__big">—</div>
-      </div>`
-      }
-      ${
-        hasSave
-          ? `<div class="v-box">
-        <div class="v-box__label">Сложность</div>
-        <div class="v-box__big">${saveRoll.successes}</div>
-        ${renderModeDetailSmall(saveRoll)}
-        ${renderFacesInline(chosenResults(saveRoll))}
-      </div>`
-          : `<div class="v-box">
-        <div class="v-box__label">Сложность</div>
-        <div class="v-box__big">—</div>
-      </div>`
-      }
+      ${boxes}
     </div>
 
     ${
@@ -762,9 +757,13 @@ function resolveAbilityCardHTML({
         <div class="v-sub">${detail}</div>
       </div>
     </div>
-    <div class="v-actions">
+    ${
+      hasDamage
+        ? `<div class="v-actions">
       <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage">Применить урон</button>
-    </div>
+    </div>`
+        : ""
+    }
   </div>`;
 }
 

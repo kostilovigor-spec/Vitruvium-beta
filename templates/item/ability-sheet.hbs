@@ -1,64 +1,33 @@
-<form class="{{cssClass}} v-sheet v-abilitysheet" autocomplete="off">
+<form class="{{cssClass}} v-sheet v-item v-ability" autocomplete="off">
 
-  <!-- HEADER -->
-  <header class="v-abilitysheet__header">
-    <div class="v-abilitysheet__headrow">
-      <input
-        class="v-abilitysheet__name"
-        type="text"
-        name="name"
-        value="{{item.name}}"
-        placeholder="Название способности"
-      />
-
-      <div class="v-abilitysheet__lvl">
-        <span class="v-abilitysheet__lvltag">L</span>
-        <input
-          class="v-abilitysheet__lvlinput"
-          type="number"
-          name="system.level"
-          value="{{system.level}}"
-          data-dtype="Number"
-          min="0"
-          max="6"
-        />
-      </div>
-    </div>
-  </header>
-
-  <!-- BODY: 2 columns -->
-  <section class="v-abilitysheet__body">
-    <!-- LEFT -->
-    <aside class="v-abilitysheet__left">
+  <header class="v-item__header">
+    <div class="v-item__iconbox">
       <img
-        class="v-abilitysheet__img"
+        class="v-item__icon"
         src="{{item.img}}"
         data-edit="img"
-        title="Нажмите, чтобы изменить иконку"
+        title="{{item.name}}"
       />
+    </div>
 
-      <div class="v-abilitysheet__cost">
-        <div class="v-abilitysheet__costlabel">Стоимость</div>
-        <div class="v-abilitysheet__costrow">
-          <input
-            class="v-abilitysheet__costinput"
-            type="number"
-            name="system.cost"
-            value="{{system.cost}}"
-            data-dtype="Number"
-            min="0"
-            max="6"
-          />
-          <span class="v-abilitysheet__costsuffix">вдохн.</span>
-        </div>
+    <div class="v-item__headcenter">
+      <div class="v-item__namewrap">
+        <div class="v-item__field-text v-item__nameview">{{item.name}}</div>
+        <input
+          class="v-item__field-input v-item__nameinput"
+          type="text"
+          name="name"
+          value="{{item.name}}"
+          placeholder="Название способности"
+        />
       </div>
 
-      <div class="v-abilitysheet__roll">
-        <div class="v-abilitysheet__costlabel">Бросок способности</div>
-        <div class="v-abilitysheet__rollrow">
-          <span class="v-abilitysheet__rolllabel">Урон</span>
+      <div class="v-item__statsrow">
+        <label class="v-item__stat">
+          <span>Урон dV</span>
+          <div class="v-item__field-text">{{system.rollDamageDice}}</div>
           <input
-            class="v-abilitysheet__costinput v-abilitysheet__rolldice"
+            class="v-item__field-input"
             type="number"
             name="system.rollDamageDice"
             value="{{system.rollDamageDice}}"
@@ -66,12 +35,13 @@
             min="0"
             max="20"
           />
-          <span class="v-abilitysheet__costsuffix">dV</span>
-        </div>
-        <div class="v-abilitysheet__rollrow">
-          <span class="v-abilitysheet__rolllabel">Сложность</span>
+        </label>
+
+        <label class="v-item__stat">
+          <span>Сложн. dV</span>
+          <div class="v-item__field-text">{{system.rollSaveDice}}</div>
           <input
-            class="v-abilitysheet__costinput v-abilitysheet__rolldice"
+            class="v-item__field-input"
             type="number"
             name="system.rollSaveDice"
             value="{{system.rollSaveDice}}"
@@ -79,34 +49,140 @@
             min="0"
             max="20"
           />
-          <span class="v-abilitysheet__costsuffix">dV</span>
-        </div>
-      </div>
-
-      <div class="v-abilitysheet__actions">
-        <label class="v-check">
-          <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
-          <span>Активно</span>
         </label>
-        <button
-          type="button"
-          class="v-mini"
-          data-action="edit-effects"
-        >
-          Эффекты
-        </button>
       </div>
-    </aside>
+    </div>
 
-    <!-- RIGHT -->
-    <main class="v-abilitysheet__right">
-      <div class="v-abilitysheet__descrhead">Описание</div>
-      <textarea
-        class="v-abilitysheet__desc"
-        name="system.description"
-        placeholder="Коротко и по делу: что делает способность."
-      >{{system.description}}</textarea>
-    </main>
+    <div class="v-item__headright">
+      <label class="v-item__stat">
+        <span>Ур.</span>
+        <div class="v-item__field-text">{{system.level}}</div>
+        <input
+          class="v-item__field-input"
+          type="number"
+          name="system.level"
+          value="{{system.level}}"
+          data-dtype="Number"
+          min="0"
+          max="6"
+        />
+      </label>
+
+      <label class="v-item__stat">
+        <span>Стоимость</span>
+        <div class="v-item__field-text">{{system.cost}}</div>
+        <input
+          class="v-item__field-input"
+          type="number"
+          name="system.cost"
+          value="{{system.cost}}"
+          data-dtype="Number"
+          min="0"
+          max="6"
+        />
+      </label>
+    </div>
+  </header>
+
+  <section class="v-itemtabs">
+    <input
+      type="radio"
+      id="v-ability-tab-desc"
+      name="v-ability-tabs"
+      class="v-itemtabs__toggle"
+      checked
+    />
+    <input
+      type="radio"
+      id="v-ability-tab-effects"
+      name="v-ability-tabs"
+      class="v-itemtabs__toggle"
+    />
+
+    <div class="v-itemtabs__nav" role="tablist">
+      <button
+        type="button"
+        class="v-item__editbtn"
+        data-action="toggle-desc"
+        title="Редактировать"
+      >
+        <i class="fas fa-pen"></i>
+      </button>
+      <label class="v-itemtabs__tab" for="v-ability-tab-desc" role="tab">Описание</label>
+      <label class="v-itemtabs__tab" for="v-ability-tab-effects" role="tab">Эффекты</label>
+    </div>
+
+    <div class="v-itemtabs__content">
+      <section class="v-itemtabs__panel v-itemtabs__panel--desc" role="tabpanel">
+        <div class="v-item__panel">
+          <div class="v-item__deschead">
+            <div class="v-h2">Описание</div>
+            <div class="v-line"></div>
+          </div>
+
+          <div class="v-item__descview" data-role="desc-view">
+            {{#if system.description}}
+              <div class="v-item__desccontent">{{{vitruvium.descriptionHTML}}}</div>
+            {{else}}
+              <div class="v-item__descplaceholder">Описание не задано.</div>
+            {{/if}}
+          </div>
+
+          <textarea
+            class="v-item__descedit"
+            name="system.description"
+            data-role="desc-edit"
+          >{{system.description}}</textarea>
+
+          <div class="v-item__flags">
+            <div class="v-item__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
+          </div>
+
+          <div class="v-item__toggles">
+            <label class="v-check">
+              <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
+              <span>Активно</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="v-itemtabs__panel v-itemtabs__panel--effects" role="tabpanel">
+        <div class="v-item__panel">
+          <div class="v-item__effectshead">
+            <div class="v-h2">Эффекты</div>
+            <div class="v-line"></div>
+            <button type="button" class="v-mini" data-action="add-effect">+</button>
+          </div>
+
+          <div class="v-effects__rows">
+            {{#if vitruvium.effects.length}}
+              {{#each vitruvium.effects as |eff|}}
+                <div class="v-effects__row">
+                  <select class="v-effects__key">
+                    {{#each ../vitruvium.effectTargets as |opt|}}
+                      <option value="{{opt.key}}" {{#if (eq opt.key eff.key)}}selected{{/if}}>{{opt.label}}</option>
+                    {{/each}}
+                  </select>
+                  <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
+                  <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+                </div>
+              {{/each}}
+            {{else}}
+              <div class="v-effects__row">
+                <select class="v-effects__key">
+                  {{#each vitruvium.effectTargets as |opt|}}
+                    <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
+                  {{/each}}
+                </select>
+                <input type="number" class="v-effects__val" value="0" step="1" />
+                <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+              </div>
+            {{/if}}
+          </div>
+        </div>
+      </section>
+    </div>
   </section>
 
 </form>

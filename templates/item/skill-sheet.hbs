@@ -1,49 +1,117 @@
-<form class="{{cssClass}} v-sheet v-abilitysheet v-skill" autocomplete="off">
+<form class="{{cssClass}} v-sheet v-item v-skill" autocomplete="off">
 
-  <!-- HEADER -->
-  <header class="v-abilitysheet__header">
-    <div class="v-abilitysheet__headrow">
-      <input
-        class="v-abilitysheet__name"
-        type="text"
-        name="name"
-        value="{{item.name}}"
-        placeholder="Название навыка"
+  <header class="v-item__header">
+    <div class="v-item__iconbox">
+      <img
+        class="v-item__icon"
+        src="{{item.img}}"
+        data-edit="img"
+        title="{{item.name}}"
       />
+    </div>
+
+    <div class="v-item__headcenter">
+      <div class="v-item__namewrap">
+        <div class="v-item__field-text v-item__nameview">{{item.name}}</div>
+        <input
+          class="v-item__field-input v-item__nameinput"
+          type="text"
+          name="name"
+          value="{{item.name}}"
+          placeholder="Название"
+        />
+      </div>
     </div>
   </header>
 
-  <!-- BODY: 2 columns -->
-  <section class="v-abilitysheet__body">
-    <!-- LEFT -->
-    <aside class="v-abilitysheet__left">
-      <img
-        class="v-abilitysheet__img"
-        src="{{item.img}}"
-        data-edit="img"
-        title="Нажмите, чтобы изменить иконку"
-      />
+  <section class="v-itemtabs">
+    <input
+      type="radio"
+      id="v-skill-tab-desc"
+      name="v-skill-tabs"
+      class="v-itemtabs__toggle"
+      checked
+    />
+    <input
+      type="radio"
+      id="v-skill-tab-effects"
+      name="v-skill-tabs"
+      class="v-itemtabs__toggle"
+    />
 
-      <div class="v-abilitysheet__actions">
-        <button
-          type="button"
-          class="v-mini"
-          data-action="edit-effects"
-        >
-          Эффекты
-        </button>
-      </div>
-    </aside>
+    <div class="v-itemtabs__nav" role="tablist">
+      <button
+        type="button"
+        class="v-item__editbtn"
+        data-action="toggle-desc"
+        title="Редактировать"
+      >
+        <i class="fas fa-pen"></i>
+      </button>
+      <label class="v-itemtabs__tab" for="v-skill-tab-desc" role="tab">Описание</label>
+      <label class="v-itemtabs__tab" for="v-skill-tab-effects" role="tab">Эффекты</label>
+    </div>
 
-    <!-- RIGHT -->
-    <main class="v-abilitysheet__right">
-      <div class="v-abilitysheet__descrhead">Описание</div>
-      <textarea
-        class="v-abilitysheet__desc"
-        name="system.description"
-        placeholder="Коротко и по делу: что делает навык."
-      >{{system.description}}</textarea>
-    </main>
+    <div class="v-itemtabs__content">
+      <section class="v-itemtabs__panel v-itemtabs__panel--desc" role="tabpanel">
+        <div class="v-item__panel">
+          <div class="v-item__deschead">
+            <div class="v-h2">Описание</div>
+            <div class="v-line"></div>
+          </div>
+
+          <div class="v-item__descview" data-role="desc-view">
+            {{#if system.description}}
+              <div class="v-item__desccontent">{{{vitruvium.descriptionHTML}}}</div>
+            {{else}}
+              <div class="v-item__descplaceholder">Описание не задано.</div>
+            {{/if}}
+          </div>
+
+          <textarea
+            class="v-item__descedit"
+            name="system.description"
+            data-role="desc-edit"
+          >{{system.description}}</textarea>
+        </div>
+      </section>
+
+      <section class="v-itemtabs__panel v-itemtabs__panel--effects" role="tabpanel">
+        <div class="v-item__panel">
+          <div class="v-item__effectshead">
+            <div class="v-h2">Эффекты</div>
+            <div class="v-line"></div>
+            <button type="button" class="v-mini" data-action="add-effect">+</button>
+          </div>
+
+          <div class="v-effects__rows">
+            {{#if vitruvium.effects.length}}
+              {{#each vitruvium.effects as |eff|}}
+                <div class="v-effects__row">
+                  <select class="v-effects__key">
+                    {{#each ../vitruvium.effectTargets as |opt|}}
+                      <option value="{{opt.key}}" {{#if (eq opt.key eff.key)}}selected{{/if}}>{{opt.label}}</option>
+                    {{/each}}
+                  </select>
+                  <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
+                  <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+                </div>
+              {{/each}}
+            {{else}}
+              <div class="v-effects__row">
+                <select class="v-effects__key">
+                  {{#each vitruvium.effectTargets as |opt|}}
+                    <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
+                  {{/each}}
+                </select>
+                <input type="number" class="v-effects__val" value="0" step="1" />
+                <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+              </div>
+            {{/if}}
+          </div>
+        </div>
+      </section>
+    </div>
   </section>
 
 </form>

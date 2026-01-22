@@ -1,4 +1,4 @@
-import { openEffectsDialog } from "./effects.js";
+import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
 
 export class VitruviumAbilitySheet extends ItemSheet {
   static get defaultOptions() {
@@ -31,6 +31,13 @@ export class VitruviumAbilitySheet extends ItemSheet {
       if (legacyMode === "save") sys.rollSaveDice = legacyDice;
     }
     data.system = sys;
+
+    const desc = String(sys.description ?? "");
+    const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
+    data.vitruvium = data.vitruvium || {};
+    data.vitruvium.descriptionHTML = safe;
+    data.vitruvium.effectTargets = EFFECT_TARGETS;
+    data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
 
     return data;
   }
@@ -69,56 +76,24 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $rollDamage = html.find("input[name='system.rollDamageDice']");
     const $rollSave = html.find("input[name='system.rollSaveDice']");
     const $active = html.find("input[name='system.active']");
-    const $effectsBtn = html.find("[data-action='edit-effects']");
 
-    // Найдём место для кнопки (или хотя бы header)
-    const $headRow = html.find(".v-abilitysheet__headrow");
-    const $header = html.find(".v-abilitysheet__header");
+    const form = html.closest("form");
+    const view = html.find("[data-role='desc-view']");
+    const edit = html.find("[data-role='desc-edit']");
+    const btn = html.find("[data-action='toggle-desc']");
 
-    // Кнопка режима редактирования: ищем готовую, иначе создаём
-    let $btn = html.find("[data-action='toggle-edit']");
-    if (!$btn.length) {
-      const btnEl = $(
-        `<button type="button" class="v-mini" data-action="toggle-edit">Редактировать</button>`
-      );
-
-      // Вставляем рядом с уровнем (если есть headrow), иначе в header
-      if ($headRow.length) $headRow.append(btnEl);
-      else if ($header.length) $header.append(btnEl);
-      else html.find("form").prepend(btnEl);
-
-      $btn = btnEl;
-    }
-
-    // Текущее состояние
-    let editing = false;
-
-    const setReadonly = (isReadonly) => {
-      // readonly: блокирует ввод, но оставляет внешний вид
-      $name.prop("readonly", isReadonly);
-      $level.prop("readonly", isReadonly);
-      $cost.prop("readonly", isReadonly);
-      $desc.prop("readonly", isReadonly);
-      // косметика (если хочешь — можно использовать в CSS)
-      $name.toggleClass("is-readonly", isReadonly);
-      $level.toggleClass("is-readonly", isReadonly);
-      $cost.toggleClass("is-readonly", isReadonly);
-      $desc.toggleClass("is-readonly", isReadonly);
+    const setMode = (isEdit) => {
+      form.toggleClass("is-edit", isEdit);
+      btn.toggleClass("is-active", isEdit);
+      btn.attr("title", isEdit ? "Готово" : "Редактировать");
+      if (isEdit) edit.trigger("focus");
     };
 
-    const enterEdit = () => {
-      editing = true;
-      $btn.text("Готово");
-      setReadonly(false);
-
-      // фокус на описание, чтобы было удобно
-      if ($desc.length) $desc.trigger("focus");
-    };
+    if (this._editing === undefined) this._editing = false;
+    setMode(this._editing);
 
     const exitEditAndSave = async () => {
-      // Собираем значения из формы
       const newName = String($name.val() ?? this.item.name);
-
       const newLevel = clamp(
         num($level.val(), num(this.item.system?.level, 1)),
         1,
@@ -141,7 +116,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
         20
       );
 
-      // Одним апдейтом
       await this.item.update({
         name: newName,
         "system.level": newLevel,
@@ -150,22 +124,13 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.rollSaveDice": newRollSaveDice,
         "system.description": newDesc,
       });
-
-      editing = false;
-      $btn.text("Редактировать");
-      setReadonly(true);
     };
 
-    // Старт: режим чтения
-    $btn.text("Редактировать");
-    setReadonly(true);
-
-    // Переключение режима
-    $btn.on("click", async (ev) => {
+    btn.on("click", async (ev) => {
       ev.preventDefault();
-      if (!editing) {
-        enterEdit();
-      } else {
+      this._editing = !this._editing;
+      setMode(this._editing);
+      if (!this._editing) {
         await exitEditAndSave();
       }
     });
@@ -174,21 +139,54 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({ "system.active": ev.currentTarget.checked });
     });
 
-    $effectsBtn.on("click", async (ev) => {
-      ev.preventDefault();
-      await openEffectsDialog(this.item);
-    });
+    const renderEffectRow = (effect = {}) => {
+      const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
+      const value = Number.isFinite(effect.value) ? effect.value : 0;
+      const options = EFFECT_TARGETS.map((opt, idx) => {
+        const selected = key ? opt.key === key : idx === 0 ? true : false;
+        return `<option value="${opt.key}"${
+          selected ? " selected" : ""
+        }>${opt.label}</option>`;
+      }).join("");
 
-    const clampRollDice = async (input, field) => {
-      const value = clamp(num(input.val(), 0), 0, 20);
-      await this.item.update({ [field]: value });
+      return `
+        <div class="v-effects__row">
+          <select class="v-effects__key">${options}</select>
+          <input type="number" class="v-effects__val" value="${value}" step="1" />
+          <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+        </div>
+      `;
     };
 
-    $rollDamage.on("change", async (ev) => {
-      await clampRollDice($(ev.currentTarget), "system.rollDamageDice");
+    const updateEffects = async () => {
+      const next = [];
+      html.find(".v-effects__row").each((_, row) => {
+        const $row = $(row);
+        const key = String($row.find(".v-effects__key").val() ?? "");
+        const value = num($row.find(".v-effects__val").val(), 0);
+        if (!EFFECT_TARGETS.find((t) => t.key === key)) return;
+        if (!Number.isFinite(value) || value === 0) return;
+        next.push({ key, value });
+      });
+      await this.item.update({ "system.effects": next });
+    };
+
+    html.on("click", "[data-action='add-effect']", (ev) => {
+      ev.preventDefault();
+      html.find(".v-effects__rows").append(renderEffectRow());
     });
-    $rollSave.on("change", async (ev) => {
-      await clampRollDice($(ev.currentTarget), "system.rollSaveDice");
+
+    html.on("click", ".v-effects__remove", (ev) => {
+      ev.preventDefault();
+      $(ev.currentTarget).closest(".v-effects__row").remove();
+      if (!html.find(".v-effects__row").length) {
+        html.find(".v-effects__rows").append(renderEffectRow());
+      }
+      updateEffects();
+    });
+
+    html.on("change", ".v-effects__key, .v-effects__val", () => {
+      updateEffects();
     });
   }
 }

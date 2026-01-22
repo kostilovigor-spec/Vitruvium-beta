@@ -1028,17 +1028,25 @@ input[type="number"]::-webkit-inner-spin-button {
   letter-spacing: 0.4px;
 }
 #v-item-tab-desc:checked ~ .v-itemtabs__nav label[for="v-item-tab-desc"],
-#v-item-tab-effects:checked ~ .v-itemtabs__nav label[for="v-item-tab-effects"] {
+#v-item-tab-effects:checked ~ .v-itemtabs__nav label[for="v-item-tab-effects"],
+#v-ability-tab-desc:checked ~ .v-itemtabs__nav label[for="v-ability-tab-desc"],
+#v-ability-tab-effects:checked ~ .v-itemtabs__nav label[for="v-ability-tab-effects"],
+#v-skill-tab-desc:checked ~ .v-itemtabs__nav label[for="v-skill-tab-desc"],
+#v-skill-tab-effects:checked ~ .v-itemtabs__nav label[for="v-skill-tab-effects"] {
   background: rgba(0, 0, 0, 0.06);
   border-color: rgba(0, 0, 0, 0.25);
 }
 .v-itemtabs__panel {
   display: none;
 }
-#v-item-tab-desc:checked ~ .v-itemtabs__content .v-itemtabs__panel--desc {
+#v-item-tab-desc:checked ~ .v-itemtabs__content .v-itemtabs__panel--desc,
+#v-ability-tab-desc:checked ~ .v-itemtabs__content .v-itemtabs__panel--desc,
+#v-skill-tab-desc:checked ~ .v-itemtabs__content .v-itemtabs__panel--desc {
   display: block;
 }
-#v-item-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects {
+#v-item-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects,
+#v-ability-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects,
+#v-skill-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects {
   display: block;
 }
 
