@@ -1,5 +1,4 @@
-<form class="{{cssClass}} v-sheet v-npc" autocomplete="off">
-  <!-- Hero: portrait + core stats -->
+﻿<form class="{{cssClass}} v-sheet v-npc" autocomplete="off">
   <section class="v-npc__hero">
     <div class="v-npc__portrait">
       <img
@@ -8,11 +7,6 @@
         data-edit="img"
         title="{{actor.name}}"
       />
-      <button
-        type="button"
-        class="v-npc__mini v-npc__mini--ghost"
-        data-action="luck-roll"
-      >Luck</button>
     </div>
 
     <div class="v-npc__meta">
@@ -26,76 +20,87 @@
         />
       </div>
 
-      <div class="v-npc__statrow">
-        <div class="v-npc__stat v-npc__stat--hp">
-          <div class="v-npc__statLabel">HP</div>
-          <div class="v-npc__statCtrl">
-            <input
-              class="v-npc__hpInput"
-              type="number"
-              name="system.attributes.hp.value"
-              value="{{vitruvium.hp.value}}"
-              min="0"
-              data-dtype="Number"
-            />
-            <div class="v-npc__hpSep">/</div>
-            <div class="v-npc__hpMax">{{vitruvium.hp.max}}</div>
+      <div class="v-npc__metaGrid">
+        <div class="v-npc__statsCol">
+          <div class="v-npc__stat v-npc__stat--hp">
+            <div class="v-npc__statLabel">HP</div>
+            <div class="v-npc__statCtrl">
+              <input
+                class="v-npc__hpInput"
+                type="number"
+                name="system.attributes.hp.value"
+                value="{{vitruvium.hp.value}}"
+                min="0"
+                data-dtype="Number"
+              />
+              <div class="v-npc__hpSep">/</div>
+              <input
+                class="v-npc__hpInput"
+                type="number"
+                name="system.attributes.hp.max"
+                value="{{vitruvium.hp.max}}"
+                min="0"
+                data-dtype="Number"
+              />
+            </div>
+          </div>
+
+          <div class="v-npc__stat v-npc__stat--insp">
+            <div class="v-npc__statLabel">Insp</div>
+            <div class="v-npc__statCtrl v-npc__statCtrl--inline">
+              <div class="v-npc__pill">{{vitruvium.inspiration.value}}</div>
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="insp-dec"
+              >-</button>
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="insp-inc"
+              >+</button>
+            </div>
           </div>
         </div>
 
-        <div class="v-npc__stat v-npc__stat--insp">
-          <div class="v-npc__statLabel">Insp</div>
-          <div class="v-npc__statCtrl">
-            <button
-              type="button"
-              class="v-npc__mini"
-              data-action="insp-dec"
-            >-</button>
-            <div class="v-npc__pill">{{vitruvium.inspiration.value}}</div>
-            <button
-              type="button"
-              class="v-npc__mini"
-              data-action="insp-inc"
-            >+</button>
+        <div class="v-npc__statsCol v-npc__statsCol--right">
+          <div class="v-npc__statrow v-npc__statrow--tight">
+            <div class="v-npc__stat v-npc__stat--mini v-npc__stat--armor">
+              <div class="v-npc__statLabel">Armor</div>
+              <div class="v-npc__statValue">{{vitruvium.armorTotal}}</div>
+            </div>
+            <div class="v-npc__stat v-npc__stat--mini v-npc__stat--speed">
+              <div class="v-npc__statLabel">Speed</div>
+              <div class="v-npc__statValue">{{vitruvium.speed}}</div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div class="v-npc__statrow v-npc__statrow--compact">
-        <div class="v-npc__stat v-npc__stat--armor">
-          <div class="v-npc__statLabel">Armor</div>
-          <div class="v-npc__statValue">{{vitruvium.armorTotal}}</div>
-        </div>
-        <div class="v-npc__stat v-npc__stat--speed">
-          <div class="v-npc__statLabel">Speed</div>
-          <div class="v-npc__statValue">{{vitruvium.speed}}</div>
-        </div>
-        <div class="v-npc__stat v-npc__stat--extra">
-          <div class="v-npc__statLabel">Extra</div>
-          <div class="v-npc__statCtrl">
-            <button
-              type="button"
-              class="v-npc__mini"
-              data-action="extra-dec"
-            >-</button>
-            <div class="v-npc__pill">{{vitruvium.extraDice}}</div>
-            <button
-              type="button"
-              class="v-npc__mini"
-              data-action="extra-inc"
-            >+</button>
-            <button
-              type="button"
-              class="v-npc__mini v-npc__mini--ghost"
-              data-action="extra-roll"
-            >Roll</button>
+          <div class="v-npc__stat v-npc__stat--extra">
+            <div class="v-npc__statLabel">Доп. бросок</div>
+            <div class="v-npc__statCtrl">
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="extra-dec"
+              >-</button>
+              <div class="v-npc__pill">{{vitruvium.extraDice}}</div>
+              <button
+                type="button"
+                class="v-npc__mini"
+                data-action="extra-inc"
+              >+</button>
+              <button
+                type="button"
+                class="v-npc__mini v-npc__mini--ghost"
+                data-action="extra-roll"
+              >Бросить</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-<!-- Attributes in one line; roll by clicking the number -->
   <section class="v-npc__attrs">
     {{#each vitruvium.attributes as |a|}}
       <div class="v-npc__attr" title="Нажми на число чтобы бросить">
@@ -112,7 +117,7 @@
             class="v-npc__mini"
             data-action="attr-dec"
             data-attr="{{a.key}}"
-          >–</button>
+          >-</button>
           <button
             type="button"
             class="v-npc__mini"
@@ -123,119 +128,172 @@
       </div>
     {{/each}}
   </section>
-  <!-- Bottom: two blocks; left abilities, right items -->
-  <section class="v-npc__bottom">
-    <div class="v-npc__panel">
-      <div class="v-npc__panelHead">
-        <div class="v-npc__panelTitle">Способности</div>
-        <button
-          type="button"
-          class="v-npc__btn v-npc__btn--ghost"
-          data-action="create-ability"
-        >+ Способность</button>
-      </div>
 
-      <div class="v-npc__list">
-        {{#each vitruvium.abilities as |ab|}}
-          <div class="v-npc__rowItem">
-            <div class="v-npc__rowMain">
-              <div class="v-npc__rowTitle">{{ab.name}}</div>
-              <div class="v-npc__rowMeta">стоим. {{ab.system.cost}}</div>
-            </div>
-            <div class="v-npc__rowBtns">
-              <button
-                type="button"
-                class="v-npc__mini"
-                data-action="use-ability"
-                data-item-id="{{ab._id}}"
-              >Исп.</button>
-              <button
-                type="button"
-                class="v-npc__mini"
-                data-action="edit-item"
-                data-item-id="{{ab._id}}"
-              >Откр.</button>
-              <button
-                type="button"
-                class="v-npc__mini v-npc__mini--danger"
-                data-action="delete-item"
-                data-item-id="{{ab._id}}"
-              >✕</button>
-            </div>
-          </div>
-        {{/each}}
-      </div>
+  <section class="v-npc__tabs v-tabs">
+    <input
+      type="radio"
+      id="v-tab-inv"
+      name="v-tabs"
+      value="inv"
+      class="v-tabs__toggle"
+      {{#if (eq vitruvium.activeTab "inv")}}checked{{/if}}
+    />
+    <input
+      type="radio"
+      id="v-tab-abi"
+      name="v-tabs"
+      value="abi"
+      class="v-tabs__toggle"
+      {{#if (eq vitruvium.activeTab "abi")}}checked{{/if}}
+    />
+
+    <div class="v-tabs__nav" role="tablist">
+      <label class="v-tabs__tab" for="v-tab-inv" role="tab" data-tab="inv">Инвентарь</label>
+      <label class="v-tabs__tab" for="v-tab-abi" role="tab" data-tab="abi">Способности</label>
     </div>
 
-    <div class="v-npc__panel">
-      <div class="v-npc__panelHead">
-        <div class="v-npc__panelTitle">Предметы</div>
-        <button
-          type="button"
-          class="v-npc__btn v-npc__btn--ghost"
-          data-action="create-item"
-        >+ Предмет</button>
-      </div>
+    <div class="v-tabs__content">
+      <section
+        class="v-panel v-inv v-tabpanel v-tabpanel--inv"
+        id="v-tabpanel-inv"
+        role="tabpanel"
+      >
+        <div class="v-panel__head">
+          <div class="v-h2">Инвентарь</div>
+          <div class="v-line"></div>
+          <button type="button" class="v-btn v-btn--ghost" data-action="create-item">+ Предмет</button>
+        </div>
 
-      <div class="v-npc__list">
-        {{#each vitruvium.items as |it|}}
-          <div class="v-npc__rowItem">
-            {{#if it.system.attackBonus}}
-              <button
-                type="button"
-                class="v-npc__iconbtn"
-                title="Weapon attack"
-                data-action="weapon-attack"
-                data-item-id="{{it._id}}"
-              >
-                <img class="v-npc__icon" src="{{it.img}}" alt="{{it.name}}" />
-              </button>
-            {{else}}
-              <button
-                type="button"
-                class="v-npc__iconbtn"
-                title="Post to chat"
-                data-action="item-chat"
-                data-item-id="{{it._id}}"
-              >
-                <img class="v-npc__icon" src="{{it.img}}" alt="{{it.name}}" />
-              </button>
-            {{/if}}
-            <div class="v-npc__rowMain">
-              <div class="v-npc__rowTitle">{{it.name}}</div>
-              <div class="v-npc__rowMeta">×{{it.system.quantity}}</div>
+        <div class="v-inv__list">
+          {{#each vitruvium.items as |it|}}
+            <div class="v-inv__row" data-item-id="{{it._id}}">
+              {{#if it.system.attackBonus}}
+                <button
+                  type="button"
+                  class="v-inv__iconbtn"
+                  title="Атака этим оружием"
+                  data-action="weapon-attack"
+                  data-item-id="{{it._id}}"
+                >
+                  <img class="v-inv__icon" src="{{it.img}}" alt="{{it.name}}" />
+                </button>
+              {{else}}
+                <button
+                  type="button"
+                  class="v-inv__iconbtn"
+                  title="Показать в чат"
+                  data-action="item-chat"
+                  data-item-id="{{it._id}}"
+                >
+                  <img class="v-inv__icon" src="{{it.img}}" alt="{{it.name}}" />
+                </button>
+              {{/if}}
+
+              <div class="v-inv__name" title="{{it.name}}">
+                <div class="v-inv__title">{{it.name}}</div>
+                <div class="v-inv__meta">×{{it.system.quantity}}</div>
+              </div>
+
+              <div class="v-inv__actions">
+                <button
+                  type="button"
+                  class="v-inv__a {{#if it.system.equipped}}is-on{{/if}}"
+                  title="{{#if it.system.equipped}}Снять{{else}}Надеть{{/if}}"
+                  data-action="toggle-equip"
+                  data-item-id="{{it._id}}"
+                >
+                  <i class="fas fa-shield-alt"></i>
+                </button>
+                <button
+                  type="button"
+                  class="v-inv__a"
+                  title="Редактировать"
+                  data-action="edit-item"
+                  data-item-id="{{it._id}}"
+                >
+                  <i class="fas fa-feather-alt"></i>
+                </button>
+                <button
+                  type="button"
+                  class="v-inv__a v-inv__a--danger"
+                  title="Удалить"
+                  data-action="delete-item"
+                  data-item-id="{{it._id}}"
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
             </div>
-            <div class="v-npc__rowBtns">
+          {{/each}}
+        </div>
+      </section>
+
+      <section
+        class="v-panel v-tabpanel v-tabpanel--abi"
+        id="v-tabpanel-abi"
+        role="tabpanel"
+      >
+        <div class="v-panel__head">
+          <div class="v-h2">Способности</div>
+          <div class="v-line"></div>
+          <button
+            type="button"
+            class="v-btn v-btn--ghost"
+            data-action="create-ability"
+          >+ Способность</button>
+        </div>
+
+        <div class="v-inv__list v-abi__list">
+          {{#each vitruvium.abilities as |ab|}}
+            <div class="v-inv__row v-abi__row" data-item-id="{{ab._id}}">
               <button
                 type="button"
-                class="v-npc__mini v-npc__mini--equip {{#if it.system.equipped}}is-on{{/if}}"
-                title="Equip"
-                data-action="toggle-equip"
-                data-item-id="{{it._id}}"
-              >Eq</button>
-              <button
-                type="button"
-                class="v-npc__mini"
-                data-action="edit-item"
-                data-item-id="{{it._id}}"
-              >Откр.</button>
-              <button
-                type="button"
-                class="v-npc__mini v-npc__mini--danger"
-                data-action="delete-item"
-                data-item-id="{{it._id}}"
-              >✕</button>
+                class="v-inv__iconbtn"
+                title="Использовать способность"
+                data-action="use-ability"
+                data-item-id="{{ab._id}}"
+              >
+                <img class="v-inv__icon" src="{{ab.img}}" alt="{{ab.name}}" />
+              </button>
+
+              <div class="v-inv__name" title="{{ab.name}}">
+                <div class="v-inv__title">{{ab.name}}</div>
+                <div class="v-inv__meta">{{ab.system.cost}} вдохн.</div>
+              </div>
+
+              <div class="v-inv__actions">
+                <button
+                  type="button"
+                  class="v-inv__a {{#if ab.system.active}}is-on{{/if}}"
+                  title="{{#if ab.system.active}}Отключить{{else}}Активировать{{/if}}"
+                  data-action="toggle-ability-active"
+                  data-item-id="{{ab._id}}"
+                >
+                  <i class="fas fa-bolt"></i>
+                </button>
+                <button
+                  type="button"
+                  class="v-inv__a"
+                  title="Редактировать"
+                  data-action="edit-item"
+                  data-item-id="{{ab._id}}"
+                >
+                  <i class="fas fa-feather-alt"></i>
+                </button>
+                <button
+                  type="button"
+                  class="v-inv__a v-inv__a--danger"
+                  title="Удалить"
+                  data-action="delete-item"
+                  data-item-id="{{ab._id}}"
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
             </div>
-          </div>
-        {{/each}}
-      </div>
+          {{/each}}
+        </div>
+      </section>
     </div>
   </section>
 </form>
-
-
-
-
-
-
-

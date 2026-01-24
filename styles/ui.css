@@ -1244,9 +1244,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .v-npc__hero {
   display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 10px;
-  padding: 8px;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  padding: 6px;
   margin-bottom: 8px;
   background: var(--v-bg);
   border: 1px solid var(--v-border-soft);
@@ -1257,12 +1257,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-npc__portrait {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .v-npc__img {
-  width: 140px;
-  height: 140px;
+  width: 120px;
+  height: 120px;
   border-radius: var(--r-lg);
   object-fit: cover;
   border: 1px solid var(--v-border-soft);
@@ -1272,6 +1272,23 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.v-npc__metaGrid {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 6px;
+  align-items: start;
+}
+
+.v-npc__statsCol {
+  display: grid;
+  gap: 6px;
+}
+
+.v-npc__statsCol--right {
+  align-content: start;
+  min-width: 150px;
 }
 
 .v-npc__namebar {
@@ -1313,13 +1330,14 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .v-npc__hpInput {
-  width: 56px;
-  height: 28px;
+  width: 44px;
+  height: 22px;
   text-align: center;
   font-weight: 900;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
 }
 
 .v-npc__hpSep {
@@ -1341,16 +1359,16 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .v-npc__stat {
   display: grid;
-  gap: 6px;
-  padding: 6px 8px;
+  gap: 4px;
+  padding: 4px 6px;
   border-radius: var(--r-md);
   border: 1px solid var(--v-border-soft);
   background: rgba(255, 255, 255, 0.2);
-  min-width: 120px;
+  min-width: 0;
 }
 
 .v-npc__statLabel {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   opacity: 0.8;
 }
@@ -1358,13 +1376,22 @@ input[type="number"]::-webkit-inner-spin-button {
 .v-npc__statCtrl {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
+.v-npc__statCtrl--inline {
+  flex-wrap: nowrap;
+}
+
+.v-npc__stat--hp .v-npc__statCtrl,
+.v-npc__stat--extra .v-npc__statCtrl {
+  flex-wrap: nowrap;
+}
+
 .v-npc__statValue {
-  height: 28px;
-  padding: 0 10px;
+  height: 22px;
+  padding: 0 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1372,12 +1399,33 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.4);
   font-weight: 900;
+  font-size: 12px;
 }
 
 .v-npc__statrow--compact {
   grid-template-columns: max-content max-content 1fr;
   justify-items: start;
   justify-content: start;
+}
+
+.v-npc__statrow--tight {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.v-npc__stat--mini {
+  padding: 3px 4px;
+}
+
+.v-npc__stat--mini .v-npc__statLabel {
+  font-size: 9px;
+}
+
+.v-npc__stat--mini .v-npc__statValue {
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
 }
 
 .v-npc__stat--extra {
@@ -1601,6 +1649,13 @@ input[type="number"]::-webkit-inner-spin-button {
   height: 20px;
   min-width: 20px;
   padding: 0 6px;
+}
+
+.v-npc__stat--extra .v-npc__mini {
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  font-size: 10px;
 }
 
 .v-npc__btn--ghost {
