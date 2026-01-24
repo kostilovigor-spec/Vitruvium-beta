@@ -37,7 +37,10 @@
       "cost": 1,
       "level": 1,
       "active": false,
+      "attackAttr": "combat",
+      "rollDamageBase": 0,
       "rollDamageDice": 0,
+      "rollSaveBase": 0,
       "rollSaveDice": 0,
       "description": "",
       "effects": []
@@ -46,6 +49,7 @@
       "quantity": 1,
       "price": 0,
       "equipped": false,
+      "attackAttr": "combat",
       "attackBonus": 0,
       "armorBonus": 0,
       "damage": 0,

@@ -621,7 +621,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const sys = item.system ?? {};
       const cost = Math.max(0, num(sys.cost, 0));
       const desc = String(sys.description ?? "");
+      const damageBase = clamp(num(sys.rollDamageBase, 0), 0, 99);
       const damageDice = clamp(num(sys.rollDamageDice, 0), 0, 20);
+      const saveBase = clamp(num(sys.rollSaveBase, 0), 0, 99);
       const saveDice = clamp(num(sys.rollSaveDice, 0), 0, 20);
       let useAsAttack = damageDice > 0 || saveDice > 0;
       if (!useAsAttack) {
@@ -630,6 +632,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
         if (legacyMode === "damage" || legacyMode === "save") {
           useAsAttack = legacyDice > 0;
         }
+      }
+      if (!useAsAttack) {
+        useAsAttack = damageBase > 0 || saveBase > 0;
       }
 
       // Current inspiration

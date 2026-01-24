@@ -24,6 +24,20 @@
 
       <div class="v-item__statsrow">
         <label class="v-item__stat">
+          <span>Урон</span>
+          <div class="v-item__field-text">{{system.rollDamageBase}}</div>
+          <input
+            class="v-item__field-input"
+            type="number"
+            name="system.rollDamageBase"
+            value="{{system.rollDamageBase}}"
+            data-dtype="Number"
+            min="0"
+            max="99"
+          />
+        </label>
+
+        <label class="v-item__stat">
           <span>Урон dV</span>
           <div class="v-item__field-text">{{system.rollDamageDice}}</div>
           <input
@@ -34,6 +48,20 @@
             data-dtype="Number"
             min="0"
             max="20"
+          />
+        </label>
+
+        <label class="v-item__stat">
+          <span>Сложн</span>
+          <div class="v-item__field-text">{{system.rollSaveBase}}</div>
+          <input
+            class="v-item__field-input"
+            type="number"
+            name="system.rollSaveBase"
+            value="{{system.rollSaveBase}}"
+            data-dtype="Number"
+            min="0"
+            max="99"
           />
         </label>
 
@@ -134,6 +162,17 @@
             data-role="desc-edit"
           >{{system.description}}</textarea>
 
+          <div class="v-item__attackattr">
+            <label>
+              <span>Атакующая характеристика</span>
+              <select name="system.attackAttr" class="v-item__select">
+                {{#each vitruvium.attackAttrOptions as |opt|}}
+                  <option value="{{opt.key}}" {{#if (eq opt.key ../vitruvium.attackAttrDefault)}}selected{{/if}}>{{opt.label}}</option>
+                {{/each}}
+              </select>
+            </label>
+          </div>
+
           <div class="v-item__flags">
             <div class="v-item__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
           </div>
@@ -186,3 +225,5 @@
   </section>
 
 </form>
+
+

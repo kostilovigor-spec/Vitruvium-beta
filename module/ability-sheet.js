@@ -20,7 +20,9 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
     // Унифицируем доступ к system
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
+    if (!Number.isFinite(Number(sys.rollDamageBase))) sys.rollDamageBase = 0;
     if (!Number.isFinite(Number(sys.rollDamageDice))) sys.rollDamageDice = 0;
+    if (!Number.isFinite(Number(sys.rollSaveBase))) sys.rollSaveBase = 0;
     if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
     if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
       const legacyMode = String(sys.rollMode ?? "none");
@@ -35,6 +37,36 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const desc = String(sys.description ?? "");
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
+    const attrLabels = {
+      condition: "Самочувствие",
+      attention: "Внимание",
+      movement: "Движение",
+      combat: "Сражение",
+      thinking: "Мышление",
+      communication: "Общение",
+      will: "Воля",
+    };
+    const allowed = [
+      "condition",
+      "attention",
+      "movement",
+      "combat",
+      "thinking",
+      "communication",
+    ];
+    const actorAttrs = this.item?.parent?.system?.attributes ?? {};
+    const keys = allowed.filter((k) => typeof actorAttrs[k] === "number");
+    const finalKeys = keys.length ? keys : allowed;
+    const defaultAttr = finalKeys.includes(sys.attackAttr)
+      ? sys.attackAttr
+      : finalKeys.includes("combat")
+      ? "combat"
+      : finalKeys[0];
+    data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
+      key,
+      label: attrLabels[key] ?? key,
+    }));
+    data.vitruvium.attackAttrDefault = defaultAttr;
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
@@ -73,9 +105,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $level = html.find("input[name='system.level']");
     const $cost = html.find("input[name='system.cost']");
     const $desc = html.find("textarea[name='system.description']");
+    const $rollDamageBase = html.find("input[name='system.rollDamageBase']");
     const $rollDamage = html.find("input[name='system.rollDamageDice']");
+    const $rollSaveBase = html.find("input[name='system.rollSaveBase']");
     const $rollSave = html.find("input[name='system.rollSaveDice']");
     const $active = html.find("input[name='system.active']");
+    const $attackAttr = html.find("select[name='system.attackAttr']");
 
     const form = html.closest("form");
     const view = html.find("[data-role='desc-view']");
@@ -105,23 +140,39 @@ export class VitruviumAbilitySheet extends ItemSheet {
         6
       );
       const newDesc = String($desc.val() ?? "");
+      const newRollDamageBase = clamp(
+        num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
+        0,
+        99
+      );
       const newRollDamageDice = clamp(
         num($rollDamage.val(), num(this.item.system?.rollDamageDice, 0)),
         0,
         20
+      );
+      const newRollSaveBase = clamp(
+        num($rollSaveBase.val(), num(this.item.system?.rollSaveBase, 0)),
+        0,
+        99
       );
       const newRollSaveDice = clamp(
         num($rollSave.val(), num(this.item.system?.rollSaveDice, 0)),
         0,
         20
       );
+      const newAttackAttr = String(
+        $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat"
+      );
 
       await this.item.update({
         name: newName,
         "system.level": newLevel,
         "system.cost": newCost,
+        "system.rollDamageBase": newRollDamageBase,
         "system.rollDamageDice": newRollDamageDice,
+        "system.rollSaveBase": newRollSaveBase,
         "system.rollSaveDice": newRollSaveDice,
+        "system.attackAttr": newAttackAttr,
         "system.description": newDesc,
       });
     };
@@ -137,6 +188,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
     $active.on("change", async (ev) => {
       await this.item.update({ "system.active": ev.currentTarget.checked });
+    });
+    $attackAttr.on("change", async (ev) => {
+      await this.item.update({
+        "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
+      });
     });
 
     const renderEffectRow = (effect = {}) => {

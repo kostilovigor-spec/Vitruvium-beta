@@ -981,6 +981,30 @@ input[type="number"]::-webkit-inner-spin-button {
   display: none;
 }
 
+.v-item__attackattr {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.v-item__attackattr label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
+.v-item__attackattr span {
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.v-item__select {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--v-border-soft);
+  background: rgba(255, 255, 255, 0.45);
+}
+
 .v-item__flags {
   display: grid;
   gap: 6px;

@@ -325,9 +325,10 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
 
 /* ---------- Dialogs ---------- */
 
-function attackDialog({ actor, weaponName }) {
+function attackDialog({ actor, weaponName, defaultAttrKey }) {
   const keys = listAttributeKeys(actor);
-  const defaultKey = keys.includes("combat") ? "combat" : keys[0] ?? "combat";
+  const fallbackKey = keys.includes("combat") ? "combat" : keys[0] ?? "combat";
+  const defaultKey = keys.includes(defaultAttrKey) ? defaultAttrKey : fallbackKey;
   const defaultLuck = 0;
   const defaultUnluck = 0;
   const defaultFullMode = "normal";
@@ -544,52 +545,63 @@ function abilityAttackCard({
   attackerName,
   defenderName,
   abilityName,
-  damageRoll,
-  saveRoll,
-  damageDice,
-  saveDice,
+  attrKey,
+  atkRoll,
+  damageInfo,
+  saveInfo,
   resolved,
   showDefense = true,
 }) {
-  const hasDamage = damageDice > 0;
-  const hasSave = saveDice > 0;
+  const hasAttack = !!atkRoll;
+  const hasDamage = !!damageInfo && (damageInfo.base > 0 || damageInfo.dice > 0);
+  const hasSave = !!saveInfo && (saveInfo.base > 0 || saveInfo.dice > 0);
+  const dmgSub = [];
+  if (hasDamage && hasAttack) {
+    dmgSub.push(`атака ${atkRoll.successes}`);
+  }
   const boxes = [
+    hasAttack
+      ? `<div class="v-box">
+        <div class="v-box__label">Атака</div>
+        <div class="v-box__big">${atkRoll.successes}</div>
+        ${renderModeDetailSmall(atkRoll)}
+        ${renderFacesInline(chosenResults(atkRoll))}
+      </div>`
+      : null,
     hasDamage
       ? `<div class="v-box">
         <div class="v-box__label">Урон</div>
-        <div class="v-box__big">${damageRoll.successes}</div>
-        ${renderModeDetailSmall(damageRoll)}
-        ${renderFacesInline(chosenResults(damageRoll))}
-      </div>`
-      : null,
-    hasSave
-      ? `<div class="v-box">
-        <div class="v-box__label">Сложность</div>
-        <div class="v-box__big">${saveRoll.successes}</div>
-        ${renderModeDetailSmall(saveRoll)}
-        ${renderFacesInline(chosenResults(saveRoll))}
+        <div class="v-box__big">${damageInfo.total}</div>
+        ${dmgSub.length ? `<div class="v-sub">${dmgSub.join(" · ")}</div>` : ""}
+        ${
+          damageInfo.dice > 0 && damageInfo.roll
+            ? `${renderModeDetailSmall(damageInfo.roll)}${renderFacesInline(
+                chosenResults(damageInfo.roll)
+              )}`
+            : ""
+        }
       </div>`
       : null,
   ]
     .filter(Boolean)
     .join("");
+  const headerBits = [];
+  if (hasAttack && attrKey) {
+    headerBits.push(`Атрибут: ${prettyAttrLabel(attrKey)}`);
+  }
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--ability">
     <div class="v-head">
       <div class="v-title">${esc(attackerName)} использует ${esc(
     abilityName
   )} → ${esc(defenderName)}</div>
-      <div class="v-sub">${[
-        hasDamage ? `Урон ${damageDice}dV` : null,
-        hasSave ? `Сложность ${saveDice}dV` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")}</div>
+      ${headerBits.length ? `<div class="v-sub">${headerBits.join(" · ")}</div>` : ""}
     </div>
 
     <div class="v-two">
       ${boxes}
     </div>
+    ${hasSave ? `<div class="v-sub" style="margin-top:8px;">Сложность спасброска ${saveInfo.total}</div>` : ""}
 
     ${
       showDefense
@@ -610,25 +622,28 @@ function abilityRequestOnlyCard({
   attackerName,
   defenderName,
   abilityName,
+  damageBase,
   damageDice,
+  saveBase,
   saveDice,
+  saveValue,
   resolved,
 }) {
-  const hasDamage = damageDice > 0;
-  const hasSave = saveDice > 0;
+  const hasDamage = damageBase > 0 || damageDice > 0;
+  const hasSave = saveBase > 0 || saveDice > 0;
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--request">
     <div class="v-head">
       <div class="v-title">${esc(attackerName)} использует ${esc(
     abilityName
   )} → ${esc(defenderName)}</div>
-      <div class="v-sub">${[
-        hasDamage ? `Урон ${damageDice}dV` : null,
-        hasSave ? `Сложность ${saveDice}dV` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")} · <i>результаты скрыты</i></div>
+      <div class="v-sub"><i>результаты скрыты</i></div>
     </div>
+    ${
+      hasSave
+        ? `<div class="v-sub" style="margin-top:8px;">Сложность спасброска ${saveValue ?? "?"}</div>`
+        : ""
+    }
     <div class="v-actions">
       <button type="button" class="v-btn" data-action="vitruvium-defense" ${
         resolved ? "disabled" : ""
@@ -829,14 +844,16 @@ function computeDamageCompact({
   return { damage: dmg, compact, hit };
 }
 
-function computeAbilityDamage({ abilityValue, defS }) {
-  const atkS = num(abilityValue, 0);
+function computeAbilityDamage({ abilityValue, atkS, defS }) {
+  const base = num(abilityValue, 0);
+  const atk = num(atkS, 0);
   const def = num(defS, 0);
-  const diff = atkS - def;
-  const hit = atkS > def;
-  const dmg = Math.max(0, diff);
-  const compact = `${atkS} - ${def} = ${dmg}`;
-  return { damage: dmg, compact, hit, atkS, defS: def };
+  const diff = atk - def;
+  const hit = atk > def;
+  const total = base + diff;
+  const dmg = Math.max(0, total);
+  const compact = `${base} + ${atk} - ${def} = ${dmg}`;
+  return { damage: dmg, compact, hit, atkS: atk, defS: def };
 }
 
 /* ---------- Token/Actor helpers ---------- */
@@ -901,11 +918,14 @@ Hooks.once("ready", () => {
       if (attackKind === "ability") {
         const damageValue = num(f.abilityDamageValue, 0);
         const saveValue = num(f.abilitySaveValue, 0);
-        const hasDamage = num(f.abilityDamageDice, 0) > 0;
-        const hasSave = num(f.abilitySaveDice, 0) > 0;
+        const hasDamage =
+          num(f.abilityDamageBase, 0) > 0 || num(f.abilityDamageDice, 0) > 0;
+        const hasSave =
+          num(f.abilitySaveBase, 0) > 0 || num(f.abilitySaveDice, 0) > 0;
         const damageOut = hasDamage
           ? computeAbilityDamage({
               abilityValue: damageValue,
+              atkS,
               defS,
             })
           : { damage: 0, compact: "", hit: false };
@@ -1161,7 +1181,9 @@ Hooks.on("renderChatMessage", (message, html) => {
           weaponName: flags.weaponName,
           weaponDamage: flags.weaponDamage,
           atkSuccesses: flags.atkSuccesses,
+          abilityDamageBase: flags.abilityDamageBase,
           abilityDamageValue: flags.abilityDamageValue,
+          abilitySaveBase: flags.abilitySaveBase,
           abilitySaveValue: flags.abilitySaveValue,
           abilityDamageDice: flags.abilityDamageDice,
           abilitySaveDice: flags.abilitySaveDice,
@@ -1186,11 +1208,13 @@ Hooks.on("renderChatMessage", (message, html) => {
 export async function startAbilityAttackFlow(attackerActor, abilityItem) {
   try {
     const abilityName = abilityItem?.name ?? "Способность";
-    let damageDice = clamp(
-      num(abilityItem?.system?.rollDamageDice, 0),
+    const damageBase = clamp(
+      num(abilityItem?.system?.rollDamageBase, 0),
       0,
-      20
+      99
     );
+    let damageDice = clamp(num(abilityItem?.system?.rollDamageDice, 0), 0, 20);
+    const saveBase = clamp(num(abilityItem?.system?.rollSaveBase, 0), 0, 99);
     let saveDice = clamp(num(abilityItem?.system?.rollSaveDice, 0), 0, 20);
     if (damageDice === 0 && saveDice === 0) {
       const legacyMode = String(abilityItem?.system?.rollMode ?? "none");
@@ -1199,7 +1223,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       if (legacyMode === "save") saveDice = legacyDice;
     }
 
-    if (damageDice <= 0 && saveDice <= 0) {
+    const hasDamage = damageBase > 0 || damageDice > 0;
+    const hasSave = saveBase > 0 || saveDice > 0;
+
+    if (!hasDamage && !hasSave) {
       ui.notifications?.warn("У способности не настроен бросок dV.");
       return;
     }
@@ -1220,11 +1247,40 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
 
     const effectTotals = collectEffectTotals(attackerActor);
     const globalMods = getGlobalRollModifiers(effectTotals);
+
+    let atkChoice = null;
+    let atkRoll = null;
+    let atkAttrKey = null;
+    if (hasDamage) {
+      atkChoice = await attackDialog({
+        actor: attackerActor,
+        weaponName: abilityName,
+        defaultAttrKey: abilityItem?.system?.attackAttr,
+      });
+      if (!atkChoice) return;
+      atkAttrKey = atkChoice.attrKey;
+      const atkPool = num(
+        attackerActor.system?.attributes?.[atkChoice.attrKey],
+        1
+      );
+      const totalLuck = num(atkChoice.luck, 0) + globalMods.adv;
+      const totalUnluck = num(atkChoice.unluck, 0) + globalMods.dis;
+      const finalFullMode =
+        globalMods.fullMode !== "normal"
+          ? globalMods.fullMode
+          : atkChoice.fullMode;
+      atkRoll = await rollPool(atkPool, {
+        luck: totalLuck,
+        unluck: totalUnluck,
+        fullMode: finalFullMode,
+      });
+    }
+
     const finalFullMode =
       globalMods.fullMode !== "normal" ? globalMods.fullMode : "normal";
 
     const damageRoll =
-      damageDice > 0
+      hasDamage && damageDice > 0
         ? await rollPool(damageDice, {
             luck: globalMods.adv,
             unluck: globalMods.dis,
@@ -1232,15 +1288,28 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           })
         : null;
     const saveRoll =
-      saveDice > 0
+      hasSave && saveDice > 0
         ? await rollPool(saveDice, {
             luck: globalMods.adv,
             unluck: globalMods.dis,
             fullMode: finalFullMode,
           })
         : null;
-    const damageValue = damageRoll?.successes ?? 0;
-    const saveValue = saveRoll?.successes ?? 0;
+    const damageValue = (damageRoll?.successes ?? 0) + damageBase;
+    const saveValue = (saveRoll?.successes ?? 0) + saveBase;
+    const attackSuccesses = atkRoll?.successes ?? 0;
+    const damageInfo = {
+      base: damageBase,
+      dice: damageDice,
+      roll: damageRoll,
+      total: damageValue,
+    };
+    const saveInfo = {
+      base: saveBase,
+      dice: saveDice,
+      roll: saveRoll,
+      total: saveValue,
+    };
 
     await playAutomatedAnimation({ actor: attackerActor, item: abilityItem });
 
@@ -1250,10 +1319,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           attackerName: attackerActor.name,
           defenderName,
           abilityName,
-          damageRoll,
-          saveRoll,
-          damageDice,
-          saveDice,
+          attrKey: atkAttrKey,
+          atkRoll,
+          damageInfo,
+          saveInfo,
           resolved: false,
           showDefense: hasTarget,
         })
@@ -1261,8 +1330,11 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           attackerName: attackerActor.name,
           defenderName,
           abilityName,
+          damageBase,
           damageDice,
+          saveBase,
           saveDice,
+          saveValue,
           resolved: false,
         });
 
@@ -1271,21 +1343,28 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       content: publicContent,
       rolls: gmNpcAttack
         ? []
-        : [...(damageRoll?.rolls ?? []), ...(saveRoll?.rolls ?? [])],
+        : [
+            ...(atkRoll?.rolls ?? []),
+            ...(damageRoll?.rolls ?? []),
+            ...(saveRoll?.rolls ?? []),
+          ],
       flags: hasTarget
         ? {
             vitruvium: {
               kind: "attack",
               attackKind: "ability",
+              abilityDamageBase: damageBase,
               abilityDamageDice: damageDice,
+              abilitySaveBase: saveBase,
               abilitySaveDice: saveDice,
               abilityDamageValue: damageValue,
               abilitySaveValue: saveValue,
+              atkAttrKey: atkAttrKey,
               attackerTokenUuid,
               defenderTokenUuid,
               weaponName: abilityName,
               weaponDamage: 0,
-              atkSuccesses: damageValue,
+              atkSuccesses: attackSuccesses,
               gmNpcAttack,
             },
           }
@@ -1300,14 +1379,18 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           attackerName: attackerActor.name,
           defenderName,
           abilityName,
-          damageRoll,
-          saveRoll,
-          damageDice,
-          saveDice,
+          attrKey: atkAttrKey,
+          atkRoll,
+          damageInfo,
+          saveInfo,
           resolved: true,
           showDefense: false,
         }),
-        rolls: [...(damageRoll?.rolls ?? []), ...(saveRoll?.rolls ?? [])],
+        rolls: [
+          ...(atkRoll?.rolls ?? []),
+          ...(damageRoll?.rolls ?? []),
+          ...(saveRoll?.rolls ?? []),
+        ],
         flags: { vitruvium: { kind: "gm-ability-detail" } },
       });
     }
@@ -1322,7 +1405,11 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     const weaponName = weaponItem?.name ?? "Оружие";
     const weaponDamage = getWeaponDamage(attackerActor, weaponItem);
 
-    const atkChoice = await attackDialog({ actor: attackerActor, weaponName });
+    const atkChoice = await attackDialog({
+      actor: attackerActor,
+      weaponName,
+      defaultAttrKey: weaponItem?.system?.attackAttr,
+    });
     if (!atkChoice) return;
 
     const atkPool = num(

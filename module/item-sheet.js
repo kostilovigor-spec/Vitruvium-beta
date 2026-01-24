@@ -25,6 +25,36 @@ export class VitruviumItemSheet extends ItemSheet {
     // Готовим HTML для режима "чтение"
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
+    const attrLabels = {
+      condition: "Самочувствие",
+      attention: "Внимание",
+      movement: "Движение",
+      combat: "Сражение",
+      thinking: "Мышление",
+      communication: "Общение",
+      will: "Воля",
+    };
+    const allowed = [
+      "condition",
+      "attention",
+      "movement",
+      "combat",
+      "thinking",
+      "communication",
+    ];
+    const actorAttrs = this.item?.parent?.system?.attributes ?? {};
+    const keys = allowed.filter((k) => typeof actorAttrs[k] === "number");
+    const finalKeys = keys.length ? keys : allowed;
+    const defaultAttr = finalKeys.includes(sys.attackAttr)
+      ? sys.attackAttr
+      : finalKeys.includes("combat")
+      ? "combat"
+      : finalKeys[0];
+    data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
+      key,
+      label: attrLabels[key] ?? key,
+    }));
+    data.vitruvium.attackAttrDefault = defaultAttr;
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });

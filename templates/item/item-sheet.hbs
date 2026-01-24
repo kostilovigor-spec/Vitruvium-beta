@@ -132,6 +132,17 @@
             data-role="desc-edit"
           >{{system.description}}</textarea>
 
+          <div class="v-item__attackattr">
+            <label>
+              <span>Атакующая характеристика</span>
+              <select name="system.attackAttr" class="v-item__select">
+                {{#each vitruvium.attackAttrOptions as |opt|}}
+                  <option value="{{opt.key}}" {{#if (eq opt.key ../vitruvium.attackAttrDefault)}}selected{{/if}}>{{opt.label}}</option>
+                {{/each}}
+              </select>
+            </label>
+          </div>
+
           <div class="v-item__flags">
             <div class="v-item__flag">Надето: {{#if system.equipped}}Да{{else}}Нет{{/if}}</div>
             <div class="v-item__flag">Щит: {{#if system.isShield}}Да{{else}}Нет{{/if}}</div>
@@ -196,3 +207,5 @@
   </section>
 
 </form>
+
+
