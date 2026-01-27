@@ -24,6 +24,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     if (!Number.isFinite(Number(sys.rollDamageDice))) sys.rollDamageDice = 0;
     if (!Number.isFinite(Number(sys.rollSaveBase))) sys.rollSaveBase = 0;
     if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
+    if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
       const legacyMode = String(sys.rollMode ?? "none");
       const legacyDice = Number.isFinite(Number(sys.rollDice))
@@ -104,6 +105,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $name = html.find("input[name='name']");
     const $level = html.find("input[name='system.level']");
     const $cost = html.find("input[name='system.cost']");
+    const $actions = html.find("input[name='system.actions']");
     const $desc = html.find("textarea[name='system.description']");
     const $rollDamageBase = html.find("input[name='system.rollDamageBase']");
     const $rollDamage = html.find("input[name='system.rollDamageDice']");
@@ -139,6 +141,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
         0,
         6
       );
+      const newActions = clamp(
+        num($actions.val(), num(this.item.system?.actions, 1)),
+        1,
+        2
+      );
       const newDesc = String($desc.val() ?? "");
       const newRollDamageBase = clamp(
         num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
@@ -168,6 +175,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         name: newName,
         "system.level": newLevel,
         "system.cost": newCost,
+        "system.actions": newActions,
         "system.rollDamageBase": newRollDamageBase,
         "system.rollDamageDice": newRollDamageDice,
         "system.rollSaveBase": newRollSaveBase,

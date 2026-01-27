@@ -18,6 +18,7 @@ export class VitruviumItemSheet extends ItemSheet {
 
     // Унифицируем доступ к system (в разных версиях Foundry контекст отличается)
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
+    if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     data.system = sys;
 
     const desc = String(sys.description ?? "");
@@ -112,6 +113,11 @@ export class VitruviumItemSheet extends ItemSheet {
       html.find("input[name='system.armorBonus']").on("change", async (ev) => {
         const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
         await this.item.update({ "system.armorBonus": v });
+      });
+
+      html.find("input[name='system.actions']").on("change", async (ev) => {
+        const v = clamp(num(ev.currentTarget.value, 1), 1, 2);
+        await this.item.update({ "system.actions": v });
       });
     }
 

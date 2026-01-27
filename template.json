@@ -35,6 +35,7 @@
     "types": ["ability", "item", "skill", "state"],
     "ability": {
       "cost": 1,
+      "actions": 1,
       "level": 1,
       "active": false,
       "attackAttr": "combat",
@@ -48,6 +49,7 @@
     "item": {
       "quantity": 1,
       "price": 0,
+      "actions": 1,
       "equipped": false,
       "attackAttr": "combat",
       "attackBonus": 0,

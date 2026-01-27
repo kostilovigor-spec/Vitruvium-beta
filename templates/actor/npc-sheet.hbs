@@ -191,7 +191,7 @@
 
               <div class="v-inv__name" title="{{it.name}}">
                 <div class="v-inv__title">{{it.name}}</div>
-                <div class="v-inv__meta">×{{it.system.quantity}}</div>
+              <div class="v-inv__meta">×{{it.system.quantity}} · &#1076;. {{#if it.system.actions}}{{it.system.actions}}{{else}}1{{/if}}</div>
               </div>
 
               <div class="v-inv__actions">
@@ -258,7 +258,7 @@
 
               <div class="v-inv__name" title="{{ab.name}}">
                 <div class="v-inv__title">{{ab.name}}</div>
-                <div class="v-inv__meta">{{ab.system.cost}} вдохн.</div>
+                <div class="v-inv__meta">{{ab.system.cost}} вдохн. · &#1076;. {{#if ab.system.actions}}{{ab.system.actions}}{{else}}1{{/if}}</div>
               </div>
 
               <div class="v-inv__actions">

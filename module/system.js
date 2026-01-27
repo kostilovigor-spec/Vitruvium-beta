@@ -54,6 +54,19 @@ Hooks.once("init", () => {
     makeDefault: true,
   });
 
+  // Tokens: auto-pull name + portrait from actor on creation
+  Hooks.on("preCreateToken", (tokenDoc, data) => {
+    const actor = tokenDoc?.actor;
+    if (!actor) return;
+    const next = {};
+    if (!data?.name) next.name = actor.name;
+    const src = data?.texture?.src ?? tokenDoc?.texture?.src;
+    if (!src || src === "icons/svg/mystery-man.svg") {
+      next.texture = { src: actor.img };
+    }
+    if (Object.keys(next).length) tokenDoc.updateSource(next);
+  });
+
   game.vitruvium = game.vitruvium ?? {};
   game.vitruvium.startAbilityAttackFlow = startAbilityAttackFlow;
   game.vitruvium.startWeaponAttackFlow = startWeaponAttackFlow;
