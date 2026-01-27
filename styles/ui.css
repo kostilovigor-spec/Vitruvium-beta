@@ -210,6 +210,54 @@
   margin-bottom: 8px;
 }
 
+/* ---------- Compact tabs + lists (character sheet only) ---------- */
+.v-sheet:not(.v-npc) .v-tabs {
+  gap: 6px;
+}
+.v-sheet:not(.v-npc) .v-tabs__nav {
+  gap: 4px;
+}
+.v-sheet:not(.v-npc) .v-tabs__tab {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+.v-sheet:not(.v-npc) .v-tabs__content .v-panel {
+  padding: 8px;
+}
+.v-sheet:not(.v-npc) .v-panel__head {
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.v-sheet:not(.v-npc) .v-inv__list {
+  gap: 4px;
+}
+.v-sheet:not(.v-npc) .v-inv__row {
+  grid-template-columns: 24px 1fr auto;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.v-sheet:not(.v-npc) .v-inv__iconbtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+.v-sheet:not(.v-npc) .v-inv__a {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+}
+.v-sheet:not(.v-npc) .v-inv__actions {
+  gap: 4px;
+}
+.v-sheet:not(.v-npc) .v-inv__title {
+  font-size: 11px;
+}
+.v-sheet:not(.v-npc) .v-inv__meta {
+  font-size: 10px;
+}
+
 .v-rollmode {
   display: flex;
   flex-wrap: wrap;
