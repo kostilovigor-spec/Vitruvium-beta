@@ -6,7 +6,7 @@ import {
   getGlobalRollModifiers,
 } from "./effects.js";
 
-// Vitruvium combat.js — v13 (chat-button flow, GM-resolve via createChatMessage hook)
+// Vitruvium combat.js — v13 (chat-button flow, GM-resolтve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card.
 // Fix: When defender clicks "Защита", their client posts a GM-whisper "resolveRequest" message.
 // GM client listens to createChatMessage for that flag and posts the Resolve card (whisper to GM only).

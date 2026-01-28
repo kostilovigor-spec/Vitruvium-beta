@@ -1,5 +1,6 @@
-import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
+﻿import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
 
+// Ability sheet: editing, effects, and attack attributes.
 export class VitruviumAbilitySheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -9,7 +10,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       height: 520,
       resizable: true,
 
-      // ВАЖНО: мы сохраняем вручную по кнопке "Готово"
+      // Save on explicit "Done" toggle to avoid noisy auto-submit.
       submitOnChange: false,
       submitOnClose: false,
     });
@@ -18,13 +19,14 @@ export class VitruviumAbilitySheet extends ItemSheet {
   getData() {
     const data = super.getData();
 
-    // Унифицируем доступ к system
+    // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     if (!Number.isFinite(Number(sys.rollDamageBase))) sys.rollDamageBase = 0;
     if (!Number.isFinite(Number(sys.rollDamageDice))) sys.rollDamageDice = 0;
     if (!Number.isFinite(Number(sys.rollSaveBase))) sys.rollSaveBase = 0;
     if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
+    // Legacy v12 compatibility for rollMode/rollDice.
     if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
       const legacyMode = String(sys.rollMode ?? "none");
       const legacyDice = Number.isFinite(Number(sys.rollDice))
@@ -35,9 +37,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
     }
     data.system = sys;
 
+    // Description preview (HTML-safe).
     const desc = String(sys.description ?? "");
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
+    // Attack attribute options (based on parent actor).
     const attrLabels = {
       condition: "Самочувствие",
       attention: "Внимание",
@@ -78,8 +82,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Always allow icon editing (independent of edit mode)
-    // Always allow icon editing for abilities
+    // Icon editing should always be available.
     html
       .find("img[data-edit='img']")
       .off("click.vitruvium-img")
@@ -95,7 +98,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         }).browse();
       });
 
-    // Функционал режима редактирования
+    // Local helpers.
     const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
     const num = (v, d) => {
       const x = Number(v);
@@ -114,6 +117,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $active = html.find("input[name='system.active']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
 
+    // Edit mode toggling.
     const form = html.closest("form");
     const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
@@ -129,6 +133,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     if (this._editing === undefined) this._editing = false;
     setMode(this._editing);
 
+    // Persist values when leaving edit mode.
     const exitEditAndSave = async () => {
       const newName = String($name.val() ?? this.item.name);
       const newLevel = clamp(
@@ -185,6 +190,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       });
     };
 
+    // Toggle edit mode.
     btn.on("click", async (ev) => {
       ev.preventDefault();
       this._editing = !this._editing;
@@ -194,15 +200,18 @@ export class VitruviumAbilitySheet extends ItemSheet {
       }
     });
 
+    // Active toggle.
     $active.on("change", async (ev) => {
       await this.item.update({ "system.active": ev.currentTarget.checked });
     });
+    // Attack attribute selector.
     $attackAttr.on("change", async (ev) => {
       await this.item.update({
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
       });
     });
 
+    // Effects table: row renderer.
     const renderEffectRow = (effect = {}) => {
       const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
       const value = Number.isFinite(effect.value) ? effect.value : 0;
@@ -222,6 +231,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       `;
     };
 
+    // Effects table: persist changes.
     const updateEffects = async () => {
       const next = [];
       html.find(".v-effects__row").each((_, row) => {
@@ -235,11 +245,13 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({ "system.effects": next });
     };
 
+    // Add effect row.
     html.on("click", "[data-action='add-effect']", (ev) => {
       ev.preventDefault();
       html.find(".v-effects__rows").append(renderEffectRow());
     });
 
+    // Remove effect row.
     html.on("click", ".v-effects__remove", (ev) => {
       ev.preventDefault();
       $(ev.currentTarget).closest(".v-effects__row").remove();
@@ -249,6 +261,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       updateEffects();
     });
 
+    // Persist effect edits.
     html.on("change", ".v-effects__key, .v-effects__val", () => {
       updateEffects();
     });
