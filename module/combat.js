@@ -792,67 +792,56 @@ function computeDamageCompact({
   armorFull,
   armorNoShield,
 }) {
-  const diff = atkS - defS;
-  /*
-    ВАРИАНТ A (предыдущая модель):
-    Броня уменьшает и базовый урон, и разницу успехов на половину своего значения.
-    Если броня > 0, половина не может быть меньше 1.
+  const atk = num(atkS, 0);
+  const def = num(defS, 0);
+  const base = num(weaponDamage, 0);
 
-    const halfArmor = (armorVal) => {
-      const base = Math.floor(num(armorVal, 0) / 2);
-      if (num(armorVal, 0) <= 0) return 0;
-      return Math.max(1, base);
-    };
-
-    if (defenseType === "block") {
-      const armorHalf = halfArmor(armorFull);
-      const baseAfter = Math.max(0, weaponDamage - armorHalf);
-      const diffAfter = Math.max(0, diff - armorHalf);
-      const dmg = baseAfter + diffAfter;
-      const compact = `${weaponDamage} - floor(${armorFull}/2) + max(0, (${atkS}-${defS})-floor(${armorFull}/2)) = ${dmg}`;
-      return { damage: dmg, compact, hit: true };
-    }
-
-    const hit = atkS > defS;
-    const armorHalf = halfArmor(armorNoShield);
-    const baseAfter = Math.max(0, weaponDamage - armorHalf);
-    const bonus = Math.max(0, diff - armorHalf);
-    const dmg = Math.max(0, baseAfter + bonus);
-    const compact = `${weaponDamage} - floor(${armorNoShield}/2) + max(0, (${atkS}-${defS})-floor(${armorNoShield}/2)) = ${dmg}`;
-    return { damage: dmg, compact, hit };
-  */
-
-  // ВАРИАНТ B (текущий):
-  // Броня уменьшает итоговый урон: (урон оружия + разница успехов).
-  // Для уклонения при промахе учитывается только половина брони (но не меньше 1).
+  // Новый вариант:
+  // Урон = базовый урон оружия + успехи атаки (срезанные броней).
+  // Броня уменьшает только успехи атаки и не может уменьшить базовый урон.
+  // Уклонение: если atk <= def — промах и 0 урона.
   if (defenseType === "block") {
-    const total = weaponDamage + diff;
-    const dmg = Math.max(0, total - num(armorFull, 0));
-    const compact = `${weaponDamage} + (${atkS}-${defS}) - ${armorFull} = ${dmg}`;
+    const armorVal = num(armorFull, 0);
+    const effAtk = Math.max(0, atk - armorVal);
+    const blockBonusEnabled = false;
+    const blockBonusMinArmor = 2;
+    const blockBonusValue = 1;
+    const blockBonus =
+      blockBonusEnabled && armorVal >= blockBonusMinArmor
+        ? blockBonusValue
+        : 0;
+    const effBlock = Math.max(0, def + blockBonus);
+    const baseAfter = Math.max(0, base - effBlock);
+    const dmg = baseAfter + effAtk;
+    const blockLabel = blockBonus
+      ? `${def}+${blockBonus}`
+      : `${def}`;
+    const compact = `max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${armorFull}) = ${dmg}`;
     return { damage: dmg, compact, hit: true };
   }
 
-  const hit = atkS > defS;
+  const hit = atk > def;
+  if (!hit) {
+    return { damage: 0, compact: `промах: ${atk} <= ${def} -> 0`, hit: false };
+  }
+
   const armorBase = num(armorNoShield, 0);
-  const armorHalf =
-    armorBase > 0 ? Math.max(1, Math.floor(armorBase / 2)) : 0;
-  const appliedArmor = hit ? armorBase : armorHalf;
-  const total = weaponDamage + diff;
-  const dmg = Math.max(0, total - appliedArmor);
-  const armorLabel = hit ? `${armorNoShield}` : `floor(${armorNoShield}/2)`;
-  const compact = `${weaponDamage} + (${atkS}-${defS}) - ${armorLabel} = ${dmg}`;
-  return { damage: dmg, compact, hit };
+  const effAtk = Math.max(0, atk - armorBase);
+  const dmg = base + effAtk;
+  const compact = `${base} + max(0, ${atk} - ${armorNoShield}) = ${dmg}`;
+  return { damage: dmg, compact, hit: true };
 }
 
 function computeAbilityDamage({ abilityValue, atkS, defS }) {
   const base = num(abilityValue, 0);
   const atk = num(atkS, 0);
   const def = num(defS, 0);
-  const diff = atk - def;
   const hit = atk > def;
-  const total = base + diff;
-  const dmg = Math.max(0, total);
-  const compact = `${base} + ${atk} - ${def} = ${dmg}`;
+  const total = base + atk;
+  const dmg = hit ? Math.max(0, total) : 0;
+  const compact = hit
+    ? `${base} + ${atk} = ${dmg}`
+    : `промах: ${atk} <= ${def} -> 0`;
   return { damage: dmg, compact, hit, atkS: atk, defS: def };
 }
 
@@ -1540,4 +1529,3 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
 }
 
 export { rollPool, computeDamageCompact };
-

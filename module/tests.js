@@ -72,7 +72,11 @@ export const registerVitruviumTests = () => {
       });
       assertEqual(out.damage, 3, "block damage");
       assertEqual(out.hit, true, "block hit");
-      assertEqual(out.compact, "3 + (4-2) - 2 = 3", "block compact");
+      assertEqual(
+        out.compact,
+        "max(0, 3 - 2) + max(0, 4 - 2) = 3",
+        "block compact"
+      );
     });
 
     await run("combat.computeDamageCompact.dodgeHit", async () => {
@@ -84,9 +88,9 @@ export const registerVitruviumTests = () => {
         armorFull: 0,
         armorNoShield: 2,
       });
-      assertEqual(out.damage, 2, "dodge hit damage");
+      assertEqual(out.damage, 3, "dodge hit damage");
       assertEqual(out.hit, true, "dodge hit");
-      assertEqual(out.compact, "2 + (3-1) - 2 = 2", "dodge hit compact");
+      assertEqual(out.compact, "2 + max(0, 3 - 2) = 3", "dodge hit compact");
     });
 
     await run("combat.computeDamageCompact.dodgeMiss", async () => {
@@ -100,11 +104,7 @@ export const registerVitruviumTests = () => {
       });
       assertEqual(out.damage, 0, "dodge miss damage");
       assertEqual(out.hit, false, "dodge miss");
-      assertEqual(
-        out.compact,
-        "2 + (1-2) - floor(3/2) = 0",
-        "dodge miss compact"
-      );
+      assertEqual(out.compact, "промах: 1 <= 2 -> 0", "dodge miss compact");
     });
 
     await run("combat.rollPool.luckReroll", async () => {

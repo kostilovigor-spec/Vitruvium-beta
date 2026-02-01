@@ -141,6 +141,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.system.attributes.hp = data.system.attributes.hp || {};
     data.system.attributes.hp.value = hpValue;
     data.system.attributes.hp.max = hpMax;
+    data.system.attributes.coins = data.system.attributes.coins || {
+      bronze: 0,
+      silver: 0,
+      gold: 0,
+    };
 
     // Armor total from equipped items only.
     let bonusArmor = 0;
