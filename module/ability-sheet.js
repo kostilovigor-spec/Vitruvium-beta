@@ -26,6 +26,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     if (!Number.isFinite(Number(sys.rollSaveBase))) sys.rollSaveBase = 0;
     if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
+    if (typeof sys.attackRoll !== "boolean") sys.attackRoll = true;
     // Legacy v12 compatibility for rollMode/rollDice.
     if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
       const legacyMode = String(sys.rollMode ?? "none");
@@ -79,6 +80,17 @@ export class VitruviumAbilitySheet extends ItemSheet {
     return data;
   }
 
+  async close(options) {
+    try {
+      if (typeof this._saveDescOnClose === "function") {
+        await this._saveDescOnClose();
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return super.close(options);
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
 
@@ -93,7 +105,10 @@ export class VitruviumAbilitySheet extends ItemSheet {
           type: "image",
           current: this.item.img,
           callback: async (path) => {
-            await this.item.update({ img: path });
+            const descVal = String(
+              html.find("textarea[name='system.description']").val() ?? ""
+            );
+            await this.item.update({ img: path, "system.description": descVal });
           },
         }).browse();
       });
@@ -115,6 +130,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $rollSaveBase = html.find("input[name='system.rollSaveBase']");
     const $rollSave = html.find("input[name='system.rollSaveDice']");
     const $active = html.find("input[name='system.active']");
+    const $attackRoll = html.find("input[name='system.attackRoll']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
 
     // Edit mode toggling.
@@ -132,6 +148,15 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
     if (this._editing === undefined) this._editing = false;
     setMode(this._editing);
+
+    const currentDesc = () => String($desc.val() ?? this.item.system?.description ?? "");
+    const saveDescriptionDraft = async () => {
+      const newDesc = currentDesc();
+      if (newDesc !== String(this.item.system?.description ?? "")) {
+        await this.item.update({ "system.description": newDesc });
+      }
+    };
+    this._saveDescOnClose = saveDescriptionDraft;
 
     // Persist values when leaving edit mode.
     const exitEditAndSave = async () => {
@@ -151,7 +176,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         1,
         2
       );
-      const newDesc = String($desc.val() ?? "");
+      const newDesc = currentDesc();
       const newRollDamageBase = clamp(
         num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
         0,
@@ -204,11 +229,20 @@ export class VitruviumAbilitySheet extends ItemSheet {
     $active.on("change", async (ev) => {
       await this.item.update({ "system.active": ev.currentTarget.checked });
     });
+    // Attack roll toggle.
+    $attackRoll.on("change", async (ev) => {
+      await this.item.update({ "system.attackRoll": ev.currentTarget.checked });
+    });
     // Attack attribute selector.
     $attackAttr.on("change", async (ev) => {
       await this.item.update({
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
       });
+    });
+
+    // Save description draft on blur to avoid losing changes on rerender.
+    $desc.on("blur", async () => {
+      await saveDescriptionDraft();
     });
 
     // Effects table: row renderer.

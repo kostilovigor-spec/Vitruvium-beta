@@ -65,6 +65,17 @@ export class VitruviumItemSheet extends ItemSheet {
     return data;
   }
 
+  async close(options) {
+    try {
+      if (typeof this._saveDescOnClose === "function") {
+        await this._saveDescOnClose();
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return super.close(options);
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
 
@@ -80,6 +91,33 @@ export class VitruviumItemSheet extends ItemSheet {
     const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
     const btn = html.find("[data-action='toggle-desc']");
+    const $desc = html.find("textarea[name='system.description']");
+
+    const currentDesc = () =>
+      String($desc.val() ?? this.item.system?.description ?? "");
+    const saveDescriptionDraft = async () => {
+      const newDesc = currentDesc();
+      if (newDesc !== String(this.item.system?.description ?? "")) {
+        await this.item.update({ "system.description": newDesc });
+      }
+    };
+    this._saveDescOnClose = saveDescriptionDraft;
+
+    html
+      .find("img[data-edit='img']")
+      .off("click.vitruvium-img")
+      .on("click.vitruvium-img", (ev) => {
+        ev.preventDefault();
+
+        new FilePicker({
+          type: "image",
+          current: this.item.img,
+          callback: async (path) => {
+            const descVal = currentDesc();
+            await this.item.update({ img: path, "system.description": descVal });
+          },
+        }).browse();
+      });
 
     const setMode = (isEdit) => {
       form.toggleClass("is-edit", isEdit);
@@ -103,6 +141,10 @@ export class VitruviumItemSheet extends ItemSheet {
         await this.item.update({ "system.description": text });
         return;
       }
+    });
+
+    $desc.on("blur", async () => {
+      await saveDescriptionDraft();
     });
 
     // Clamp item bonuses to 0..6 (only for item type)

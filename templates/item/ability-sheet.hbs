@@ -1,4 +1,4 @@
-<form class="{{cssClass}} v-sheet v-item v-ability" autocomplete="off">
+﻿<form class="{{cssClass}} v-sheet v-item v-ability" autocomplete="off">
 
   <header class="v-item__header">
     <div class="v-item__iconbox">
@@ -195,6 +195,10 @@
               <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
               <span>Активно</span>
             </label>
+            <label class="v-check">
+              <input type="checkbox" name="system.attackRoll" {{#if system.attackRoll}}checked{{/if}}>
+              <span>Это атака</span>
+            </label>
           </div>
         </div>
       </section>
@@ -238,4 +242,7 @@
   </section>
 
 </form>
+
+
+
 

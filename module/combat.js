@@ -911,13 +911,18 @@ Hooks.once("ready", () => {
           num(f.abilityDamageBase, 0) > 0 || num(f.abilityDamageDice, 0) > 0;
         const hasSave =
           num(f.abilitySaveBase, 0) > 0 || num(f.abilitySaveDice, 0) > 0;
-        const damageOut = hasDamage
-          ? computeAbilityDamage({
-              abilityValue: damageValue,
-              atkS,
-              defS,
-            })
-          : { damage: 0, compact: "", hit: false };
+        const attackRollEnabled = f.attackRoll !== false;
+        let damageOut = { damage: 0, compact: "", hit: false };
+        if (hasDamage && attackRollEnabled) {
+          damageOut = computeAbilityDamage({
+            abilityValue: damageValue,
+            atkS,
+            defS,
+          });
+        } else if (hasDamage && !attackRollEnabled) {
+          const dmg = Math.max(0, damageValue);
+          damageOut = { damage: dmg, compact: `${damageValue}`, hit: true };
+        }
         const savePassed = hasSave ? defS >= saveValue : false;
         damage = hasDamage ? damageOut.damage : 0;
         compact = hasDamage ? damageOut.compact : "";
@@ -1176,6 +1181,7 @@ Hooks.on("renderChatMessage", (message, html) => {
           abilitySaveValue: flags.abilitySaveValue,
           abilityDamageDice: flags.abilityDamageDice,
           abilitySaveDice: flags.abilitySaveDice,
+          attackRoll: flags.attackRoll,
           defSuccesses: defRoll.successes,
           defenseType,
         },
@@ -1237,10 +1243,11 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const effectTotals = collectEffectTotals(attackerActor);
     const globalMods = getGlobalRollModifiers(effectTotals);
 
+    const attackRollEnabled = abilityItem?.system?.attackRoll !== false;
     let atkChoice = null;
     let atkRoll = null;
     let atkAttrKey = null;
-    if (hasDamage) {
+    if (hasDamage && attackRollEnabled) {
       atkChoice = await attackDialog({
         actor: attackerActor,
         weaponName: abilityName,
@@ -1354,6 +1361,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
               weaponName: abilityName,
               weaponDamage: 0,
               atkSuccesses: attackSuccesses,
+              attackRoll: attackRollEnabled,
               gmNpcAttack,
             },
           }
