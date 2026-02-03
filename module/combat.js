@@ -499,7 +499,6 @@ function attackCardTwoCols({
       <div class="v-box">
         <div class="v-box__label">Урон</div>
         <div class="v-box__big">${predictedDamage}</div>
-        <div class="v-sub">Базовый урон оружия: ${weaponDamage}</div>
       </div>
     </div>
 
@@ -555,10 +554,6 @@ function abilityAttackCard({
   const hasAttack = !!atkRoll;
   const hasDamage = !!damageInfo && (damageInfo.base > 0 || damageInfo.dice > 0);
   const hasSave = !!saveInfo && (saveInfo.base > 0 || saveInfo.dice > 0);
-  const dmgSub = [];
-  if (hasDamage && hasAttack) {
-    dmgSub.push(`атака ${atkRoll.successes}`);
-  }
   const boxes = [
     hasAttack
       ? `<div class="v-box">
@@ -572,14 +567,6 @@ function abilityAttackCard({
       ? `<div class="v-box">
         <div class="v-box__label">Урон</div>
         <div class="v-box__big">${damageInfo.total}</div>
-        ${dmgSub.length ? `<div class="v-sub">${dmgSub.join(" · ")}</div>` : ""}
-        ${
-          damageInfo.dice > 0 && damageInfo.roll
-            ? `${renderModeDetailSmall(damageInfo.roll)}${renderFacesInline(
-                chosenResults(damageInfo.roll)
-              )}`
-            : ""
-        }
       </div>`
       : null,
   ]
@@ -706,12 +693,10 @@ function resolveCardHTML({
       <div class="v-box">
         <div class="v-box__label">Статус</div>
         <div class="v-box__big">${hit ? "HIT" : "MISS"}</div>
-        <div class="v-sub">Успехи: ${atkS} / ${defS}</div>
       </div>
       <div class="v-box">
         <div class="v-box__label">Итоговый урон</div>
         <div class="v-box__big">${damage}</div>
-        <div class="v-sub">${esc(compactLine)}</div>
       </div>
     </div>
     <div class="v-actions">
@@ -749,7 +734,7 @@ function resolveAbilityCardHTML({
     );
   }
   if (hasDamage) {
-    lines.push(`Урон: ${damage}${damageCompact ? ` (${damageCompact})` : ""}`);
+    lines.push(`Урон: ${damage}`);
   }
   const detail = lines.length ? lines.join("<br>") : "—";
   return `

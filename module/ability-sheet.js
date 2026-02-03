@@ -26,7 +26,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     if (!Number.isFinite(Number(sys.rollSaveBase))) sys.rollSaveBase = 0;
     if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
-    if (typeof sys.attackRoll !== "boolean") sys.attackRoll = true;
+    if (typeof sys.attackRoll !== "boolean") sys.attackRoll = false;
     // Legacy v12 compatibility for rollMode/rollDice.
     if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
       const legacyMode = String(sys.rollMode ?? "none");

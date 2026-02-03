@@ -40,7 +40,7 @@
       "actions": 1,
       "level": 1,
       "active": false,
-      "attackRoll": true,
+      "attackRoll": false,
       "attackAttr": "combat",
       "rollDamageBase": 0,
       "rollDamageDice": 0,
