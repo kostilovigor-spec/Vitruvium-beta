@@ -607,6 +607,12 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-content: flex-end;
   grid-column: auto;
 }
+.v-compactright {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
 
 .v-statbox {
   width: 90px;
@@ -676,6 +682,37 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(255, 255, 255, 0.35);
   font-weight: 900;
+}
+
+.v-coins {
+  display: flex;
+  gap: 6px;
+}
+.v-coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.35);
+}
+.v-coin__label {
+  font-size: 10px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+.v-coin__input {
+  width: 36px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  text-align: right;
+  font-weight: 900;
+  font-size: 12px;
+}
+.v-coin__input:focus {
+  outline: none;
 }
 
 .v-hero .v-btn,
@@ -1039,6 +1076,11 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 4px;
   font-size: 12px;
   font-weight: 400;
+}
+.v-item__attackattr .v-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .v-item__attackattr span {
   font-weight: 900;

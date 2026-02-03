@@ -1,5 +1,6 @@
-import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
+﻿import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
 
+// Item sheet: inventory items and equipment.
 export class VitruviumItemSheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -16,16 +17,17 @@ export class VitruviumItemSheet extends ItemSheet {
   getData() {
     const data = super.getData();
 
-    // Унифицируем доступ к system (в разных версиях Foundry контекст отличается)
+    // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     data.system = sys;
 
+    // Description preview (HTML-safe).
     const desc = String(sys.description ?? "");
 
-    // Готовим HTML для режима "чтение"
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
+    // Attack attribute options (based on parent actor).
     const attrLabels = {
       condition: "Самочувствие",
       attention: "Внимание",
@@ -63,19 +65,59 @@ export class VitruviumItemSheet extends ItemSheet {
     return data;
   }
 
+  async close(options) {
+    try {
+      if (typeof this._saveDescOnClose === "function") {
+        await this._saveDescOnClose();
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return super.close(options);
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
 
+    // Local helpers.
     const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
     const num = (v, d) => {
       const x = Number(v);
       return Number.isNaN(x) ? d : x;
     };
 
+    // Edit mode toggling.
     const form = html.closest("form");
     const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
     const btn = html.find("[data-action='toggle-desc']");
+    const $desc = html.find("textarea[name='system.description']");
+
+    const currentDesc = () =>
+      String($desc.val() ?? this.item.system?.description ?? "");
+    const saveDescriptionDraft = async () => {
+      const newDesc = currentDesc();
+      if (newDesc !== String(this.item.system?.description ?? "")) {
+        await this.item.update({ "system.description": newDesc });
+      }
+    };
+    this._saveDescOnClose = saveDescriptionDraft;
+
+    html
+      .find("img[data-edit='img']")
+      .off("click.vitruvium-img")
+      .on("click.vitruvium-img", (ev) => {
+        ev.preventDefault();
+
+        new FilePicker({
+          type: "image",
+          current: this.item.img,
+          callback: async (path) => {
+            const descVal = currentDesc();
+            await this.item.update({ img: path, "system.description": descVal });
+          },
+        }).browse();
+      });
 
     const setMode = (isEdit) => {
       form.toggleClass("is-edit", isEdit);
@@ -87,24 +129,27 @@ export class VitruviumItemSheet extends ItemSheet {
     if (this._editing === undefined) this._editing = false;
     setMode(this._editing);
 
+    // Toggle edit mode and persist description on exit.
     btn.on("click", async (ev) => {
       ev.preventDefault();
 
-      // переключаем режим
       this._editing = !this._editing;
       setMode(this._editing);
 
-      // если выключаем редактирование - сохраняем напрямую в Item
       if (!this._editing) {
         const text = String(edit.val() ?? "");
         await this.item.update({ "system.description": text });
-        // После update Foundry перерендерит лист, и getData() снова заполнит descriptionHTML
         return;
       }
     });
 
+    $desc.on("blur", async () => {
+      await saveDescriptionDraft();
+    });
+
     // Clamp item bonuses to 0..6 (only for item type)
     if (this.item.type === "item") {
+      // Clamp bonuses and actions for item type.
       html.find("input[name='system.attackBonus']").on("change", async (ev) => {
         const v = clamp(num(ev.currentTarget.value, 0), 0, 6);
         await this.item.update({ "system.attackBonus": v });
@@ -121,6 +166,7 @@ export class VitruviumItemSheet extends ItemSheet {
       });
     }
 
+    // Effects table: row renderer.
     const renderEffectRow = (effect = {}) => {
       const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
       const value = Number.isFinite(effect.value) ? effect.value : 0;
@@ -141,6 +187,7 @@ export class VitruviumItemSheet extends ItemSheet {
       `;
     };
 
+    // Effects table: persist changes.
     const updateEffects = async () => {
       const next = [];
       html.find(".v-effects__row").each((_, row) => {
@@ -154,11 +201,13 @@ export class VitruviumItemSheet extends ItemSheet {
       await this.item.update({ "system.effects": next });
     };
 
+    // Add effect row.
     html.on("click", "[data-action='add-effect']", (ev) => {
       ev.preventDefault();
       html.find(".v-effects__rows").append(renderEffectRow());
     });
 
+    // Remove effect row.
     html.on("click", ".v-effects__remove", (ev) => {
       ev.preventDefault();
       $(ev.currentTarget).closest(".v-effects__row").remove();
