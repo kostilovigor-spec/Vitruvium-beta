@@ -55,6 +55,44 @@ Hooks.once("init", () => {
   });
 
   // Tokens: auto-pull name + portrait from actor on creation
+  Hooks.on("preCreateActor", (actorDoc, data) => {
+    if (!["character", "npc"].includes(actorDoc.type)) return;
+    const updates = {
+      "prototypeToken.actorLink": true,
+      "prototypeToken.displayBars": CONST.TOKEN_DISPLAY_MODES.OWNER,
+      "prototypeToken.bar1.attribute": "attributes.hp",
+    };
+    actorDoc.updateSource(updates);
+  });
+
+  Hooks.on("preUpdateActor", (actorDoc, change) => {
+    if (!["character", "npc"].includes(actorDoc.type)) return;
+    if (!("name" in change)) return;
+    change.prototypeToken = change.prototypeToken ?? {};
+    change.prototypeToken.name = change.name;
+  });
+
+  Hooks.on("updateActor", async (actorDoc, change) => {
+    if (!["character", "npc"].includes(actorDoc.type)) return;
+    if (!("name" in change)) return;
+    const newName = actorDoc.name;
+    const updates = [];
+    for (const scene of game.scenes) {
+      if (!scene.isOwner) continue;
+      const linkedTokens = scene.tokens.filter(
+        (token) => token.actorId === actorDoc.id && token.actorLink
+      );
+      if (!linkedTokens.length) continue;
+      updates.push(
+        scene.updateEmbeddedDocuments(
+          "Token",
+          linkedTokens.map((token) => ({ _id: token.id, name: newName }))
+        )
+      );
+    }
+    if (updates.length) await Promise.allSettled(updates);
+  });
+
   Hooks.on("preCreateToken", (tokenDoc, data) => {
     const actor = tokenDoc?.actor;
     if (!actor) return;
