@@ -1074,8 +1074,10 @@ Hooks.on("renderChatMessage", (message, html) => {
     if (choice.type === "block") {
       defenseType = "block";
       const poolVal = num(defender.system?.attributes?.condition, 1);
-      let appliedLuck = (choice.luck ?? 0) + globalMods.adv;
-      let appliedUnluck = (choice.unluck ?? 0) + globalMods.dis;
+      const blockAdv = Math.max(0, getEffectValue(effectTotals, "blockAdv"));
+      const blockDis = Math.max(0, getEffectValue(effectTotals, "blockDis"));
+      let appliedLuck = (choice.luck ?? 0) + globalMods.adv + blockAdv;
+      let appliedUnluck = (choice.unluck ?? 0) + globalMods.dis + blockDis;
       const diff = appliedLuck - appliedUnluck;
       if (diff > 0) {
         appliedLuck = diff;
@@ -1091,8 +1093,8 @@ Hooks.on("renderChatMessage", (message, html) => {
           ? fullText
           : modeLabel(appliedLuck, appliedUnluck);
       const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-      const totalLuck = (choice.luck ?? 0) + globalMods.adv;
-      const totalUnluck = (choice.unluck ?? 0) + globalMods.dis;
+      const totalLuck = (choice.luck ?? 0) + globalMods.adv + blockAdv;
+      const totalUnluck = (choice.unluck ?? 0) + globalMods.dis + blockDis;
       defRoll = await rollPool(poolVal, {
         luck: totalLuck,
         unluck: totalUnluck,

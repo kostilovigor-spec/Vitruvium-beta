@@ -16,6 +16,8 @@ export const EFFECT_TARGETS = [
   { key: "weaponDis", label: "Атака оружием: помеха" },
   { key: "dodgeAdv", label: "Уворот: преимущество" },
   { key: "dodgeDis", label: "Уворот: помеха" },
+  { key: "blockAdv", label: "Блок: преимущество" },
+  { key: "blockDis", label: "Блок: помеха" },
 ];
 
 const EFFECT_KEYS = new Set(EFFECT_TARGETS.map((t) => t.key));
@@ -114,8 +116,8 @@ export const openEffectsDialog = async (item) => {
     item.type === "item"
       ? `<div class="v-subtle">Работает, пока предмет надет.</div>`
       : item.type === "ability"
-      ? `<div class="v-subtle">Работает, пока способность активна.</div>`
-      : `<div class="v-subtle">Работает всегда.</div>`;
+        ? `<div class="v-subtle">Работает, пока способность активна.</div>`
+        : `<div class="v-subtle">Работает всегда.</div>`;
   const content = `
     <form class="v-effects">
       <div class="v-effects__rows">${rowsHtml}</div>
@@ -156,7 +158,7 @@ export const openEffectsDialog = async (item) => {
       },
       default: "save",
     },
-    { width: 420 }
+    { width: 420 },
   );
 
   Hooks.once("renderDialog", (app, html) => {
