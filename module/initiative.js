@@ -1,5 +1,6 @@
 ﻿// systems/Vitruvium/module/initiative.js
 import { collectEffectTotals, getGlobalRollModifiers } from "./effects.js";
+import { chatVisibilityData } from "./chat-visibility.js";
 
 function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
@@ -178,7 +179,7 @@ async function luckRollShow(actorName, targetName) {
       </div>
     </div>
   `;
-  await ChatMessage.create({ content });
+  await ChatMessage.create({ ...chatVisibilityData(), content });
   return ok;
 }
 
@@ -275,7 +276,7 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
       </div>
     </div>
   `;
-  await ChatMessage.create({ content });
+  await ChatMessage.create({ ...chatVisibilityData(), content });
 }
 
 async function vitruviumResolvePcNpcTies(combat) {

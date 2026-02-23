@@ -6,6 +6,7 @@ import {
   getGlobalRollModifiers,
 } from "./effects.js";
 import { playAutomatedAnimation } from "./auto-animations.js";
+import { chatVisibilityData } from "./chat-visibility.js";
 
 // Character sheet: attributes, resources, items, and actions.
 export class VitruviumCharacterSheet extends ActorSheet {
@@ -518,6 +519,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
   `;
 
       await ChatMessage.create({
+        ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker({ actor: this.actor }),
         content,
       });
@@ -669,6 +671,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       `;
 
       await ChatMessage.create({
+        ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker({ actor: this.actor }),
         content,
       });

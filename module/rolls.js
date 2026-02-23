@@ -1,3 +1,5 @@
+import { chatVisibilityData } from "./chat-visibility.js";
+
 /** Vitruvium dV: 1-3 = 0, 4-5 = 1, 6 = 2 */
 function dvSuccesses(face) {
   const v = Number(face);
@@ -162,6 +164,7 @@ export async function rollSuccessDice({
     if (!silent) {
       const rollsForChat = [a.roll, b.roll].filter(Boolean);
       await ChatMessage.create({
+        ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker(),
         content,
         rolls: rollsForChat,
@@ -267,6 +270,7 @@ export async function rollSuccessDice({
   if (!silent) {
     const rollsForChat = [roll, ...rerollRolls].filter(Boolean);
     await ChatMessage.create({
+      ...chatVisibilityData(),
       speaker: ChatMessage.getSpeaker(),
       content,
       rolls: rollsForChat,
