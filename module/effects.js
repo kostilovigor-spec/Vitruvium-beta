@@ -5,22 +5,73 @@ export const EFFECT_TARGETS = [
   { key: "combat", label: "Сражение" },
   { key: "thinking", label: "Мышление" },
   { key: "communication", label: "Общение" },
-  { key: "rollAdv", label: "Все броски: преимущество" },
-  { key: "rollDis", label: "Все броски: помеха" },
-  { key: "rollFullAdv", label: "Все броски: удачливый (полный переброс)" },
-  { key: "rollFullDis", label: "Все броски: неудачливый (полный переброс)" },
+  { key: "conditionRollLuck", label: "Самочувствие: преимущество/помеха" },
+  { key: "conditionRollDice", label: "Самочувствие: доп. кубы" },
+  { key: "attentionRollLuck", label: "Внимание: преимущество/помеха" },
+  { key: "attentionRollDice", label: "Внимание: доп. кубы" },
+  { key: "movementRollLuck", label: "Движение: преимущество/помеха" },
+  { key: "movementRollDice", label: "Движение: доп. кубы" },
+  { key: "combatRollLuck", label: "Сражение: преимущество/помеха" },
+  { key: "combatRollDice", label: "Сражение: доп. кубы" },
+  { key: "thinkingRollLuck", label: "Мышление: преимущество/помеха" },
+  { key: "thinkingRollDice", label: "Мышление: доп. кубы" },
+  { key: "communicationRollLuck", label: "Общение: преимущество/помеха" },
+  { key: "communicationRollDice", label: "Общение: доп. кубы" },
+  { key: "attackRollLuck", label: "Атака: преимущество/помеха" },
+  { key: "attackRollDice", label: "Атака: доп. кубы" },
+  { key: "rollLuck", label: "Все броски: преимущество/помеха" },
+  {
+    key: "rollFullAdv",
+    label: "Все броски: удачливый (полный переброс)",
+  },
+  {
+    key: "rollFullDis",
+    label: "Все броски: неудачливый (полный переброс)",
+  },
   { key: "hpMax", label: "Макс. HP" },
   { key: "inspMax", label: "Макс. вдохновение" },
   { key: "speed", label: "Скорость" },
-  { key: "weaponAdv", label: "Атака оружием: преимущество" },
-  { key: "weaponDis", label: "Атака оружием: помеха" },
-  { key: "dodgeAdv", label: "Уворот: преимущество" },
-  { key: "dodgeDis", label: "Уворот: помеха" },
-  { key: "blockAdv", label: "Блок: преимущество" },
-  { key: "blockDis", label: "Блок: помеха" },
+  { key: "weaponLuck", label: "Атака оружием: преимущество/помеха" },
+  { key: "dodgeLuck", label: "Уворот: преимущество/помеха" },
+  { key: "dodgeDice", label: "Уворот: доп. кубы" },
+  { key: "blockLuck", label: "Блок: преимущество/помеха" },
+  { key: "blockDice", label: "Блок: доп. кубы" },
 ];
 
+const LEGACY_EFFECT_KEY_MAP = {
+  rollAdv: { key: "rollLuck", mul: 1 },
+  rollDis: { key: "rollLuck", mul: -1 },
+  weaponAdv: { key: "weaponLuck", mul: 1 },
+  weaponDis: { key: "weaponLuck", mul: -1 },
+  dodgeAdv: { key: "dodgeLuck", mul: 1 },
+  dodgeDis: { key: "dodgeLuck", mul: -1 },
+  blockAdv: { key: "blockLuck", mul: 1 },
+  blockDis: { key: "blockLuck", mul: -1 },
+  attackRollAdv: { key: "attackRollLuck", mul: 1 },
+  attackRollDis: { key: "attackRollLuck", mul: -1 },
+  conditionRollAdv: { key: "conditionRollLuck", mul: 1 },
+  conditionRollDis: { key: "conditionRollLuck", mul: -1 },
+  attentionRollAdv: { key: "attentionRollLuck", mul: 1 },
+  attentionRollDis: { key: "attentionRollLuck", mul: -1 },
+  movementRollAdv: { key: "movementRollLuck", mul: 1 },
+  movementRollDis: { key: "movementRollLuck", mul: -1 },
+  combatRollAdv: { key: "combatRollLuck", mul: 1 },
+  combatRollDis: { key: "combatRollLuck", mul: -1 },
+  thinkingRollAdv: { key: "thinkingRollLuck", mul: 1 },
+  thinkingRollDis: { key: "thinkingRollLuck", mul: -1 },
+  communicationRollAdv: { key: "communicationRollLuck", mul: 1 },
+  communicationRollDis: { key: "communicationRollLuck", mul: -1 },
+};
+
 const EFFECT_KEYS = new Set(EFFECT_TARGETS.map((t) => t.key));
+const ROLL_ATTRIBUTE_KEYS = [
+  "condition",
+  "attention",
+  "movement",
+  "combat",
+  "thinking",
+  "communication",
+];
 
 const clampValue = (n, min, max) => Math.min(Math.max(n, min), max);
 const numValue = (v, d) => {
@@ -28,17 +79,44 @@ const numValue = (v, d) => {
   return Number.isNaN(x) ? d : x;
 };
 
+const toRollAttributeKey = (attrKey) => {
+  const key = String(attrKey ?? "").trim();
+  return ROLL_ATTRIBUTE_KEYS.includes(key) ? key : null;
+};
+
+const splitLuck = (value) => {
+  const v = numValue(value, 0);
+  if (v > 0) return { adv: v, dis: 0 };
+  if (v < 0) return { adv: 0, dis: Math.abs(v) };
+  return { adv: 0, dis: 0 };
+};
+
 export const normalizeEffects = (raw, { keepZero = false } = {}) => {
   if (!Array.isArray(raw)) return [];
-  const out = [];
+  const byKey = new Map();
+
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
-    const key = String(entry.key ?? "").trim();
+    let key = String(entry.key ?? "").trim();
+    let value = numValue(entry.value, 0);
+    if (!Number.isFinite(value)) continue;
+
+    const legacyMap = LEGACY_EFFECT_KEY_MAP[key];
+    if (legacyMap) {
+      key = legacyMap.key;
+      value *= legacyMap.mul;
+    }
+
     if (!EFFECT_KEYS.has(key)) continue;
-    const value = numValue(entry.value, 0);
+    byKey.set(key, numValue(byKey.get(key), 0) + value);
+  }
+
+  const out = [];
+  for (const target of EFFECT_TARGETS) {
+    const value = byKey.get(target.key);
     if (!Number.isFinite(value)) continue;
     if (!keepZero && value === 0) continue;
-    out.push({ key, value });
+    out.push({ key: target.key, value });
   }
   return out;
 };
@@ -73,6 +151,16 @@ export const getEffectValue = (totals, key) => {
   return Number.isFinite(v) ? v : 0;
 };
 
+export const getLuckModifiers = (
+  totals,
+  { signedKey = null, advKey = null, disKey = null } = {},
+) => {
+  const signed = splitLuck(signedKey ? getEffectValue(totals, signedKey) : 0);
+  const legacyAdv = advKey ? Math.max(0, getEffectValue(totals, advKey)) : 0;
+  const legacyDis = disKey ? Math.max(0, getEffectValue(totals, disKey)) : 0;
+  return { adv: signed.adv + legacyAdv, dis: signed.dis + legacyDis };
+};
+
 export const getEffectiveAttribute = (attrs, key, totals) => {
   const base = clampValue(numValue(attrs?.[key], 1), 1, 6);
   const total = base + getEffectValue(totals, key);
@@ -80,14 +168,46 @@ export const getEffectiveAttribute = (attrs, key, totals) => {
 };
 
 export const getGlobalRollModifiers = (totals) => {
-  const adv = Math.max(0, getEffectValue(totals, "rollAdv"));
-  const dis = Math.max(0, getEffectValue(totals, "rollDis"));
+  const luck = getLuckModifiers(totals, {
+    signedKey: "rollLuck",
+    advKey: "rollAdv",
+    disKey: "rollDis",
+  });
   const fullAdv = Math.max(0, getEffectValue(totals, "rollFullAdv"));
   const fullDis = Math.max(0, getEffectValue(totals, "rollFullDis"));
   let fullMode = "normal";
   if (fullAdv > fullDis) fullMode = "adv";
   else if (fullDis > fullAdv) fullMode = "dis";
-  return { adv, dis, fullMode };
+  return { adv: luck.adv, dis: luck.dis, fullMode };
+};
+
+export const getAttributeRollModifiers = (totals, attrKey) => {
+  const key = toRollAttributeKey(attrKey);
+  if (!key) return { adv: 0, dis: 0, dice: 0 };
+  const luck = getLuckModifiers(totals, {
+    signedKey: `${key}RollLuck`,
+    advKey: `${key}RollAdv`,
+    disKey: `${key}RollDis`,
+  });
+  return {
+    adv: luck.adv,
+    dis: luck.dis,
+    dice: getEffectValue(totals, `${key}RollDice`),
+  };
+};
+
+export const getAttackRollModifiers = (totals, { attrKey = null } = {}) => {
+  const attrMods = getAttributeRollModifiers(totals, attrKey);
+  const attackLuck = getLuckModifiers(totals, {
+    signedKey: "attackRollLuck",
+    advKey: "attackRollAdv",
+    disKey: "attackRollDis",
+  });
+  return {
+    adv: attrMods.adv + attackLuck.adv,
+    dis: attrMods.dis + attackLuck.dis,
+    dice: attrMods.dice + getEffectValue(totals, "attackRollDice"),
+  };
 };
 
 const renderEffectRow = (effect = {}) => {

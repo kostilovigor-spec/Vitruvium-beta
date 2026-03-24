@@ -3,6 +3,9 @@ import {
   normalizeEffects,
   collectEffectTotals,
   getEffectValue,
+  getAttributeRollModifiers,
+  getAttackRollModifiers,
+  getLuckModifiers,
   getGlobalRollModifiers,
 } from "./effects.js";
 import { chatVisibilityData } from "./chat-visibility.js";
@@ -332,13 +335,15 @@ function getWeaponDamage(actor, weaponItem = null) {
 
 function getWeaponRollMods(weaponItem) {
   const effects = normalizeEffects(weaponItem?.system?.effects);
-  let adv = 0;
-  let dis = 0;
+  const totals = {};
   for (const eff of effects) {
-    if (eff.key === "weaponAdv") adv += clamp(num(eff.value, 0), 0, 20);
-    if (eff.key === "weaponDis") dis += clamp(num(eff.value, 0), 0, 20);
+    totals[eff.key] = (totals[eff.key] ?? 0) + num(eff.value, 0);
   }
-  return { adv, dis };
+  return getLuckModifiers(totals, {
+    signedKey: "weaponLuck",
+    advKey: "weaponAdv",
+    disKey: "weaponDis",
+  });
 }
 
 function hasHeavyArmorEquipped(actor) {
@@ -371,6 +376,7 @@ function attackDialog({ actor, weaponName, defaultAttrKey }) {
   const defaultKey = keys.includes(defaultAttrKey) ? defaultAttrKey : fallbackKey;
   const defaultLuck = 0;
   const defaultUnluck = 0;
+  const defaultExtraDice = 0;
   const defaultFullMode = "normal";
   const options = keys
     .map(
@@ -403,6 +409,10 @@ function attackDialog({ actor, weaponName, defaultAttrKey }) {
             <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
           </label>
         </div>
+        <label>Доп. кубы (можно отрицательное)
+          <input type="number" name="extraDice" value="${defaultExtraDice}" min="-20" max="20" step="1" style="width:100%"/>
+        </label>
+        <div style="font-size:12px; opacity:.75;">Положительное число увеличивает пул кубов, отрицательное уменьшает.</div>
         <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
       </div>`,
       buttons: {
@@ -415,6 +425,11 @@ function attackDialog({ actor, weaponName, defaultAttrKey }) {
               unluck: clamp(
                 num(html.find("input[name='unluck']").val(), 0),
                 0,
+                20
+              ),
+              extraDice: clamp(
+                num(html.find("input[name='extraDice']").val(), 0),
+                -20,
                 20
               ),
               fullMode: html.find("select[name='fullMode']").val(),
@@ -435,6 +450,7 @@ function defenseDialog({ allowDodge = true, allowBlock = true, actor = null } = 
   return new Promise((resolve) => {
     const defaultLuck = 0;
     const defaultUnluck = 0;
+    const defaultExtraDice = 0;
     const defaultFullMode = "normal";
     const buttons = {};
     if (allowDodge) {
@@ -447,6 +463,11 @@ function defenseDialog({ allowDodge = true, allowBlock = true, actor = null } = 
             unluck: clamp(
               num(html.find("input[name='unluck']").val(), 0),
               0,
+              20
+            ),
+            extraDice: clamp(
+              num(html.find("input[name='extraDice']").val(), 0),
+              -20,
               20
             ),
             fullMode: html.find("select[name='fullMode']").val(),
@@ -463,6 +484,11 @@ function defenseDialog({ allowDodge = true, allowBlock = true, actor = null } = 
             unluck: clamp(
               num(html.find("input[name='unluck']").val(), 0),
               0,
+              20
+            ),
+            extraDice: clamp(
+              num(html.find("input[name='extraDice']").val(), 0),
+              -20,
               20
             ),
             fullMode: html.find("select[name='fullMode']").val(),
@@ -494,6 +520,10 @@ function defenseDialog({ allowDodge = true, allowBlock = true, actor = null } = 
             <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
           </label>
         </div>
+        <label>Доп. кубы (можно отрицательное)
+          <input type="number" name="extraDice" value="${defaultExtraDice}" min="-20" max="20" step="1" style="width:100%"/>
+        </label>
+        <div style="font-size:12px; opacity:.75;">Положительное число увеличивает пул кубов, отрицательное уменьшает.</div>
         <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
       </div>`,
       buttons,
@@ -1083,11 +1113,31 @@ Hooks.on("renderChatMessage", (message, html) => {
       const fullText = fullModeLabel(finalFullMode);
       if (choice.type === "block") {
         defenseType = "block";
-        const poolVal = num(defender.system?.attributes?.condition, 1);
-        const blockAdv = Math.max(0, getEffectValue(effectTotals, "blockAdv"));
-        const blockDis = Math.max(0, getEffectValue(effectTotals, "blockDis"));
-        let appliedLuck = (choice.luck ?? 0) + globalMods.adv + blockAdv;
-        let appliedUnluck = (choice.unluck ?? 0) + globalMods.dis + blockDis;
+        const attrMods = getAttributeRollModifiers(effectTotals, "condition");
+        const blockLuckMods = getLuckModifiers(effectTotals, {
+          signedKey: "blockLuck",
+          advKey: "blockAdv",
+          disKey: "blockDis",
+        });
+        const blockDice = getEffectValue(effectTotals, "blockDice");
+        const poolVal = clamp(
+          num(defender.system?.attributes?.condition, 1) +
+            attrMods.dice +
+            blockDice +
+            num(choice.extraDice, 0),
+          1,
+          20
+        );
+        let appliedLuck =
+          (choice.luck ?? 0) +
+          globalMods.adv +
+          attrMods.adv +
+          blockLuckMods.adv;
+        let appliedUnluck =
+          (choice.unluck ?? 0) +
+          globalMods.dis +
+          attrMods.dis +
+          blockLuckMods.dis;
         const diff = appliedLuck - appliedUnluck;
         if (diff > 0) {
           appliedLuck = diff;
@@ -1103,8 +1153,16 @@ Hooks.on("renderChatMessage", (message, html) => {
             ? fullText
             : modeLabel(appliedLuck, appliedUnluck);
         const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-        const totalLuck = (choice.luck ?? 0) + globalMods.adv + blockAdv;
-        const totalUnluck = (choice.unluck ?? 0) + globalMods.dis + blockDis;
+        const totalLuck =
+          (choice.luck ?? 0) +
+          globalMods.adv +
+          attrMods.adv +
+          blockLuckMods.adv;
+        const totalUnluck =
+          (choice.unluck ?? 0) +
+          globalMods.dis +
+          attrMods.dis +
+          blockLuckMods.dis;
         defRoll = await rollPool(poolVal, {
           luck: totalLuck,
           unluck: totalUnluck,
@@ -1115,11 +1173,31 @@ Hooks.on("renderChatMessage", (message, html) => {
         reactionLabel = `${baseLabel}${modeSuffix}`;
       } else {
         defenseType = "dodge";
-        const poolVal = num(defender.system?.attributes?.movement, 1);
-        const dodgeAdv = Math.max(0, getEffectValue(effectTotals, "dodgeAdv"));
-        const dodgeDis = Math.max(0, getEffectValue(effectTotals, "dodgeDis"));
-        let appliedLuck = (choice.luck ?? 0) + globalMods.adv + dodgeAdv;
-        let appliedUnluck = (choice.unluck ?? 0) + globalMods.dis + dodgeDis;
+        const attrMods = getAttributeRollModifiers(effectTotals, "movement");
+        const dodgeLuckMods = getLuckModifiers(effectTotals, {
+          signedKey: "dodgeLuck",
+          advKey: "dodgeAdv",
+          disKey: "dodgeDis",
+        });
+        const dodgeDice = getEffectValue(effectTotals, "dodgeDice");
+        const poolVal = clamp(
+          num(defender.system?.attributes?.movement, 1) +
+            attrMods.dice +
+            dodgeDice +
+            num(choice.extraDice, 0),
+          1,
+          20
+        );
+        let appliedLuck =
+          (choice.luck ?? 0) +
+          globalMods.adv +
+          attrMods.adv +
+          dodgeLuckMods.adv;
+        let appliedUnluck =
+          (choice.unluck ?? 0) +
+          globalMods.dis +
+          attrMods.dis +
+          dodgeLuckMods.dis;
         const diff = appliedLuck - appliedUnluck;
         if (diff > 0) {
           appliedLuck = diff;
@@ -1135,8 +1213,16 @@ Hooks.on("renderChatMessage", (message, html) => {
             ? fullText
             : modeLabel(appliedLuck, appliedUnluck);
         const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-        const totalLuck = (choice.luck ?? 0) + globalMods.adv + dodgeAdv;
-        const totalUnluck = (choice.unluck ?? 0) + globalMods.dis + dodgeDis;
+        const totalLuck =
+          (choice.luck ?? 0) +
+          globalMods.adv +
+          attrMods.adv +
+          dodgeLuckMods.adv;
+        const totalUnluck =
+          (choice.unluck ?? 0) +
+          globalMods.dis +
+          attrMods.dis +
+          dodgeLuckMods.dis;
         defRoll = await rollPool(poolVal, {
           luck: totalLuck,
           unluck: totalUnluck,
@@ -1271,12 +1357,19 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       });
       if (!atkChoice) return;
       atkAttrKey = atkChoice.attrKey;
-      const atkPool = num(
-        attackerActor.system?.attributes?.[atkChoice.attrKey],
-        1
+      const attackMods = getAttackRollModifiers(effectTotals, {
+        attrKey: atkChoice.attrKey,
+      });
+      const atkPool = clamp(
+        num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1) +
+          attackMods.dice +
+          num(atkChoice.extraDice, 0),
+        1,
+        20
       );
-      const totalLuck = num(atkChoice.luck, 0) + globalMods.adv;
-      const totalUnluck = num(atkChoice.unluck, 0) + globalMods.dis;
+      const totalLuck = num(atkChoice.luck, 0) + globalMods.adv + attackMods.adv;
+      const totalUnluck =
+        num(atkChoice.unluck, 0) + globalMods.dis + attackMods.dis;
       const finalFullMode =
         globalMods.fullMode !== "normal"
           ? globalMods.fullMode
@@ -1390,16 +1483,29 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     });
     if (!atkChoice) return;
 
-    const atkPool = num(
-      attackerActor.system?.attributes?.[atkChoice.attrKey],
-      1
-    );
     const effectTotals = collectEffectTotals(attackerActor);
     const globalMods = getGlobalRollModifiers(effectTotals);
+    const attackMods = getAttackRollModifiers(effectTotals, {
+      attrKey: atkChoice.attrKey,
+    });
+    const atkPool = clamp(
+      num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1) +
+        attackMods.dice +
+        num(atkChoice.extraDice, 0),
+      1,
+      20
+    );
     const weaponMods = getWeaponRollMods(weaponItem);
-    const totalLuck = num(atkChoice.luck, 0) + weaponMods.adv + globalMods.adv;
+    const totalLuck =
+      num(atkChoice.luck, 0) +
+      weaponMods.adv +
+      globalMods.adv +
+      attackMods.adv;
     const totalUnluck =
-      num(atkChoice.unluck, 0) + weaponMods.dis + globalMods.dis;
+      num(atkChoice.unluck, 0) +
+      weaponMods.dis +
+      globalMods.dis +
+      attackMods.dis;
     const finalFullMode =
       globalMods.fullMode !== "normal" ? globalMods.fullMode : atkChoice.fullMode;
     const atkRoll = await rollPool(atkPool, {

@@ -3,6 +3,7 @@ import {
   collectEffectTotals,
   getEffectValue,
   getEffectiveAttribute,
+  getAttributeRollModifiers,
   getGlobalRollModifiers,
 } from "./effects.js";
 import { playAutomatedAnimation } from "./auto-animations.js";
@@ -142,10 +143,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.system.attributes.hp = data.system.attributes.hp || {};
     data.system.attributes.hp.value = hpValue;
     data.system.attributes.hp.max = hpMax;
-    data.system.attributes.coins = data.system.attributes.coins || {
-      bronze: 0,
-      silver: 0,
-      gold: 0,
+    const coins =
+      this.actor.system.attributes?.coins ?? data.system.attributes.coins ?? {};
+    data.system.attributes.coins = {
+      bronze: Math.max(0, Math.round(num(coins.bronze, 0))),
+      silver: Math.max(0, Math.round(num(coins.silver, 0))),
+      gold: Math.max(0, Math.round(num(coins.gold, 0))),
     };
 
     // Armor total from equipped items only.
@@ -164,6 +167,26 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.vitruvium.speed = 5 + mv + getEffectValue(effectTotals, "speed");
 
     return data;
+  }
+
+  async _updateObject(_event, formData) {
+    for (const key of ["bronze", "silver", "gold"]) {
+      const path = `system.attributes.coins.${key}`;
+      if (!(path in formData)) continue;
+
+      const raw = formData[path];
+      if (raw === "" || raw === null || raw === undefined) {
+        formData[path] = 0;
+        continue;
+      }
+
+      const parsed = Number(raw);
+      formData[path] = Number.isFinite(parsed)
+        ? Math.max(0, Math.round(parsed))
+        : 0;
+    }
+
+    return this.actor.update(formData);
   }
 
   activateListeners(html) {
@@ -192,6 +215,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       new Promise((resolve) => {
         const defaultLuck = 0;
         const defaultUnluck = 0;
+        const defaultExtraDice = 0;
         const defaultFullMode = "normal";
         new Dialog({
           title,
@@ -217,6 +241,10 @@ export class VitruviumCharacterSheet extends ActorSheet {
                 <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
               </label>
             </div>
+            <label>Доп. кубы (можно отрицательное)
+              <input type="number" name="extraDice" value="${defaultExtraDice}" min="-20" max="20" step="1" style="width:100%"/>
+            </label>
+            <div style="font-size:12px; opacity:.75;">Положительное число увеличивает пул кубов, отрицательное уменьшает.</div>
             <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
           </div>`,
           buttons: {
@@ -228,6 +256,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
                   unluck: clamp(
                     num(dlg.find("input[name='unluck']").val(), 0),
                     0,
+                    20
+                  ),
+                  extraDice: clamp(
+                    num(dlg.find("input[name='extraDice']").val(), 0),
+                    -20,
                     20
                   ),
                   fullMode: dlg.find("select[name='fullMode']").val(),
@@ -308,13 +341,15 @@ export class VitruviumCharacterSheet extends ActorSheet {
     // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
       const globalMods = getGlobalRollModifiers(effectTotals);
-      const pool = getEffectiveAttribute(attrs, key, effectTotals);
+      const attrMods = getAttributeRollModifiers(effectTotals, key);
+      const basePool = getEffectiveAttribute(attrs, key, effectTotals);
 
       const choice = await rollModeDialog(`Проверка: ${label}`);
       if (!choice) return;
+      const pool = clamp(basePool + attrMods.dice + num(choice.extraDice, 0), 1, 20);
 
-      const rollLuck = choice.luck + globalMods.adv;
-      const rollUnluck = choice.unluck + globalMods.dis;
+      const rollLuck = choice.luck + globalMods.adv + attrMods.adv;
+      const rollUnluck = choice.unluck + globalMods.dis + attrMods.dis;
       const rollFullMode =
         globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
@@ -404,6 +439,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. кубы");
       if (!choice) return;
+      const pool = clamp(cur + num(choice.extraDice, 0), 1, 20);
 
     // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
@@ -414,7 +450,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
       await rollSuccessDice({
-        pool: cur,
+        pool,
         actorName: this.actor.name,
         checkName: "Дополнительные кубы",
         luck: rollLuck,
@@ -429,6 +465,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const choice = await rollModeDialog("Бросок удачи");
       if (!choice) return;
+      const pool = clamp(1 + num(choice.extraDice, 0), 1, 20);
 
     // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
@@ -439,7 +476,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
       await rollSuccessDice({
-        pool: 1,
+        pool,
         actorName: this.actor.name,
         checkName: "Бросок удачи",
         luck: rollLuck,
@@ -732,6 +769,57 @@ export class VitruviumCharacterSheet extends ActorSheet {
         clearTimeout(hpTimer);
         hpTimer = null;
         await saveHpNow();
+      });
+    }
+
+    const coinFields = ["bronze", "silver", "gold"];
+    const coinInputs = html.find(".v-coin__input");
+    if (coinInputs.length) {
+      const normalizeCoin = (raw) => {
+        if (raw === "" || raw === null || raw === undefined) return 0;
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) return 0;
+        return Math.max(0, Math.round(parsed));
+      };
+
+      const getCoinsFromInputs = () => {
+        const next = {};
+        for (const field of coinFields) {
+          const input = html.find(`input[name='system.attributes.coins.${field}']`);
+          next[field] = normalizeCoin(input.val());
+        }
+        return next;
+      };
+
+      const saveCoinsNow = async () => {
+        const current = this.actor.system.attributes?.coins ?? {};
+        const next = getCoinsFromInputs();
+        const bronzeNow = num(current.bronze, 0);
+        const silverNow = num(current.silver, 0);
+        const goldNow = num(current.gold, 0);
+        if (
+          next.bronze === bronzeNow &&
+          next.silver === silverNow &&
+          next.gold === goldNow
+        ) {
+          return;
+        }
+        await this.actor.update({
+          "system.attributes.coins.bronze": next.bronze,
+          "system.attributes.coins.silver": next.silver,
+          "system.attributes.coins.gold": next.gold,
+        });
+      };
+
+      coinInputs.on("change", () => saveCoinsNow().catch(console.error));
+      coinInputs.on("blur", () => saveCoinsNow().catch(console.error));
+
+      coinInputs.on("keydown", async (ev) => {
+        if (ev.key !== "Enter") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        await saveCoinsNow();
+        ev.currentTarget.blur();
       });
     }
   }

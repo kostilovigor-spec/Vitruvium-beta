@@ -1,5 +1,9 @@
 ﻿// systems/Vitruvium/module/initiative.js
-import { collectEffectTotals, getGlobalRollModifiers } from "./effects.js";
+import {
+  collectEffectTotals,
+  getAttributeRollModifiers,
+  getGlobalRollModifiers,
+} from "./effects.js";
 import { chatVisibilityData } from "./chat-visibility.js";
 
 function clamp(n, min, max) {
@@ -209,11 +213,16 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
     const a = c?.actor;
     if (!c || !a) continue;
 
-    const move = clamp(num(a.system?.attributes?.movement, 1), 1, 6);
     const effectTotals = collectEffectTotals(a);
+    const movementMods = getAttributeRollModifiers(effectTotals, "movement");
+    const move = clamp(
+      clamp(num(a.system?.attributes?.movement, 1), 1, 6) + movementMods.dice,
+      1,
+      20
+    );
     const globalMods = getGlobalRollModifiers(effectTotals);
-    const totalLuck = luck + globalMods.adv;
-    const totalUnluck = unluck + globalMods.dis;
+    const totalLuck = luck + globalMods.adv + movementMods.adv;
+    const totalUnluck = unluck + globalMods.dis + movementMods.dis;
     const finalFullMode =
       globalMods.fullMode !== "normal" ? globalMods.fullMode : fullMode;
     let appliedLuck = totalLuck;

@@ -58,6 +58,10 @@
 - `rollSuccessDice()` — универсальный бросок пула dV с поддержкой
   - преимущества/помехи (переброс отдельных кубов)
   - полного переброса (fullMode: adv/dis)
+- Перед вызовом `rollSuccessDice()` / `rollPool()` пул может быть изменён значением `extraDice` из диалога броска.
+  - `extraDice > 0` увеличивает пул
+  - `extraDice < 0` уменьшает пул
+  - итоговый пул всегда ограничивается `clamp(..., 1, 20)`
 - Интеграция Dice So Nice регистрирует текстуры и пресет dV.
 
 ## Эффекты
@@ -65,13 +69,17 @@
 
 - Эффекты собираются из `item` (если экипирован), `ability` (если активна), `skill`/`state` (всегда).
 - `collectEffectTotals()` суммирует значения по ключам.
+- Ключи формата `*Luck` используют знак: `> 0` преимущество, `< 0` помеха.
+- `getLuckModifiers()` возвращает `{ adv, dis }` из `*Luck` (и legacy `Adv/Dis` для совместимости).
 - `getGlobalRollModifiers()` возвращает adv/dis и fullMode для всех бросков.
+- `getAttributeRollModifiers()` возвращает adv/dis/dice для конкретной характеристики.
+- `getAttackRollModifiers()` возвращает adv/dis/dice для броска атаки (включая моды характеристики).
 
 ## Бой: атака/защита/урон
 Источник: `module/combat.js`
 
 ### Поток атаки оружием
-1) игрок выбирает атрибут и режим броска (`attackDialog`).
+1) игрок выбирает атрибут и режим броска (`attackDialog`), а также `extraDice`.
 2) бросок атаки (`rollPool`).
 3) публикуется карточка атаки с кнопкой **Защита**.
 4) защитник делает уклонение/блок → бросок защиты.
@@ -96,7 +104,7 @@
 #### Оружие: от клика до урона
 1) UI: на листе персонажа кнопка «Атака» вызывает `game.vitruvium.startWeaponAttackFlow()`.
 2) `startWeaponAttackFlow()`:
-   - открывает `attackDialog()` (атрибут, luck/unluck, fullMode);
+   - открывает `attackDialog()` (атрибут, luck/unluck, fullMode, extraDice);
    - вычисляет модификаторы (`collectEffectTotals`, `getGlobalRollModifiers`, `getWeaponRollMods`);
    - бросает пул `rollPool()`.
 3) Если **нет цели** — публикуется карточка «атака без цели» и всё заканчивается.
@@ -107,8 +115,8 @@
    - проверка `flags.vitruvium.kind === "attack"`;
    - защита доступна только владельцу цели или GM (`userCanDefend`).
 6) Защитник выбирает реакцию (`defenseDialog()`):
-   - **block** → пул `condition`;
-   - **dodge** → пул `movement` (недоступен при тяжелой броне).
+   - **block** → пул `condition` + модификатор `extraDice`;
+   - **dodge** → пул `movement` + модификатор `extraDice` (недоступен при тяжелой броне).
 7) Публикуется **публичная** карточка защиты с результатами.
 8) Создаётся **скрытая** (whisper GM) карточка‑запрос `resolveRequest` с полным контекстом атаки/защиты.
 9) `Hooks.on("createChatMessage")` (GM-only) ловит `resolveRequest`:
@@ -123,14 +131,25 @@
 1) UI: кнопка «Использовать способность» вызывает `startAbilityAttackFlow()`.
 2) `startAbilityAttackFlow()`:
    - определяет режим (урон/спасбросок);
-   - при уроне делает `attackDialog()` + `rollPool()` для атаки;
+   - при уроне делает `attackDialog()` + `rollPool()` для атаки (с поддержкой `extraDice`);
    - при уроне/спасброске кидает дополнительные `rollPool()` по dice-полям;
    - рассчитывает `damageValue` и `saveValue`.
+
 3) Публикуется карточка атаки (или скрытая версия для NPC без владельца).
 4) Защита работает так же, как при оружии: кнопка **Защита** → `resolveRequest` → GM‑resolve.
 5) GM‑resolve при `attackKind: "ability"`:
    - урон: `computeAbilityDamage()`;
    - спасбросок: `defS >= saveValue`.
+
+### Диалог режима броска
+Используется в проверках, атаках и защите.
+- Поля диалога:
+  - `fullMode` (`normal|adv|dis`)
+  - `luck` / `unluck` (перебросы отдельных кубов)
+  - `extraDice` (прямой модификатор пула; допускает отрицательные значения)
+- Формирование пула:
+  - базовый пул + модификаторы эффектов + `extraDice`
+  - результат ограничивается диапазоном `1..20`
 
 #### Ключевые хуки и обработчики
 - `Hooks.once("ready")`: инжект CSS для chat cards.

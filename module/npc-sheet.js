@@ -2,6 +2,7 @@ import { VitruviumCharacterSheet } from "./character-sheet.js";
 import {
   collectEffectTotals,
   getEffectValue,
+  getAttributeRollModifiers,
   getGlobalRollModifiers,
 } from "./effects.js";
 import { rollSuccessDice } from "./rolls.js";
@@ -122,6 +123,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
       new Promise((resolve) => {
         const defaultLuck = 0;
         const defaultUnluck = 0;
+        const defaultExtraDice = 0;
         const defaultFullMode = "normal";
         new Dialog({
           title,
@@ -141,6 +143,10 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
                 <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
               </label>
             </div>
+            <label>Доп. кубы (можно отрицательное)
+              <input type="number" name="extraDice" value="${defaultExtraDice}" min="-20" max="20" step="1" style="width:100%"/>
+            </label>
+            <div style="font-size:12px; opacity:.75;">Положительное число увеличивает пул кубов, отрицательное уменьшает.</div>
             <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
           </div>`,
           buttons: {
@@ -154,6 +160,11 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
                     0,
                     20
                   ),
+                  extraDice: clamp(
+                    num(html.find("input[name='extraDice']").val(), 0),
+                    -20,
+                    20
+                  ),
                   fullMode: html.find("select[name='fullMode']").val(),
                 }),
             },
@@ -163,7 +174,6 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
           close: () => resolve(null),
         }).render(true);
       });
-
     // Override attribute +/- to remove 1..6 clamp and auto-HP logic
     html.find("[data-action='attr-inc']").off("click").on("click", async (ev) => {
       ev.preventDefault();
@@ -195,12 +205,19 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
         const attrs = this.actor.system.attributes ?? {};
         const effectTotals = collectEffectTotals(this.actor);
         const globalMods = getGlobalRollModifiers(effectTotals);
+        const attrMods = getAttributeRollModifiers(effectTotals, key);
         const base = num(attrs[key], 0);
-        const pool = Math.max(1, base + getEffectValue(effectTotals, key));
         const choice = await rollModeDialog(`Проверка: ${label}`);
         if (!choice) return;
-        const rollLuck = choice.luck + globalMods.adv;
-        const rollUnluck = choice.unluck + globalMods.dis;
+        const pool = clamp(
+          Math.max(1, base + getEffectValue(effectTotals, key)) +
+            attrMods.dice +
+            num(choice.extraDice, 0),
+          1,
+          20
+        );
+        const rollLuck = choice.luck + globalMods.adv + attrMods.adv;
+        const rollUnluck = choice.unluck + globalMods.dis + attrMods.dis;
         const rollFullMode =
           globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
 
