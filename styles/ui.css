@@ -182,10 +182,10 @@
   border-color: rgba(0, 0, 0, 0.28);
 }
 
-#v-tab-inv:checked ~ .v-tabs__nav label[for="v-tab-inv"],
-#v-tab-abi:checked ~ .v-tabs__nav label[for="v-tab-abi"],
-#v-tab-skill:checked ~ .v-tabs__nav label[for="v-tab-skill"],
-#v-tab-state:checked ~ .v-tabs__nav label[for="v-tab-state"] {
+.v-tabs__toggle[data-tab="inv"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="inv"],
+.v-tabs__toggle[data-tab="abi"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="abi"],
+.v-tabs__toggle[data-tab="skill"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="skill"],
+.v-tabs__toggle[data-tab="state"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="state"] {
   background: rgba(0, 0, 0, 0.08);
   border-color: rgba(0, 0, 0, 0.3);
 }
@@ -193,16 +193,16 @@
 .v-tabpanel {
   display: none;
 }
-#v-tab-inv:checked ~ .v-tabs__content .v-tabpanel--inv {
+.v-tabs__toggle[data-tab="inv"]:checked ~ .v-tabs__content .v-tabpanel--inv {
   display: block;
 }
-#v-tab-abi:checked ~ .v-tabs__content .v-tabpanel--abi {
+.v-tabs__toggle[data-tab="abi"]:checked ~ .v-tabs__content .v-tabpanel--abi {
   display: block;
 }
-#v-tab-skill:checked ~ .v-tabs__content .v-tabpanel--skill {
+.v-tabs__toggle[data-tab="skill"]:checked ~ .v-tabs__content .v-tabpanel--skill {
   display: block;
 }
-#v-tab-state:checked ~ .v-tabs__content .v-tabpanel--state {
+.v-tabs__toggle[data-tab="state"]:checked ~ .v-tabs__content .v-tabpanel--state {
   display: block;
 }
 

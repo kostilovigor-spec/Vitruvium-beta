@@ -210,48 +210,52 @@
       <section class="v-tabs">
         <input
           type="radio"
-          id="v-tab-inv"
-          name="v-tabs"
+          id="{{vitruvium.tabIds.inv}}"
+          name="{{vitruvium.tabName}}"
           value="inv"
+          data-tab="inv"
           class="v-tabs__toggle"
           {{#if (eq vitruvium.activeTab "inv")}}checked{{/if}}
         />
         <input
           type="radio"
-          id="v-tab-abi"
-          name="v-tabs"
+          id="{{vitruvium.tabIds.abi}}"
+          name="{{vitruvium.tabName}}"
           value="abi"
+          data-tab="abi"
           class="v-tabs__toggle"
           {{#if (eq vitruvium.activeTab "abi")}}checked{{/if}}
         />
         <input
           type="radio"
-          id="v-tab-skill"
-          name="v-tabs"
+          id="{{vitruvium.tabIds.skill}}"
+          name="{{vitruvium.tabName}}"
           value="skill"
+          data-tab="skill"
           class="v-tabs__toggle"
           {{#if (eq vitruvium.activeTab "skill")}}checked{{/if}}
         />
         <input
           type="radio"
-          id="v-tab-state"
-          name="v-tabs"
+          id="{{vitruvium.tabIds.state}}"
+          name="{{vitruvium.tabName}}"
           value="state"
+          data-tab="state"
           class="v-tabs__toggle"
           {{#if (eq vitruvium.activeTab "state")}}checked{{/if}}
         />
 
         <div class="v-tabs__nav" role="tablist">
-          <label class="v-tabs__tab" for="v-tab-inv" role="tab" data-tab="inv">Инвентарь</label>
-          <label class="v-tabs__tab" for="v-tab-abi" role="tab" data-tab="abi">Способности</label>
-          <label class="v-tabs__tab" for="v-tab-skill" role="tab" data-tab="skill">Навыки</label>
-          <label class="v-tabs__tab" for="v-tab-state" role="tab" data-tab="state">Состояния</label>
+          <label class="v-tabs__tab" for="{{vitruvium.tabIds.inv}}" role="tab" data-tab="inv">Инвентарь</label>
+          <label class="v-tabs__tab" for="{{vitruvium.tabIds.abi}}" role="tab" data-tab="abi">Способности</label>
+          <label class="v-tabs__tab" for="{{vitruvium.tabIds.skill}}" role="tab" data-tab="skill">Навыки</label>
+          <label class="v-tabs__tab" for="{{vitruvium.tabIds.state}}" role="tab" data-tab="state">Состояния</label>
         </div>
 
         <div class="v-tabs__content">
           <section
             class="v-panel v-inv v-tabpanel v-tabpanel--inv"
-            id="v-tabpanel-inv"
+            id="{{vitruvium.tabIds.inv}}-panel"
             role="tabpanel"
           >
             <div class="v-panel__head">
@@ -337,7 +341,7 @@
 
           <section
             class="v-panel v-tabpanel v-tabpanel--abi"
-            id="v-tabpanel-abi"
+            id="{{vitruvium.tabIds.abi}}-panel"
             role="tabpanel"
           >
             <div class="v-panel__head">
@@ -408,7 +412,7 @@
 
           <section
             class="v-panel v-tabpanel v-tabpanel--skill"
-            id="v-tabpanel-skill"
+            id="{{vitruvium.tabIds.skill}}-panel"
             role="tabpanel"
           >
             <div class="v-panel__head">
@@ -468,7 +472,7 @@
 
           <section
             class="v-panel v-tabpanel v-tabpanel--state"
-            id="v-tabpanel-state"
+            id="{{vitruvium.tabIds.state}}-panel"
             role="tabpanel"
           >
             <div class="v-panel__head">

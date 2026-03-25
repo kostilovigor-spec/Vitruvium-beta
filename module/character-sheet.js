@@ -125,12 +125,20 @@ export class VitruviumCharacterSheet extends ActorSheet {
       },
     ];
 
-    // Active tab stored per actor.
-    const savedTab = this.actor.getFlag(scope, "activeTab");
+    // Active tab is local to this sheet window (not shared via actor flags).
+    const savedTab = String(this._activeTab ?? "inv");
     data.vitruvium.activeTab =
       savedTab === "abi" || savedTab === "skill" || savedTab === "state"
         ? savedTab
         : "inv";
+    const tabBase = `v-tabs-${this.appId ?? this.actor?.id ?? "actor"}`;
+    data.vitruvium.tabName = tabBase;
+    data.vitruvium.tabIds = {
+      inv: `${tabBase}-inv`,
+      abi: `${tabBase}-abi`,
+      skill: `${tabBase}-skill`,
+      state: `${tabBase}-state`,
+    };
 
     data.vitruvium.inspiration = { value: inspValue, max: inspMax };
     data.vitruvium.hp = { value: hpValue, max: hpMax };
@@ -273,11 +281,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
         }).render(true);
       });
 
-    // Persist active tab.
-    html.find(".v-tabs__toggle").on("change", async (ev) => {
+    // Keep active tab local to this window.
+    html.find(".v-tabs__toggle").on("change", (ev) => {
       const tab = ev.currentTarget.value;
       if (!tab) return;
-      await this.actor.setFlag(scope, "activeTab", tab);
+      this._activeTab = String(tab);
     });
 
     // Attribute increment with clamp and HP max update.

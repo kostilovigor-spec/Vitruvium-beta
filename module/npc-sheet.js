@@ -42,8 +42,14 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
       (i) => i.type === "ability"
     );
 
-    const savedTab = this.actor.getFlag(game.system.id, "activeTab");
+    const savedTab = String(this._activeTab ?? "inv");
     data.vitruvium.activeTab = savedTab === "abi" ? "abi" : "inv";
+    const tabBase = `v-tabs-${this.appId ?? this.actor?.id ?? "actor"}`;
+    data.vitruvium.tabName = tabBase;
+    data.vitruvium.tabIds = {
+      inv: `${tabBase}-inv`,
+      abi: `${tabBase}-abi`,
+    };
 
     const attrLabels = {
       condition: "Самочувствие",
