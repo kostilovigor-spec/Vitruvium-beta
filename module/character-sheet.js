@@ -492,7 +492,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
         {
           name: "Новый предмет",
           type: "item",
-          system: { description: "", quantity: 1, price: 0, effects: [] },
+          system: {
+            description: "",
+            quantity: 1,
+            price: 0,
+            canBlock: false,
+            effects: [],
+          },
         },
       ]);
     });

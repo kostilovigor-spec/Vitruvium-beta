@@ -355,6 +355,15 @@ function hasHeavyArmorEquipped(actor) {
   return false;
 }
 
+function hasBlockWeaponEquipped(actor) {
+  for (const it of actor.items ?? []) {
+    if (it.type !== "item") continue;
+    if (!it.system?.equipped) continue;
+    if (it.system?.canBlock) return true;
+  }
+  return false;
+}
+
 function getArmorTotal(actor, { includeShield = true } = {}) {
   const base = num(actor.system?.attributes?.armor, 0);
   let bonus = 0;
@@ -782,13 +791,14 @@ function computeDamageCompact({
   const def = num(defS, 0);
   const base = num(weaponDamage, 0);
 
-  // Новый вариант:
-  // Урон = базовый урон оружия + успехи атаки (срезанные броней).
-  // Броня уменьшает только успехи атаки и не может уменьшить базовый урон.
-  // Уклонение: если atk <= def — промах и 0 урона.
+  // Блок:
+  // 1) База: урон оружия, срезанный блоком.
+  // 2) Пролом: если атака выше блока, разница добавляется отдельно.
+  // 3) Бонус: успехи атаки, срезанные броней.
+  // Пролом не уменьшается броней.
   if (defenseType === "block") {
     const armorVal = num(armorFull, 0);
-    const effAtk = Math.max(0, atk - armorVal);
+    const bonusAtk = Math.max(0, atk - armorVal);
     const blockBonusEnabled = false;
     const blockBonusMinArmor = 2;
     const blockBonusValue = 1;
@@ -798,11 +808,12 @@ function computeDamageCompact({
         : 0;
     const effBlock = Math.max(0, def + blockBonus);
     const baseAfter = Math.max(0, base - effBlock);
-    const dmg = baseAfter + effAtk;
+    const breakthrough = Math.max(0, atk - effBlock);
+    const dmg = baseAfter + breakthrough + bonusAtk;
     const blockLabel = blockBonus
       ? `${def}+${blockBonus}`
       : `${def}`;
-    const compact = `max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${armorFull}) = ${dmg}`;
+    const compact = `max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${blockLabel}) + max(0, ${atk} - ${armorFull}) = ${dmg}`;
     return { damage: dmg, compact, hit: true };
   }
 
@@ -842,6 +853,17 @@ async function actorFromTokenUuid(uuid) {
   const tokenDoc = await tokenDocByUuid(uuid);
   return tokenDoc?.actor ?? null;
 }
+async function actorFromActorUuid(uuid) {
+  if (!uuid) return null;
+  const doc = await fromUuid(uuid);
+  return doc?.documentName === "Actor" ? doc : null;
+}
+async function resolveCombatActor({ tokenUuid = null, actorUuid = null } = {}) {
+  return (
+    (await actorFromTokenUuid(tokenUuid)) ??
+    (await actorFromActorUuid(actorUuid))
+  );
+}
 
 function userCanDefend(defenderActor) {
   if (game.user.isGM) return true;
@@ -876,8 +898,13 @@ Hooks.once("ready", () => {
       const f = msg.flags?.vitruvium ?? null;
       if (!f || f.kind !== "resolveRequest") return;
 
-      const defender = await actorFromTokenUuid(f.defenderTokenUuid);
-      const attacker = await actorFromTokenUuid(f.attackerTokenUuid);
+      const defender = await resolveCombatActor({
+        tokenUuid: f.defenderTokenUuid,
+      });
+      const attacker = await resolveCombatActor({
+        tokenUuid: f.attackerTokenUuid,
+        actorUuid: f.attackerActorUuid,
+      });
       if (!defender || !attacker) return;
 
       const armorFull = getArmorTotal(defender, { includeShield: true });
@@ -1062,6 +1089,8 @@ Hooks.on("renderChatMessage", (message, html) => {
     const fresh = game.messages.get(message.id) ?? message;
     const flags = fresh.flags?.vitruvium ?? {};
     if (flags.kind !== "attack") return;
+    const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
+    const speakerActor = speakerActorId ? game.actors?.get(speakerActorId) : null;
 
     const defenderTokenUuid = String(
       btn.attr("data-defender-token-uuid") ?? flags.defenderTokenUuid ?? ""
@@ -1084,9 +1113,19 @@ Hooks.on("renderChatMessage", (message, html) => {
     _resolvedAttackDefenseKeys.add(lockKey);
     let keepLock = false;
     try {
-      const defender = await actorFromTokenUuid(defenderTokenUuid);
-      const attacker = await actorFromTokenUuid(flags.attackerTokenUuid);
-      if (!defender || !attacker) return;
+      const defender = await resolveCombatActor({
+        tokenUuid: defenderTokenUuid,
+      });
+      const attacker = await resolveCombatActor({
+        tokenUuid: flags.attackerTokenUuid,
+        actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
+      });
+      if (!defender || !attacker) {
+        ui.notifications?.warn(
+          "Не удалось определить участников атаки. Создайте атаку заново."
+        );
+        return;
+      }
 
       if (!userCanDefend(defender)) {
         ui.notifications?.warn(
@@ -1096,8 +1135,17 @@ Hooks.on("renderChatMessage", (message, html) => {
       }
 
       const isAbility = flags.attackKind === "ability";
+      const isAttackRollAbility = isAbility && flags.attackRoll !== false;
       const allowDodge = isAbility ? true : !hasHeavyArmorEquipped(defender);
-      const allowBlock = !isAbility;
+      const allowBlock =
+        hasBlockWeaponEquipped(defender) &&
+        (!isAbility || isAttackRollAbility);
+      if (!allowDodge && !allowBlock) {
+        ui.notifications?.warn(
+          "Защита недоступна: нужен предмет с галочкой «Даёт блок» или возможность уклониться."
+        );
+        return;
+      }
       const choice = await defenseDialog({
         allowDodge,
         allowBlock,
@@ -1257,6 +1305,8 @@ Hooks.on("renderChatMessage", (message, html) => {
             kind: "resolveRequest",
             attackKind: flags.attackKind ?? "weapon",
             attackerTokenUuid: flags.attackerTokenUuid,
+            attackerActorUuid:
+              flags.attackerActorUuid ?? speakerActor?.uuid ?? attacker?.uuid,
             defenderTokenUuid,
             weaponName: flags.weaponName,
             weaponDamage: flags.weaponDamage,
@@ -1337,6 +1387,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       canvas.tokens.controlled?.[0] ??
       null;
     const attackerTokenUuid = attackerToken?.document?.uuid ?? null;
+    const attackerActorUuid = attackerActor?.uuid ?? null;
     const defenderTokenUuid = hasTarget
       ? defenseTargets[0].defenderTokenUuid
       : null;
@@ -1453,6 +1504,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
               abilitySaveValue: saveValue,
               atkAttrKey: atkAttrKey,
               attackerTokenUuid,
+              attackerActorUuid,
               defenderTokenUuid,
               defenderName,
               defenderTargets: defenseTargets,
@@ -1516,8 +1568,12 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
 
     const defenseTargets = collectSelectedDefenseTargets();
     const hasTarget = defenseTargets.length > 0;
-    const attackerToken = canvas.tokens.controlled?.[0] ?? null;
+    const attackerToken =
+      attackerActor?.getActiveTokens?.(true, true)?.[0] ??
+      canvas.tokens.controlled?.[0] ??
+      null;
     const attackerTokenUuid = attackerToken?.document?.uuid ?? null;
+    const attackerActorUuid = attackerActor?.uuid ?? null;
 
     await playAutomatedAnimation({ actor: attackerActor, item: weaponItem });
 
@@ -1582,6 +1638,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
           kind: "attack",
           attackKind: "weapon",
           attackerTokenUuid,
+          attackerActorUuid,
           defenderTokenUuid,
           defenderName,
           defenderTargets: defenseTargets,

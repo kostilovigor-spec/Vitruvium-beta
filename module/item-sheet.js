@@ -20,6 +20,7 @@ export class VitruviumItemSheet extends ItemSheet {
     // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
+    if (typeof sys.canBlock !== "boolean") sys.canBlock = false;
     data.system = sys;
 
     // Description preview (HTML-safe).

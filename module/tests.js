@@ -76,11 +76,11 @@ export const registerVitruviumTests = () => {
         armorFull: 2,
         armorNoShield: 1,
       });
-      assertEqual(out.damage, 3, "block damage");
+      assertEqual(out.damage, 5, "block damage");
       assertEqual(out.hit, true, "block hit");
       assertEqual(
         out.compact,
-        "max(0, 3 - 2) + max(0, 4 - 2) = 3",
+        "max(0, 3 - 2) + max(0, 4 - 2) + max(0, 4 - 2) = 5",
         "block compact"
       );
     });
