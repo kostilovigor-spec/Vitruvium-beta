@@ -38,44 +38,15 @@
         </label>
 
         <label class="v-item__stat">
-          <span>Урон dV</span>
-          <div class="v-item__field-text">{{system.rollDamageDice}}</div>
+          <span>Хил</span>
+          <div class="v-item__field-text">{{system.rollHealBase}}</div>
           <input
             class="v-item__field-input"
             type="number"
-            name="system.rollDamageDice"
-            value="{{system.rollDamageDice}}"
+            name="system.rollHealBase"
+            value="{{system.rollHealBase}}"
             data-dtype="Number"
-            min="0"
-            max="20"
-          />
-        </label>
-
-        <label class="v-item__stat">
-          <span>Сложн</span>
-          <div class="v-item__field-text">{{system.rollSaveBase}}</div>
-          <input
-            class="v-item__field-input"
-            type="number"
-            name="system.rollSaveBase"
-            value="{{system.rollSaveBase}}"
-            data-dtype="Number"
-            min="0"
             max="99"
-          />
-        </label>
-
-        <label class="v-item__stat">
-          <span>Сложн. dV</span>
-          <div class="v-item__field-text">{{system.rollSaveDice}}</div>
-          <input
-            class="v-item__field-input"
-            type="number"
-            name="system.rollSaveDice"
-            value="{{system.rollSaveDice}}"
-            data-dtype="Number"
-            min="0"
-            max="20"
           />
         </label>
       </div>

@@ -15,6 +15,15 @@ Hooks.once("init", () => {
 
   const NS = game.system.id; // у тебя это "Vitruvium"
 
+  game.settings.register(NS, "enableAutomatedAnimations", {
+    name: "Включить Auto Animations",
+    hint: "Если появляются предупреждения WebGL или визуальные подвисания, отключите и проверьте поведение чата.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
   CONFIG.Dice.terms["V"] = VitruviumDie;
   CONFIG.Dice.terms["v"] = VitruviumDie;
 

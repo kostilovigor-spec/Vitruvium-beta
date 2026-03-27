@@ -43,9 +43,7 @@
       "attackRoll": false,
       "attackAttr": "combat",
       "rollDamageBase": 0,
-      "rollDamageDice": 0,
-      "rollSaveBase": 0,
-      "rollSaveDice": 0,
+      "rollHealBase": 0,
       "description": "",
       "effects": []
     },

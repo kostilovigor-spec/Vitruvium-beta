@@ -1,5 +1,17 @@
-function gmIds() {
-  return (game?.users ?? []).filter((u) => u.isGM).map((u) => u.id);
+function gmIds({ activeOnly = false } = {}) {
+  return (game?.users ?? [])
+    .filter((u) => u.isGM && (!activeOnly || u.active))
+    .map((u) => u.id);
+}
+
+function uniqueIds(ids = []) {
+  const out = [];
+  for (const id of ids) {
+    const v = String(id ?? "").trim();
+    if (!v || out.includes(v)) continue;
+    out.push(v);
+  }
+  return out;
 }
 
 export function currentChatRollMode() {
@@ -16,11 +28,18 @@ export function currentChatRollMode() {
 }
 
 export function chatVisibilityData({ gmOnly = false } = {}) {
-  if (gmOnly) return { whisper: gmIds() };
+  const onlineGmIds = gmIds({ activeOnly: true });
+  const allGmIds = gmIds();
+  const gmRecipients = onlineGmIds.length ? onlineGmIds : allGmIds;
+
+  if (gmOnly) return { whisper: gmRecipients };
+
   const mode = currentChatRollMode();
-  if (mode === "gmroll") return { whisper: gmIds() };
-  if (mode === "blindroll") return { whisper: gmIds(), blind: true };
+  if (mode === "gmroll") {
+    const recipients = uniqueIds([...gmRecipients, game?.user?.id]);
+    return recipients.length ? { whisper: recipients } : {};
+  }
+  if (mode === "blindroll") return { whisper: gmRecipients, blind: true };
   if (mode === "selfroll" && game?.user?.id) return { whisper: [game.user.id] };
   return {};
 }
-

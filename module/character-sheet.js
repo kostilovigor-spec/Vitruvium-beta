@@ -585,7 +585,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
         {
           name: "Новая способность",
           type: "ability",
-          system: { cost: 1, description: "", effects: [], active: false },
+          system: {
+            cost: 1,
+            actions: 1,
+            active: false,
+            attackRoll: false,
+            attackAttr: "combat",
+            rollDamageBase: 0,
+            rollHealBase: 0,
+            description: "",
+            effects: [],
+          },
         },
       ]);
     });
@@ -640,7 +650,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       await this.actor.deleteEmbeddedDocuments("Item", [id]);
     });
 
-    // Use ability: spend inspiration, then attack or chat.
+    // Use ability: spend inspiration, then attack or apply non-attack effects.
     html.find("[data-action='use-ability']").on("click", async (ev) => {
       ev.preventDefault();
       const id = ev.currentTarget.dataset.itemId;
@@ -653,21 +663,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const desc = String(sys.description ?? "");
 
       const damageBase = clamp(num(sys.rollDamageBase, 0), 0, 99);
-      const damageDice = clamp(num(sys.rollDamageDice, 0), 0, 20);
-      const saveBase = clamp(num(sys.rollSaveBase, 0), 0, 99);
-      const saveDice = clamp(num(sys.rollSaveDice, 0), 0, 20);
-
-      let useAsAttack = damageDice > 0 || saveDice > 0;
-      if (!useAsAttack) {
-        const legacyMode = String(sys.rollMode ?? "none");
-        const legacyDice = clamp(num(sys.rollDice, 0), 0, 20);
-        if (legacyMode === "damage" || legacyMode === "save") {
-          useAsAttack = legacyDice > 0;
-        }
-      }
-      if (!useAsAttack) {
-        useAsAttack = damageBase > 0 || saveBase > 0;
-      }
+      const healBase = clamp(num(sys.rollHealBase, 0), 0, 99);
+      const attackRollEnabled = sys.attackRoll === true;
+      const useAsAttack = attackRollEnabled && (damageBase > 0 || healBase > 0);
 
     // Inspiration: base max + effects.
       const insp = this.actor.system.attributes?.inspiration ?? {
@@ -699,8 +697,35 @@ export class VitruviumCharacterSheet extends ActorSheet {
         return;
       }
 
+      let actualHeal = 0;
+      if (healBase > 0) {
+        const attrs = this.actor.system.attributes ?? {};
+        const hp = attrs.hp ?? {};
+        const hpMax = Math.max(
+          0,
+          getEffectiveAttribute(attrs, "condition", effectTotals) * 8 +
+            getEffectValue(effectTotals, "hpMax")
+        );
+        const hpCur = clamp(num(hp.value, hpMax), 0, hpMax);
+        const hpNext = clamp(hpCur + healBase, 0, hpMax);
+        actualHeal = Math.max(0, hpNext - hpCur);
+        if (hpNext !== hpCur) {
+          await this.actor.update({
+            "system.attributes.hp.value": hpNext,
+          });
+        }
+      }
+
       await playAutomatedAnimation({ actor: this.actor, item });
       const img = item.img ?? "icons/svg/mystery-man.svg";
+      const effectLines = [
+        damageBase > 0 ? `<p><b>Урон:</b> ${damageBase}</p>` : "",
+        healBase > 0
+          ? `<p><b>Хил:</b> +${healBase}${actualHeal !== healBase ? ` (факт: +${actualHeal})` : ""}</p>`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("");
 
       const content = `
         <div class="vitruvium-chatcard">
@@ -713,6 +738,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
               <p><b>Стоимость:</b> −${cost} вдохн.</p>
             </div>
           </div>
+          ${effectLines}
           ${
             desc
               ? `<p>${esc(desc).replace(/\n/g, "<br>")}</p>`

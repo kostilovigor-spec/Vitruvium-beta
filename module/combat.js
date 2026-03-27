@@ -3,6 +3,7 @@ import {
   normalizeEffects,
   collectEffectTotals,
   getEffectValue,
+  getEffectiveAttribute,
   getAttributeRollModifiers,
   getAttackRollModifiers,
   getLuckModifiers,
@@ -633,14 +634,14 @@ function abilityAttackCard({
   attrKey,
   atkRoll,
   damageInfo,
-  saveInfo,
+  healInfo,
   defenseTargets = [],
   resolvedDefenderUuids = [],
   showDefense = true,
 }) {
   const hasAttack = !!atkRoll;
-  const hasDamage = !!damageInfo && (damageInfo.base > 0 || damageInfo.dice > 0);
-  const hasSave = !!saveInfo && (saveInfo.base > 0 || saveInfo.dice > 0);
+  const hasDamage = !!damageInfo && damageInfo.base > 0;
+  const hasHeal = !!healInfo && healInfo.base > 0;
   const boxes = [
     hasAttack
       ? `<div class="v-box">
@@ -654,6 +655,17 @@ function abilityAttackCard({
       ? `<div class="v-box">
         <div class="v-box__label">Урон</div>
         <div class="v-box__big">${damageInfo.total}</div>
+      </div>`
+      : null,
+    hasHeal
+      ? `<div class="v-box">
+        <div class="v-box__label">Хил</div>
+        <div class="v-box__big">${healInfo.total}</div>
+        ${
+          healInfo.applied < healInfo.total
+            ? `<div class="v-sub">Применено: ${healInfo.applied}</div>`
+            : ""
+        }
       </div>`
       : null,
   ]
@@ -675,7 +687,6 @@ function abilityAttackCard({
     <div class="v-two">
       ${boxes}
     </div>
-    ${hasSave ? `<div class="v-sub" style="margin-top:8px;">Сложность спасброска ${saveInfo.total}</div>` : ""}
 
     ${
       showDefense
@@ -743,20 +754,14 @@ function resolveAbilityCardHTML({
   attackerName,
   defenderName,
   abilityName,
-  defS,
   damage,
   damageCompact,
-  saveValue,
-  savePassed,
   hasDamage,
-  hasSave,
 }) {
   const parts = [];
-  if (hasSave) {
-    parts.push(`Спас: ${savePassed ? "да" : "нет"} (${defS}/${saveValue})`);
-  }
   if (hasDamage) {
     parts.push(`Урон ${damage}`);
+    if (damageCompact) parts.push(damageCompact);
   }
   const tail = parts.length ? ` · ${parts.join(" · ")}` : "";
   return `
@@ -919,12 +924,8 @@ Hooks.once("ready", () => {
 
       if (attackKind === "ability") {
         const damageValue = num(f.abilityDamageValue, 0);
-        const saveValue = num(f.abilitySaveValue, 0);
-        const hasDamage =
-          num(f.abilityDamageBase, 0) > 0 || num(f.abilityDamageDice, 0) > 0;
-        const hasSave =
-          num(f.abilitySaveBase, 0) > 0 || num(f.abilitySaveDice, 0) > 0;
-        const attackRollEnabled = f.attackRoll !== false;
+        const hasDamage = num(f.abilityDamageBase, 0) > 0;
+        const attackRollEnabled = f.attackRoll === true;
         let damageOut = { damage: 0, compact: "", hit: false };
         if (hasDamage && attackRollEnabled) {
           damageOut = computeAbilityDamage({
@@ -936,10 +937,9 @@ Hooks.once("ready", () => {
           const dmg = Math.max(0, damageValue);
           damageOut = { damage: dmg, compact: `${damageValue}`, hit: true };
         }
-        const savePassed = hasSave ? defS >= saveValue : false;
         damage = hasDamage ? damageOut.damage : 0;
         compact = hasDamage ? damageOut.compact : "";
-        hit = hasDamage ? damageOut.hit : hasSave ? !savePassed : false;
+        hit = hasDamage ? damageOut.hit : false;
 
         await ChatMessage.create({
           speaker: ChatMessage.getSpeaker({ actor: attacker }),
@@ -947,13 +947,9 @@ Hooks.once("ready", () => {
             attackerName: attacker.name,
             defenderName: defender.name,
             abilityName: f.weaponName ?? "Способность",
-            defS,
             damage,
             damageCompact: compact,
-            saveValue,
-            savePassed,
             hasDamage,
-            hasSave,
           }),
           ...chatVisibilityData({ gmOnly: true }),
           flags: {
@@ -1111,7 +1107,6 @@ Hooks.on("renderChatMessage", (message, html) => {
     }
 
     _resolvedAttackDefenseKeys.add(lockKey);
-    let keepLock = false;
     try {
       const defender = await resolveCombatActor({
         tokenUuid: defenderTokenUuid,
@@ -1135,7 +1130,7 @@ Hooks.on("renderChatMessage", (message, html) => {
       }
 
       const isAbility = flags.attackKind === "ability";
-      const isAttackRollAbility = isAbility && flags.attackRoll !== false;
+      const isAttackRollAbility = isAbility && flags.attackRoll === true;
       const allowDodge = isAbility ? true : !hasHeavyArmorEquipped(defender);
       const allowBlock =
         hasBlockWeaponEquipped(defender) &&
@@ -1313,10 +1308,6 @@ Hooks.on("renderChatMessage", (message, html) => {
             atkSuccesses: flags.atkSuccesses,
             abilityDamageBase: flags.abilityDamageBase,
             abilityDamageValue: flags.abilityDamageValue,
-            abilitySaveBase: flags.abilitySaveBase,
-            abilitySaveValue: flags.abilitySaveValue,
-            abilityDamageDice: flags.abilityDamageDice,
-            abilitySaveDice: flags.abilitySaveDice,
             attackRoll: flags.attackRoll,
             defSuccesses: defRoll.successes,
             defenseType,
@@ -1340,13 +1331,12 @@ Hooks.on("renderChatMessage", (message, html) => {
         "flags.vitruvium.resolvedBy": game.user.id,
       });
 
-      keepLock = true;
       markResolvedInUI();
     } catch (e) {
       console.error("Vitruvium | defense flow error", e);
       ui.notifications?.error(`Ошибка защиты: ${e?.message ?? e}`);
     } finally {
-      if (!keepLock) _resolvedAttackDefenseKeys.delete(lockKey);
+      _resolvedAttackDefenseKeys.delete(lockKey);
     }
   });
 });
@@ -1361,26 +1351,23 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       0,
       99
     );
-    let damageDice = clamp(num(abilityItem?.system?.rollDamageDice, 0), 0, 20);
-    const saveBase = clamp(num(abilityItem?.system?.rollSaveBase, 0), 0, 99);
-    let saveDice = clamp(num(abilityItem?.system?.rollSaveDice, 0), 0, 20);
-    if (damageDice === 0 && saveDice === 0) {
-      const legacyMode = String(abilityItem?.system?.rollMode ?? "none");
-      const legacyDice = clamp(num(abilityItem?.system?.rollDice, 0), 0, 20);
-      if (legacyMode === "damage") damageDice = legacyDice;
-      if (legacyMode === "save") saveDice = legacyDice;
-    }
+    const healBase = clamp(num(abilityItem?.system?.rollHealBase, 0), 0, 99);
+    const hasDamage = damageBase > 0;
+    const hasHeal = healBase > 0;
 
-    const hasDamage = damageBase > 0 || damageDice > 0;
-    const hasSave = saveBase > 0 || saveDice > 0;
-
-    if (!hasDamage && !hasSave) {
-      ui.notifications?.warn("У способности не настроен бросок dV.");
+    if (!hasDamage && !hasHeal) {
+      ui.notifications?.warn("У способности не настроены урон/хил.");
       return;
     }
 
-    const defenseTargets = collectSelectedDefenseTargets();
-    const hasTarget = defenseTargets.length > 0;
+    const attackRollEnabled = abilityItem?.system?.attackRoll === true;
+    if (!attackRollEnabled) {
+      ui.notifications?.warn("Способность не помечена как атака.");
+      return;
+    }
+
+    const defenseTargets = hasDamage ? collectSelectedDefenseTargets() : [];
+    const hasTarget = hasDamage && defenseTargets.length > 0;
 
     const attackerToken =
       attackerActor?.getActiveTokens?.(true, true)?.[0] ??
@@ -1396,75 +1383,66 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const effectTotals = collectEffectTotals(attackerActor);
     const globalMods = getGlobalRollModifiers(effectTotals);
 
-    const attackRollEnabled = abilityItem?.system?.attackRoll !== false;
-    let atkChoice = null;
-    let atkRoll = null;
-    let atkAttrKey = null;
-    if (hasDamage && attackRollEnabled) {
-      atkChoice = await attackDialog({
-        actor: attackerActor,
-        weaponName: abilityName,
-        defaultAttrKey: abilityItem?.system?.attackAttr,
-      });
-      if (!atkChoice) return;
-      atkAttrKey = atkChoice.attrKey;
-      const attackMods = getAttackRollModifiers(effectTotals, {
-        attrKey: atkChoice.attrKey,
-      });
-      const atkPool = clamp(
-        num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1) +
-          attackMods.dice +
-          num(atkChoice.extraDice, 0),
-        1,
-        20
+    const atkChoice = await attackDialog({
+      actor: attackerActor,
+      weaponName: abilityName,
+      defaultAttrKey: abilityItem?.system?.attackAttr,
+    });
+    if (!atkChoice) return;
+    const atkAttrKey = atkChoice.attrKey;
+    const attackMods = getAttackRollModifiers(effectTotals, {
+      attrKey: atkChoice.attrKey,
+    });
+    const atkPool = clamp(
+      num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1) +
+        attackMods.dice +
+        num(atkChoice.extraDice, 0),
+      1,
+      20
+    );
+    const totalLuck = num(atkChoice.luck, 0) + globalMods.adv + attackMods.adv;
+    const totalUnluck = num(atkChoice.unluck, 0) + globalMods.dis + attackMods.dis;
+    const finalFullMode =
+      globalMods.fullMode !== "normal" ? globalMods.fullMode : atkChoice.fullMode;
+    const atkRoll = await rollPool(atkPool, {
+      luck: totalLuck,
+      unluck: totalUnluck,
+      fullMode: finalFullMode,
+    });
+
+    const damageValue = damageBase;
+    const healValue = healBase;
+    const attackSuccesses = atkRoll?.successes ?? 0;
+    const damageShown = hasDamage ? damageValue + attackSuccesses : 0;
+    const healShown = hasHeal ? healValue + attackSuccesses : 0;
+
+    let healApplied = 0;
+    if (hasHeal) {
+      const attrs = attackerActor.system?.attributes ?? {};
+      const hp = attrs.hp ?? {};
+      const hpMax = Math.max(
+        0,
+        getEffectiveAttribute(attrs, "condition", effectTotals) * 8 +
+          getEffectValue(effectTotals, "hpMax")
       );
-      const totalLuck = num(atkChoice.luck, 0) + globalMods.adv + attackMods.adv;
-      const totalUnluck =
-        num(atkChoice.unluck, 0) + globalMods.dis + attackMods.dis;
-      const finalFullMode =
-        globalMods.fullMode !== "normal"
-          ? globalMods.fullMode
-          : atkChoice.fullMode;
-      atkRoll = await rollPool(atkPool, {
-        luck: totalLuck,
-        unluck: totalUnluck,
-        fullMode: finalFullMode,
-      });
+      const hpCur = clamp(num(hp.value, hpMax), 0, hpMax);
+      const hpNext = clamp(hpCur + healShown, 0, hpMax);
+      healApplied = Math.max(0, hpNext - hpCur);
+      if (hpNext !== hpCur) {
+        await attackerActor.update({
+          "system.attributes.hp.value": hpNext,
+        });
+      }
     }
 
-    const finalFullMode =
-      globalMods.fullMode !== "normal" ? globalMods.fullMode : "normal";
-
-    const damageRoll =
-      hasDamage && damageDice > 0
-        ? await rollPool(damageDice, {
-            luck: globalMods.adv,
-            unluck: globalMods.dis,
-            fullMode: finalFullMode,
-          })
-        : null;
-    const saveRoll =
-      hasSave && saveDice > 0
-        ? await rollPool(saveDice, {
-            luck: globalMods.adv,
-            unluck: globalMods.dis,
-            fullMode: finalFullMode,
-          })
-        : null;
-    const damageValue = (damageRoll?.successes ?? 0) + damageBase;
-    const saveValue = (saveRoll?.successes ?? 0) + saveBase;
-    const attackSuccesses = atkRoll?.successes ?? 0;
     const damageInfo = {
       base: damageBase,
-      dice: damageDice,
-      roll: damageRoll,
-      total: damageValue,
+      total: damageShown,
     };
-    const saveInfo = {
-      base: saveBase,
-      dice: saveDice,
-      roll: saveRoll,
-      total: saveValue,
+    const healInfo = {
+      base: healBase,
+      total: healShown,
+      applied: healApplied,
     };
 
     await playAutomatedAnimation({ actor: attackerActor, item: abilityItem });
@@ -1476,7 +1454,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       attrKey: atkAttrKey,
       atkRoll,
       damageInfo,
-      saveInfo,
+      healInfo,
       defenseTargets,
       resolvedDefenderUuids: [],
       showDefense: hasTarget,
@@ -1486,22 +1464,14 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       ...chatVisibilityData(),
       speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
       content: publicContent,
-      rolls: [
-        ...(atkRoll?.rolls ?? []),
-        ...(damageRoll?.rolls ?? []),
-        ...(saveRoll?.rolls ?? []),
-      ],
+      rolls: [...(atkRoll?.rolls ?? [])],
       flags: hasTarget
         ? {
             vitruvium: {
               kind: "attack",
               attackKind: "ability",
               abilityDamageBase: damageBase,
-              abilityDamageDice: damageDice,
-              abilitySaveBase: saveBase,
-              abilitySaveDice: saveDice,
               abilityDamageValue: damageValue,
-              abilitySaveValue: saveValue,
               atkAttrKey: atkAttrKey,
               attackerTokenUuid,
               attackerActorUuid,

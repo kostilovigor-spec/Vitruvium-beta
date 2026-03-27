@@ -22,20 +22,9 @@ export class VitruviumAbilitySheet extends ItemSheet {
     // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     if (!Number.isFinite(Number(sys.rollDamageBase))) sys.rollDamageBase = 0;
-    if (!Number.isFinite(Number(sys.rollDamageDice))) sys.rollDamageDice = 0;
-    if (!Number.isFinite(Number(sys.rollSaveBase))) sys.rollSaveBase = 0;
-    if (!Number.isFinite(Number(sys.rollSaveDice))) sys.rollSaveDice = 0;
+    if (!Number.isFinite(Number(sys.rollHealBase))) sys.rollHealBase = 0;
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     if (typeof sys.attackRoll !== "boolean") sys.attackRoll = false;
-    // Legacy v12 compatibility for rollMode/rollDice.
-    if (Number(sys.rollDamageDice) === 0 && Number(sys.rollSaveDice) === 0) {
-      const legacyMode = String(sys.rollMode ?? "none");
-      const legacyDice = Number.isFinite(Number(sys.rollDice))
-        ? Number(sys.rollDice)
-        : 0;
-      if (legacyMode === "damage") sys.rollDamageDice = legacyDice;
-      if (legacyMode === "save") sys.rollSaveDice = legacyDice;
-    }
     data.system = sys;
 
     // Description preview (HTML-safe).
@@ -126,9 +115,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $actions = html.find("input[name='system.actions']");
     const $desc = html.find("textarea[name='system.description']");
     const $rollDamageBase = html.find("input[name='system.rollDamageBase']");
-    const $rollDamage = html.find("input[name='system.rollDamageDice']");
-    const $rollSaveBase = html.find("input[name='system.rollSaveBase']");
-    const $rollSave = html.find("input[name='system.rollSaveDice']");
+    const $rollHealBase = html.find("input[name='system.rollHealBase']");
     const $active = html.find("input[name='system.active']");
     const $attackRoll = html.find("input[name='system.attackRoll']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
@@ -182,20 +169,10 @@ export class VitruviumAbilitySheet extends ItemSheet {
         0,
         99
       );
-      const newRollDamageDice = clamp(
-        num($rollDamage.val(), num(this.item.system?.rollDamageDice, 0)),
-        0,
-        20
-      );
-      const newRollSaveBase = clamp(
-        num($rollSaveBase.val(), num(this.item.system?.rollSaveBase, 0)),
+      const newRollHealBase = clamp(
+        num($rollHealBase.val(), num(this.item.system?.rollHealBase, 0)),
         0,
         99
-      );
-      const newRollSaveDice = clamp(
-        num($rollSave.val(), num(this.item.system?.rollSaveDice, 0)),
-        0,
-        20
       );
       const newAttackAttr = String(
         $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat"
@@ -207,9 +184,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.cost": newCost,
         "system.actions": newActions,
         "system.rollDamageBase": newRollDamageBase,
-        "system.rollDamageDice": newRollDamageDice,
-        "system.rollSaveBase": newRollSaveBase,
-        "system.rollSaveDice": newRollSaveDice,
+        "system.rollHealBase": newRollHealBase,
         "system.attackAttr": newAttackAttr,
         "system.description": newDesc,
       });
