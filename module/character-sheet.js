@@ -45,7 +45,45 @@ export class VitruviumCharacterSheet extends ActorSheet {
     const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
 
     data.vitruvium = data.vitruvium ?? {};
-    data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
+    const items = this.actor.items.filter((i) => i.type === "item");
+    const categoryLabels = {
+      weapon: "Оружие",
+      equipment: "Снаряжение",
+      consumables: "Расходники",
+      trinkets: "Безделушки",
+      tools: "Инструменты",
+      loot: "Добыча",
+    };
+
+    const expanded = this.actor.getFlag(game.system.id, "inventoryExpanded") ?? {
+      weapon: true,
+      equipment: true,
+      consumables: true,
+      trinkets: true,
+      tools: true,
+      loot: true,
+    };
+
+    const grouped = {};
+    for (const [key, label] of Object.entries(categoryLabels)) {
+      grouped[key] = {
+        key,
+        label,
+        items: [],
+        expanded: expanded[key] !== false,
+      };
+    }
+
+    for (const item of items) {
+      const type = item.system.type || "equipment";
+      if (grouped[type]) {
+        grouped[type].items.push(item);
+      } else {
+        grouped.equipment.items.push(item);
+      }
+    }
+    data.vitruvium.inventory = Object.values(grouped);
+    data.vitruvium.items = items;
     data.vitruvium.abilities = (this.actor.items ?? []).filter(
       (i) => i.type === "ability"
     );
@@ -678,13 +716,24 @@ export class VitruviumCharacterSheet extends ActorSheet {
         "system.durationRemaining": next ? durationRounds : 0,
       });
     });
-
     // Open item sheet.
     html.find("[data-action='edit-item']").on("click", async (ev) => {
       ev.preventDefault();
       const id = ev.currentTarget.dataset.itemId;
       const item = this.actor.items.get(id);
       if (item) item.sheet.render(true);
+    });
+
+    // Toggle inventory folder.
+    html.find("[data-action='toggle-folder']").on("click", async (ev) => {
+      ev.preventDefault();
+      const folderKey = ev.currentTarget.dataset.folder;
+      const expanded = this.actor.getFlag(game.system.id, "inventoryExpanded") ?? {};
+      const next = expanded[folderKey] === false;
+      await this.actor.setFlag(game.system.id, "inventoryExpanded", {
+        ...expanded,
+        [folderKey]: next,
+      });
     });
 
     // Delete item (with confirmation).
@@ -695,7 +744,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       if (!item) return;
 
       const ok = await Dialog.confirm({
-        title: "Удалить способность?",
+        title: `Удалить ${item.type === "ability" ? "способность" : "предмет"}?`,
         content: `<p>Удалить <b>${esc(item.name)}</b>?</p>`,
       });
 
