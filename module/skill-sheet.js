@@ -16,13 +16,33 @@ export class VitruviumSkillSheet extends ItemSheet {
   getData() {
     const data = super.getData();
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
+    const isState = this.item.type === "state";
+    const toRounds = (v, d = 0) => {
+      const n = Number(v);
+      const safe = Number.isFinite(n) ? n : d;
+      return Math.max(0, Math.round(safe));
+    };
+    const stateActive = isState ? sys.active !== false : false;
+    const durationRounds = isState ? toRounds(sys.durationRounds, 0) : 0;
+    const durationRemaining = isState
+      ? toRounds(
+          sys.durationRemaining,
+          stateActive ? durationRounds : 0
+        )
+      : 0;
     data.system = sys;
+    if (isState) {
+      data.system.active = stateActive;
+      data.system.durationRounds = durationRounds;
+      data.system.durationRemaining = durationRemaining;
+    }
     const desc = String(sys.description ?? "");
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
+    data.vitruvium.isState = isState;
     return data;
   }
 

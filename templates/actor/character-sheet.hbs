@@ -500,10 +500,20 @@
 
                   <div class="v-inv__name" title="{{st.name}}">
                     <div class="v-inv__title">{{st.name}}</div>
-                    <div class="v-inv__meta">пассивно</div>
+                    <div class="v-inv__meta">{{#if st.active}}активно{{else}}неактивно{{/if}} · {{st.durationLabel}}</div>
                   </div>
 
                   <div class="v-inv__actions">
+                    <button
+                      type="button"
+                      class="v-inv__a {{#if st.active}}is-on{{/if}}"
+                      title="{{#if st.active}}Отключить{{else}}Активировать{{/if}}"
+                      data-action="toggle-state-active"
+                      data-item-id="{{st._id}}"
+                    >
+                      <i class="fas fa-bolt"></i>
+                    </button>
+
                     <button
                       type="button"
                       class="v-inv__a"

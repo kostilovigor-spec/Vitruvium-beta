@@ -73,6 +73,33 @@
             name="system.description"
             data-role="desc-edit"
           >{{system.description}}</textarea>
+
+          {{#if vitruvium.isState}}
+            <div class="v-item__flags">
+              <div class="v-item__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
+              <div class="v-item__flag">Длительность: {{system.durationRounds}} раунд.</div>
+              <div class="v-item__flag">Осталось: {{system.durationRemaining}} раунд.</div>
+            </div>
+
+            <div class="v-item__toggles">
+              <label class="v-check">
+                <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
+                <span>Активно</span>
+              </label>
+
+              <label class="v-item__stat">
+                <span>Длительность (раунды)</span>
+                <input
+                  type="number"
+                  name="system.durationRounds"
+                  value="{{system.durationRounds}}"
+                  data-dtype="Number"
+                  min="0"
+                  step="1"
+                />
+              </label>
+            </div>
+          {{/if}}
         </div>
       </section>
 

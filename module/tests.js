@@ -2,6 +2,7 @@ import { rollPool, computeDamageCompact } from "./combat.js";
 import { rollSuccessDice } from "./rolls.js";
 import {
   normalizeEffects,
+  collectEffectTotals,
   getAttributeRollModifiers,
   getAttackRollModifiers,
   getLuckModifiers,
@@ -258,6 +259,27 @@ export const registerVitruviumTests = () => {
       assertEqual(out.adv, 4, "attack adv");
       assertEqual(out.dis, 1, "attack dis");
       assertEqual(out.dice, 9, "attack dice");
+    });
+
+    await run("effects.collectEffectTotals.stateActiveFilter", async () => {
+      const actor = {
+        items: [
+          {
+            type: "state",
+            system: { active: true, effects: [{ key: "speed", value: 1 }] },
+          },
+          {
+            type: "state",
+            system: { active: false, effects: [{ key: "speed", value: 5 }] },
+          },
+          {
+            type: "state",
+            system: { effects: [{ key: "speed", value: 2 }] },
+          },
+        ],
+      };
+      const totals = collectEffectTotals(actor);
+      assertEqual(totals.speed, 3, "inactive states should not contribute");
     });
 
     const passed = results.filter((r) => r.ok).length;

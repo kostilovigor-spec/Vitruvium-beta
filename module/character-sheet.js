@@ -40,6 +40,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const x = Number(v);
       return Number.isNaN(x) ? d : x;
     };
+    const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
     // Attribute getter with effects applied.
     const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
 
@@ -51,9 +52,31 @@ export class VitruviumCharacterSheet extends ActorSheet {
     data.vitruvium.skills = (this.actor.items ?? []).filter(
       (i) => i.type === "skill"
     );
-    data.vitruvium.states = (this.actor.items ?? []).filter(
-      (i) => i.type === "state"
-    );
+    data.vitruvium.states = (this.actor.items ?? [])
+      .filter((i) => i.type === "state")
+      .map((state) => {
+        const active = state.system?.active !== false;
+        const durationRounds = toRounds(state.system?.durationRounds, 0);
+        const remainingDefault = active ? durationRounds : 0;
+        const durationRemaining = toRounds(
+          state.system?.durationRemaining,
+          remainingDefault
+        );
+        const durationLabel =
+          durationRounds > 0
+            ? `${durationRemaining}/${durationRounds} р.`
+            : "без длительности";
+        return {
+          _id: state.id,
+          name: state.name,
+          img: state.img,
+          system: state.system ?? {},
+          active,
+          durationRounds,
+          durationRemaining,
+          durationLabel,
+        };
+      });
 
     // Inspiration: base max + effects.
     const insp = attrs.inspiration ?? { value: 6, max: 6 };
@@ -206,6 +229,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const x = Number(v);
       return Number.isNaN(x) ? d : x;
     };
+    const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
     // Escape helper for safe HTML in chat content.
     const esc = (s) =>
       String(s ?? "")
@@ -612,7 +636,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find("[data-action='create-state']").on("click", async (ev) => {
       ev.preventDefault();
       await this.actor.createEmbeddedDocuments("Item", [
-        { name: "Новое состояние", type: "state", system: { description: "", effects: [] } },
+        {
+          name: "Новое состояние",
+          type: "state",
+          system: {
+            active: true,
+            durationRounds: 0,
+            durationRemaining: 0,
+            description: "",
+            effects: [],
+          },
+        },
       ]);
     });
 
@@ -624,6 +658,21 @@ export class VitruviumCharacterSheet extends ActorSheet {
       if (!item || item.type !== "ability") return;
       const next = !item.system?.active;
       await item.update({ "system.active": next });
+    });
+
+    // Toggle state active flag and reset round timer when enabled.
+    html.find("[data-action='toggle-state-active']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item || item.type !== "state") return;
+      const currentlyActive = item.system?.active !== false;
+      const next = !currentlyActive;
+      const durationRounds = toRounds(item.system?.durationRounds, 0);
+      await item.update({
+        "system.active": next,
+        "system.durationRemaining": next ? durationRounds : 0,
+      });
     });
 
     // Open item sheet.

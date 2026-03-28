@@ -8,10 +8,12 @@ import { VitruviumDie } from "./dv-die.js";
 import "./dice-so-nice.js";
 import { startAbilityAttackFlow, startWeaponAttackFlow } from "./combat.js";
 import { registerVitruviumTests } from "./tests.js";
+import { registerStateDurationHooks } from "./state-duration.js";
 
 Hooks.once("init", () => {
   console.log("Vitruvium | Initializing system");
   patchVitruviumInitiative();
+  registerStateDurationHooks();
 
   const NS = game.system.id; // у тебя это "Vitruvium"
 

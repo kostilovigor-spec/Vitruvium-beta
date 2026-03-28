@@ -1,0 +1,187 @@
+const hasOwn = (obj, key) =>
+  Object.prototype.hasOwnProperty.call(obj ?? {}, key);
+
+const toRounds = (value, fallback = 0) => {
+  const n = Number(value);
+  const safe = Number.isFinite(n) ? n : fallback;
+  return Math.max(0, Math.round(safe));
+};
+
+const isPrimaryGM = () => {
+  if (!game.user?.isGM) return false;
+  const activeGm = game.users?.activeGM;
+  if (!activeGm) return true;
+  return activeGm.id === game.user.id;
+};
+
+const observedCombatRounds = new Map();
+
+const normalizeStateSource = (itemDoc, change = {}) => {
+  if (itemDoc?.type !== "state") return;
+  if (!change || typeof change !== "object") return;
+
+  const hasFlatActive = hasOwn(change, "system.active");
+  const hasFlatDuration = hasOwn(change, "system.durationRounds");
+  const hasFlatRemaining = hasOwn(change, "system.durationRemaining");
+
+  if (hasFlatActive || hasFlatDuration || hasFlatRemaining) {
+    change.system = change.system ?? {};
+    if (hasFlatActive) {
+      change.system.active = change["system.active"];
+      delete change["system.active"];
+    }
+    if (hasFlatDuration) {
+      change.system.durationRounds = change["system.durationRounds"];
+      delete change["system.durationRounds"];
+    }
+    if (hasFlatRemaining) {
+      change.system.durationRemaining = change["system.durationRemaining"];
+      delete change["system.durationRemaining"];
+    }
+  }
+
+  if (!change.system || typeof change.system !== "object") return;
+  const next = change.system;
+
+  const currentActive = itemDoc.system?.active !== false;
+  const currentDuration = toRounds(itemDoc.system?.durationRounds, 0);
+  const currentRemaining = toRounds(
+    itemDoc.system?.durationRemaining,
+    currentActive ? currentDuration : 0
+  );
+
+  const hasActive = hasOwn(next, "active");
+  const hasDuration = hasOwn(next, "durationRounds");
+  const hasRemaining = hasOwn(next, "durationRemaining");
+
+  const nextActive = hasActive ? next.active !== false : currentActive;
+  const nextDuration = hasDuration
+    ? toRounds(next.durationRounds, currentDuration)
+    : currentDuration;
+  const activeChanged = hasActive && nextActive !== currentActive;
+  const durationChanged = hasDuration && nextDuration !== currentDuration;
+
+  if (hasActive) next.active = nextActive;
+  if (hasDuration) next.durationRounds = nextDuration;
+
+  if (activeChanged) {
+    next.durationRemaining = nextActive ? nextDuration : 0;
+    return;
+  }
+
+  if (durationChanged) {
+    next.durationRemaining = nextActive ? nextDuration : 0;
+    return;
+  }
+
+  if (hasRemaining) {
+    next.durationRemaining = toRounds(next.durationRemaining, currentRemaining);
+  }
+};
+
+const applyRoundTickToCombat = async (combat, ticks) => {
+  if (!combat || ticks <= 0) return;
+
+  const actors = new Map();
+  for (const combatant of combat.combatants ?? []) {
+    const actor = combatant?.actor;
+    if (!actor?.id) continue;
+    if (!actors.has(actor.id)) actors.set(actor.id, actor);
+  }
+
+  const jobs = [];
+  for (const actor of actors.values()) {
+    const updates = [];
+    for (const item of actor.items ?? []) {
+      if (item.type !== "state") continue;
+      if (item.system?.active === false) continue;
+
+      const durationRounds = toRounds(item.system?.durationRounds, 0);
+      if (durationRounds <= 0) continue;
+
+      const startRemaining = toRounds(
+        item.system?.durationRemaining,
+        durationRounds
+      );
+      const nextRemaining = Math.max(0, startRemaining - ticks);
+      const patch = {
+        _id: item.id,
+        "system.durationRemaining": nextRemaining,
+      };
+      if (nextRemaining <= 0) patch["system.active"] = false;
+      updates.push(patch);
+    }
+    if (updates.length) {
+      jobs.push(actor.updateEmbeddedDocuments("Item", updates));
+    }
+  }
+
+  if (jobs.length) await Promise.allSettled(jobs);
+};
+
+let stateDurationHooksRegistered = false;
+
+export const registerStateDurationHooks = () => {
+  if (stateDurationHooksRegistered) return;
+  stateDurationHooksRegistered = true;
+
+  Hooks.on("preCreateItem", (itemDoc, data) => {
+    if (itemDoc?.type !== "state") return;
+    const incoming = data?.system ?? {};
+    const sourcePatch = {};
+
+    const active =
+      typeof incoming.active === "boolean" ? incoming.active : true;
+    const durationRounds = toRounds(incoming.durationRounds, 0);
+    const durationRemaining = active ? durationRounds : 0;
+
+    if (typeof incoming.active !== "boolean") {
+      sourcePatch["system.active"] = active;
+    }
+    if (!hasOwn(incoming, "durationRounds")) {
+      sourcePatch["system.durationRounds"] = durationRounds;
+    }
+    if (!hasOwn(incoming, "durationRemaining")) {
+      sourcePatch["system.durationRemaining"] = durationRemaining;
+    }
+
+    if (Object.keys(sourcePatch).length) itemDoc.updateSource(sourcePatch);
+  });
+
+  Hooks.on("preUpdateItem", (itemDoc, change) => {
+    normalizeStateSource(itemDoc, change);
+  });
+
+  Hooks.once("ready", () => {
+    for (const combat of game.combats ?? []) {
+      observedCombatRounds.set(combat.id, toRounds(combat.round, 0));
+    }
+  });
+
+  Hooks.on("createCombat", (combat) => {
+    observedCombatRounds.set(combat.id, toRounds(combat.round, 0));
+  });
+
+  Hooks.on("deleteCombat", (combat) => {
+    observedCombatRounds.delete(combat.id);
+  });
+
+  Hooks.on("updateCombat", async (combat, change) => {
+    if (!isPrimaryGM()) return;
+    if (!hasOwn(change, "round")) return;
+
+    const newRound = toRounds(combat.round ?? change.round, 0);
+    const prevRound = observedCombatRounds.get(combat.id);
+    observedCombatRounds.set(combat.id, newRound);
+
+    if (!Number.isFinite(prevRound)) return;
+    if (newRound <= prevRound) return;
+
+    // Start ticking from round 2 so round 1 does not immediately consume duration.
+    const baseline = Math.max(prevRound, 1);
+    const ticks = Math.max(0, newRound - baseline);
+    if (ticks <= 0) return;
+
+    await applyRoundTickToCombat(combat, ticks);
+  });
+};

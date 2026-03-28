@@ -67,6 +67,9 @@
       "effects": []
     },
     "state": {
+      "active": true,
+      "durationRounds": 0,
+      "durationRemaining": 0,
       "description": "",
       "effects": []
     }
