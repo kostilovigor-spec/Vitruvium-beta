@@ -29,6 +29,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
       const x = Number(v);
       return Number.isNaN(x) ? d : x;
     };
+    const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
 
     const getAttr = (k) => {
       const base = num(attrs[k], 0);
@@ -41,14 +42,39 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
     data.vitruvium.abilities = (this.actor.items ?? []).filter(
       (i) => i.type === "ability"
     );
+    data.vitruvium.states = (this.actor.items ?? [])
+      .filter((i) => i.type === "state")
+      .map((state) => {
+        const active = state.system?.active !== false;
+        const durationRounds = toRounds(state.system?.durationRounds, 0);
+        const remainingDefault = active ? durationRounds : 0;
+        const durationRemaining = toRounds(
+          state.system?.durationRemaining,
+          remainingDefault
+        );
+        const durationLabel =
+          durationRounds > 0
+            ? `${durationRemaining}/${durationRounds} р.`
+            : "без длительности";
+        return {
+          _id: state.id,
+          name: state.name,
+          img: state.img,
+          system: state.system ?? {},
+          active,
+          durationLabel,
+        };
+      });
 
     const savedTab = String(this._activeTab ?? "inv");
-    data.vitruvium.activeTab = savedTab === "abi" ? "abi" : "inv";
+    data.vitruvium.activeTab =
+      savedTab === "abi" || savedTab === "state" ? savedTab : "inv";
     const tabBase = `v-tabs-${this.appId ?? this.actor?.id ?? "actor"}`;
     data.vitruvium.tabName = tabBase;
     data.vitruvium.tabIds = {
       inv: `${tabBase}-inv`,
       abi: `${tabBase}-abi`,
+      state: `${tabBase}-state`,
     };
 
     const attrLabels = {

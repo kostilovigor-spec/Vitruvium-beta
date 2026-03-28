@@ -1,5 +1,7 @@
 ﻿import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
 
+import { listSystemStateTemplates } from "./state-library.js";
+
 // Ability sheet: editing, effects, and attack attributes.
 export class VitruviumAbilitySheet extends ItemSheet {
   static get defaultOptions() {
@@ -16,13 +18,20 @@ export class VitruviumAbilitySheet extends ItemSheet {
     });
   }
 
-  getData() {
-    const data = super.getData();
+  async getData() {
+    const data = await super.getData();
 
     // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     if (!Number.isFinite(Number(sys.rollDamageBase))) sys.rollDamageBase = 0;
     if (!Number.isFinite(Number(sys.rollHealBase))) sys.rollHealBase = 0;
+    if (!Number.isFinite(Number(sys.contestStateDurationRounds))) {
+      sys.contestStateDurationRounds = 1;
+    }
+    sys.contestStateDurationRounds = Math.max(
+      0,
+      Math.round(Number(sys.contestStateDurationRounds))
+    );
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     if (typeof sys.attackRoll !== "boolean") sys.attackRoll = false;
     data.system = sys;
@@ -57,11 +66,28 @@ export class VitruviumAbilitySheet extends ItemSheet {
       : finalKeys.includes("combat")
       ? "combat"
       : finalKeys[0];
+    const contestCasterAttr = finalKeys.includes(sys.contestCasterAttr)
+      ? sys.contestCasterAttr
+      : defaultAttr;
+    const contestTargetAttr = finalKeys.includes(sys.contestTargetAttr)
+      ? sys.contestTargetAttr
+      : defaultAttr;
+    const stateTemplates = await listSystemStateTemplates();
+    const selectedStateUuid = String(sys.contestStateUuid ?? "");
+    const hasSelectedState = stateTemplates.some(
+      (state) => state.uuid === selectedStateUuid
+    );
     data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
       key,
       label: attrLabels[key] ?? key,
     }));
     data.vitruvium.attackAttrDefault = defaultAttr;
+    data.vitruvium.contestCasterAttr = contestCasterAttr;
+    data.vitruvium.contestTargetAttr = contestTargetAttr;
+    data.vitruvium.contestStateDurationRounds = sys.contestStateDurationRounds;
+    data.vitruvium.stateTemplateOptions = stateTemplates;
+    data.vitruvium.selectedStateUuid = hasSelectedState ? selectedStateUuid : "";
+    data.vitruvium.hasStateTemplates = stateTemplates.length > 0;
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
@@ -119,6 +145,16 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $active = html.find("input[name='system.active']");
     const $attackRoll = html.find("input[name='system.attackRoll']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
+    const $contestState = html.find("select[name='system.contestStateUuid']");
+    const $contestStateDurationRounds = html.find(
+      "input[name='system.contestStateDurationRounds']"
+    );
+    const $contestCasterAttr = html.find(
+      "select[name='system.contestCasterAttr']"
+    );
+    const $contestTargetAttr = html.find(
+      "select[name='system.contestTargetAttr']"
+    );
 
     // Edit mode toggling.
     const form = html.closest("form");
@@ -177,6 +213,26 @@ export class VitruviumAbilitySheet extends ItemSheet {
       const newAttackAttr = String(
         $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat"
       );
+      const hasStateOptions = $contestState.find("option[value!='']").length > 0;
+      const selectedContestStateUuid = String($contestState.val() ?? "");
+      const newContestStateUuid = hasStateOptions
+        ? selectedContestStateUuid
+        : String(this.item.system?.contestStateUuid ?? "");
+      const newContestStateDurationRounds = Math.max(
+        0,
+        Math.round(
+          num(
+            $contestStateDurationRounds.val(),
+            num(this.item.system?.contestStateDurationRounds, 1)
+          )
+        )
+      );
+      const newContestCasterAttr = String(
+        $contestCasterAttr.val() ?? this.item.system?.contestCasterAttr ?? "combat"
+      );
+      const newContestTargetAttr = String(
+        $contestTargetAttr.val() ?? this.item.system?.contestTargetAttr ?? "combat"
+      );
 
       await this.item.update({
         name: newName,
@@ -186,6 +242,10 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.rollDamageBase": newRollDamageBase,
         "system.rollHealBase": newRollHealBase,
         "system.attackAttr": newAttackAttr,
+        "system.contestStateUuid": newContestStateUuid,
+        "system.contestStateDurationRounds": newContestStateDurationRounds,
+        "system.contestCasterAttr": newContestCasterAttr,
+        "system.contestTargetAttr": newContestTargetAttr,
         "system.description": newDesc,
       });
     };
@@ -212,6 +272,29 @@ export class VitruviumAbilitySheet extends ItemSheet {
     $attackAttr.on("change", async (ev) => {
       await this.item.update({
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
+      });
+    });
+    $contestState.on("change", async (ev) => {
+      await this.item.update({
+        "system.contestStateUuid": String(ev.currentTarget.value ?? ""),
+      });
+    });
+    $contestStateDurationRounds.on("change", async (ev) => {
+      await this.item.update({
+        "system.contestStateDurationRounds": Math.max(
+          0,
+          Math.round(num(ev.currentTarget.value, 1))
+        ),
+      });
+    });
+    $contestCasterAttr.on("change", async (ev) => {
+      await this.item.update({
+        "system.contestCasterAttr": String(ev.currentTarget.value ?? "combat"),
+      });
+    });
+    $contestTargetAttr.on("change", async (ev) => {
+      await this.item.update({
+        "system.contestTargetAttr": String(ev.currentTarget.value ?? "combat"),
       });
     });
 

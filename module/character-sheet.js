@@ -617,6 +617,10 @@ export class VitruviumCharacterSheet extends ActorSheet {
             attackAttr: "combat",
             rollDamageBase: 0,
             rollHealBase: 0,
+            contestStateUuid: "",
+            contestStateDurationRounds: 1,
+            contestCasterAttr: "combat",
+            contestTargetAttr: "combat",
             description: "",
             effects: [],
           },
@@ -714,7 +718,10 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const damageBase = clamp(num(sys.rollDamageBase, 0), 0, 99);
       const healBase = clamp(num(sys.rollHealBase, 0), 0, 99);
       const attackRollEnabled = sys.attackRoll === true;
-      const useAsAttack = attackRollEnabled && (damageBase > 0 || healBase > 0);
+      const hasContestState = String(sys.contestStateUuid ?? "").trim().length > 0;
+      const useAsAttack =
+        (attackRollEnabled && (damageBase > 0 || healBase > 0)) ||
+        hasContestState;
 
     // Inspiration: base max + effects.
       const insp = this.actor.system.attributes?.inspiration ?? {

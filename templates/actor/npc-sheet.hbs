@@ -148,10 +148,20 @@
       class="v-tabs__toggle"
       {{#if (eq vitruvium.activeTab "abi")}}checked{{/if}}
     />
+    <input
+      type="radio"
+      id="{{vitruvium.tabIds.state}}"
+      name="{{vitruvium.tabName}}"
+      value="state"
+      data-tab="state"
+      class="v-tabs__toggle"
+      {{#if (eq vitruvium.activeTab "state")}}checked{{/if}}
+    />
 
     <div class="v-tabs__nav" role="tablist">
       <label class="v-tabs__tab" for="{{vitruvium.tabIds.inv}}" role="tab" data-tab="inv">Инвентарь</label>
       <label class="v-tabs__tab" for="{{vitruvium.tabIds.abi}}" role="tab" data-tab="abi">Способности</label>
+      <label class="v-tabs__tab" for="{{vitruvium.tabIds.state}}" role="tab" data-tab="state">Состояния</label>
     </div>
 
     <div class="v-tabs__content">
@@ -288,6 +298,73 @@
                   title="Удалить"
                   data-action="delete-item"
                   data-item-id="{{ab._id}}"
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      </section>
+
+      <section
+        class="v-panel v-tabpanel v-tabpanel--state"
+        id="{{vitruvium.tabIds.state}}-panel"
+        role="tabpanel"
+      >
+        <div class="v-panel__head">
+          <div class="v-h2">Состояния</div>
+          <div class="v-line"></div>
+          <button
+            type="button"
+            class="v-btn v-btn--ghost"
+            data-action="create-state"
+          >+ Состояние</button>
+        </div>
+
+        <div class="v-inv__list v-state__list">
+          {{#each vitruvium.states as |st|}}
+            <div class="v-inv__row v-state__row" data-item-id="{{st._id}}">
+              <button
+                type="button"
+                class="v-inv__iconbtn"
+                title="Показать в чат"
+                data-action="item-chat"
+                data-item-id="{{st._id}}"
+              >
+                <img class="v-inv__icon" src="{{st.img}}" alt="{{st.name}}" />
+              </button>
+
+              <div class="v-inv__name" title="{{st.name}}">
+                <div class="v-inv__title">{{st.name}}</div>
+                <div class="v-inv__meta">{{#if st.active}}активно{{else}}неактивно{{/if}} · {{st.durationLabel}}</div>
+              </div>
+
+              <div class="v-inv__actions">
+                <button
+                  type="button"
+                  class="v-inv__a {{#if st.active}}is-on{{/if}}"
+                  title="{{#if st.active}}Отключить{{else}}Активировать{{/if}}"
+                  data-action="toggle-state-active"
+                  data-item-id="{{st._id}}"
+                >
+                  <i class="fas fa-bolt"></i>
+                </button>
+                <button
+                  type="button"
+                  class="v-inv__a"
+                  title="Редактировать"
+                  data-action="edit-item"
+                  data-item-id="{{st._id}}"
+                >
+                  <i class="fas fa-feather-alt"></i>
+                </button>
+                <button
+                  type="button"
+                  class="v-inv__a v-inv__a--danger"
+                  title="Удалить"
+                  data-action="delete-item"
+                  data-item-id="{{st._id}}"
                 >
                   <i class="fas fa-trash"></i>
                 </button>
