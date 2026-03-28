@@ -210,7 +210,8 @@
           </div>
 
           <div class="v-item__attackattr">
-            <label>
+            <div class="v-item__splitrow">
+              <label>
               <span>Накладываемое состояние</span>
               <select name="system.contestStateUuid" class="v-item__select">
                 <option value="">Не накладывать</option>
@@ -219,8 +220,7 @@
                 {{/each}}
               </select>
             </label>
-
-            <label class="v-item__stat">
+              <label class="v-item__stat">
               <span>Длительность (раунды)</span>
               <input
                 type="number"
@@ -231,8 +231,10 @@
                 step="1"
               />
             </label>
+            </div>
 
-            <label>
+            <div class="v-item__splitrow v-item__splitrow--even">
+              <label>
               <span>Состязание: атрибут кастера</span>
               <select name="system.contestCasterAttr" class="v-item__select">
                 {{#each vitruvium.attackAttrOptions as |opt|}}
@@ -240,8 +242,7 @@
                 {{/each}}
               </select>
             </label>
-
-            <label>
+              <label>
               <span>Состязание: атрибут цели</span>
               <select name="system.contestTargetAttr" class="v-item__select">
                 {{#each vitruvium.attackAttrOptions as |opt|}}
@@ -249,6 +250,7 @@
                 {{/each}}
               </select>
             </label>
+            </div>
 
             {{#unless vitruvium.hasStateTemplates}}
               <div class="v-item__descplaceholder">Compendium системы "Состояния" не найден или пуст.</div>

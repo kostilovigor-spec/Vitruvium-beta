@@ -1804,3 +1804,19 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* =========================================================
+
+/* Form splits */
+.v-item__splitrow {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.v-item__splitrow--even {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* GM-only elements: hidden for regular players */
+body:not(.is-gm) .gm-only {
+  display: none !important;
+}

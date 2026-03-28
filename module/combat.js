@@ -750,9 +750,7 @@ function renderContestTargets({
         <button type="button" class="v-btn" data-action="vitruvium-contest" data-defender-token-uuid="${esc(
           norm.defenderTokenUuid
         )}" ${isResolved ? "disabled" : ""}>Сопротивление</button>
-        <div class="v-sub" data-role="contest-status" style="grid-column:1 / -1;">${
-          isResolved ? resolvedHint : hint
-        }</div>
+        <div class="v-sub" data-role="contest-status" style="grid-column:1 / -1;">${isResolved ? resolvedHint : hint}</div>
       </div>`;
     })
     .filter(Boolean)
@@ -863,15 +861,37 @@ function defenseCardTwoCols({
   defenderName,
   reactionLabel,
   defRoll,
-  armorShown,
+  hit = null,
+  damage = 0,
+  defenderTokenUuid = "",
 }) {
+  const resultBox = hit === null
+    ? `<div class="v-box">
+        <div class="v-box__label">Расчёт...</div>
+        <div class="v-box__big">—</div>
+      </div>`
+    : hit
+    ? `<div class="v-box">
+        <div class="v-box__label">Урон</div>
+        <div class="v-box__big">${damage}</div>
+      </div>`
+    : `<div class="v-box">
+        <div class="v-box__label">Результат</div>
+        <div class="v-box__big" style="font-size:18px;">Miss</div>
+      </div>`;
+
+  const applyBtn = hit && damage > 0
+    ? `<div class="v-actions gm-only">
+        <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}">Применить урон (${damage})</button>
+      </div>`
+    : ``;
+
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--defense">
     <div class="v-head">
       <div class="v-title">${esc(defenderName)} — защита</div>
       <div class="v-sub">Действие: <b>${esc(reactionLabel)}</b></div>
     </div>
-
     <div class="v-two">
       <div class="v-box">
         <div class="v-box__label">Защита</div>
@@ -879,12 +899,9 @@ function defenseCardTwoCols({
         ${renderFacesInline(chosenResults(defRoll))}
         ${renderModeDetailSmall(defRoll)}
       </div>
-      <div class="v-box">
-        <div class="v-box__label">Броня</div>
-        <div class="v-box__big">${armorShown}</div>
-        <div class="v-sub">Учтённая в расчёте</div>
-      </div>
+      ${resultBox}
     </div>
+    ${applyBtn}
   </div>`;
 }
 
@@ -928,17 +945,19 @@ function resolveContestCardHTML({
   casterSuccesses,
   targetSuccesses,
   applied,
+  defRoll = null,
 }) {
   const tail = applied
     ? `Состояние <b>${esc(stateName)}</b> наложено`
-    : "Цель не проиграла состязание, состояние не наложено";
+    : "Цель устояла — состояние не наложено";
+  const defRollFaces = defRoll
+    ? `${renderFacesInline(chosenResults(defRoll))} ${renderModeDetailSmall(defRoll)}`
+    : "";
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
     <div class="v-head">
-      <div class="v-title">Результат сопротивления</div>
-      <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(
-    abilityName
-  )}</div>
+      <div class="v-title">${esc(defenderName)} — сопротивление</div>
+      <div class="v-sub">${esc(attackerName)} · ${esc(abilityName)}</div>
     </div>
     <div class="v-two">
       <div class="v-box">
@@ -948,6 +967,7 @@ function resolveContestCardHTML({
       <div class="v-box">
         <div class="v-box__label">Цель</div>
         <div class="v-box__big">${num(targetSuccesses, 0)}</div>
+        ${defRollFaces}
       </div>
     </div>
     <div class="v-sub" style="margin-top:8px;">${tail}</div>
@@ -1161,160 +1181,55 @@ Hooks.once("ready", () => {
     document.head.appendChild(style);
   }
 
-  // GM-only: listen for resolve requests and post resolve card whisper-only
+  // GM-only: listen for contest resolve requests only
   Hooks.on("createChatMessage", async (msg) => {
     try {
       if (!game.user.isGM) return;
       const f = msg.flags?.vitruvium ?? null;
       if (!f || f.kind !== "resolveRequest") return;
+      if (String(f.requestKind ?? "") !== "contestState") {
+        // Regular attack resolve is now handled inline in the defense flow — just delete the stale request
+        try { await msg.delete(); } catch (e) { /* ignore */ }
+        return;
+      }
 
-      const defender = await resolveCombatActor({
-        tokenUuid: f.defenderTokenUuid,
-      });
+      const defender = await resolveCombatActor({ tokenUuid: f.defenderTokenUuid });
       const attacker = await resolveCombatActor({
         tokenUuid: f.attackerTokenUuid,
         actorUuid: f.attackerActorUuid,
       });
       if (!defender || !attacker) return;
 
-      if (String(f.requestKind ?? "") === "contestState") {
-        const casterSuccesses = num(f.casterContestSuccesses, 0);
-        const targetSuccesses = num(f.targetContestSuccesses, 0);
-        let applied = targetSuccesses < casterSuccesses;
-        let stateName = null;
+      const casterSuccesses = num(f.casterContestSuccesses, 0);
+      const targetSuccesses = num(f.targetContestSuccesses, 0);
+      let applied = targetSuccesses < casterSuccesses;
+      let stateName = null;
 
-        if (applied) {
-          const out = await replaceStateFromTemplate(
-            defender,
-            f.contestStateUuid,
-            f.contestStateDurationRounds
-          );
-          applied = !!out.applied;
-          stateName = out.stateName;
-        }
-
-        await ChatMessage.create({
-          speaker: ChatMessage.getSpeaker({ actor: attacker }),
-          content: resolveContestCardHTML({
-            attackerName: attacker.name,
-            defenderName: defender.name,
-            abilityName: f.weaponName ?? "Способность",
-            stateName: stateName ?? "Состояние",
-            casterSuccesses,
-            targetSuccesses,
-            applied,
-          }),
-          ...chatVisibilityData(),
-        });
-
-        try {
-          await msg.delete();
-        } catch (e) {
-          /* ignore */
-        }
-        return;
-      }
-
-      const armorFull = getArmorTotal(defender, { includeShield: true });
-      const armorNoShield = getArmorTotal(defender, { includeShield: false });
-      const attackKind = String(f.attackKind ?? "weapon");
-      const defS = num(f.defSuccesses, 0);
-
-      let damage = 0;
-      let compact = "";
-      let hit = false;
-      let atkS = num(f.atkSuccesses, 0);
-
-      if (attackKind === "ability") {
-        const damageValue = num(f.abilityDamageValue, 0);
-        const hasDamage = num(f.abilityDamageBase, 0) > 0;
-        const attackRollEnabled = f.attackRoll === true;
-        let damageOut = { damage: 0, compact: "", hit: false };
-        if (hasDamage && attackRollEnabled) {
-          damageOut = computeAbilityDamage({
-            abilityValue: damageValue,
-            atkS,
-            defS,
-          });
-        } else if (hasDamage && !attackRollEnabled) {
-          const dmg = Math.max(0, damageValue);
-          damageOut = { damage: dmg, compact: `${damageValue}`, hit: true };
-        }
-        damage = hasDamage ? damageOut.damage : 0;
-        compact = hasDamage ? damageOut.compact : "";
-        hit = hasDamage ? damageOut.hit : false;
-
-        await ChatMessage.create({
-          speaker: ChatMessage.getSpeaker({ actor: attacker }),
-          content: resolveAbilityCardHTML({
-            attackerName: attacker.name,
-            defenderName: defender.name,
-            abilityName: f.weaponName ?? "Способность",
-            damage,
-            damageCompact: compact,
-            hasDamage,
-          }),
-          ...chatVisibilityData({ gmOnly: true }),
-          flags: {
-            vitruvium: {
-              kind: "resolve",
-              defenderTokenUuid: f.defenderTokenUuid,
-              damage,
-              attackKind,
-            },
-          },
-        });
-
-        // Remove the request message to prevent empty "side-effect" lines in chat
-        try {
-          await msg.delete();
-        } catch (e) {
-          /* ignore */
-        }
-        return;
-      } else {
-        const out = computeDamageCompact({
-          weaponDamage: num(f.weaponDamage, 0),
-          atkS: num(f.atkSuccesses, 0),
-          defS,
-          defenseType: f.defenseType,
-          armorFull,
-          armorNoShield,
-        });
-        damage = out.damage;
-        compact = out.compact;
-        hit = out.hit;
+      if (applied) {
+        const out = await replaceStateFromTemplate(
+          defender,
+          f.contestStateUuid,
+          f.contestStateDurationRounds
+        );
+        applied = !!out.applied;
+        stateName = out.stateName;
       }
 
       await ChatMessage.create({
         speaker: ChatMessage.getSpeaker({ actor: attacker }),
-        content: resolveCardHTML({
+        content: resolveContestCardHTML({
           attackerName: attacker.name,
           defenderName: defender.name,
-          weaponName: f.weaponName,
-          hit,
-          damage,
-          atkS,
-          defS,
-          compactLine: compact,
+          abilityName: f.weaponName ?? "Способность",
+          stateName: stateName ?? "Состояние",
+          casterSuccesses,
+          targetSuccesses,
+          applied,
         }),
-        ...chatVisibilityData({ gmOnly: true }),
-        flags: {
-          vitruvium: {
-            kind: "resolve",
-            defenderTokenUuid: f.defenderTokenUuid,
-            damage,
-            attackKind,
-          },
-        },
+        ...chatVisibilityData(),
       });
 
-      // Remove the request message to prevent empty "side-effect" lines in chat
-      try {
-        await msg.delete();
-      } catch (e) {
-        /* ignore */
-      }
+      try { await msg.delete(); } catch (e) { /* ignore */ }
     } catch (e) {
       console.error("Vitruvium | GM resolve hook error", e);
     }
@@ -1327,17 +1242,30 @@ Hooks.on("renderChatMessage", (message, html) => {
   const f = message.flags?.vitruvium ?? null;
   if (!f) return;
 
+  // Apply damage button (GM-only whisper message with kind=applyDamage)
+  if (f.kind === "applyDamage") {
+    html.find("[data-action='vitruvium-apply-damage']").on("click", async (ev) => {
+      ev.preventDefault();
+      if (!game.user.isGM) return;
+      const btn = $(ev.currentTarget);
+      const tokenUuid = String(btn.attr("data-defender-token-uuid") ?? f.defenderTokenUuid ?? "");
+      const dmg = num(btn.attr("data-damage") ?? f.damage, 0);
+      const actor = await actorFromTokenUuid(tokenUuid);
+      if (!actor) return;
+      const cur = num(actor.system?.attributes?.hp?.value, 0);
+      await actor.update({ "system.attributes.hp.value": Math.max(0, cur - dmg) });
+      btn.prop("disabled", true).text("Урон применён ✓");
+    });
+    return;
+  }
+
   if (f.kind === "attack") {
     const resolvedDefenderUuids = new Set(getResolvedDefenderUuids(f));
-    const resolvedContestDefenderUuids = new Set(
-      getResolvedContestDefenderUuids(f)
-    );
+    const resolvedContestDefenderUuids = new Set(getResolvedContestDefenderUuids(f));
     const fallbackUuid = String(f.defenderTokenUuid ?? "").trim();
     html.find("[data-action='vitruvium-defense']").each((_, el) => {
       const btn = $(el);
-      const defenderTokenUuid = String(
-        btn.attr("data-defender-token-uuid") ?? fallbackUuid
-      ).trim();
+      const defenderTokenUuid = String(btn.attr("data-defender-token-uuid") ?? fallbackUuid).trim();
       if (!defenderTokenUuid) return;
       const isResolved = f.resolved || resolvedDefenderUuids.has(defenderTokenUuid);
       if (!isResolved) return;
@@ -1351,44 +1279,17 @@ Hooks.on("renderChatMessage", (message, html) => {
     });
     html.find("[data-action='vitruvium-contest']").each((_, el) => {
       const btn = $(el);
-      const defenderTokenUuid = String(
-        btn.attr("data-defender-token-uuid") ?? fallbackUuid
-      ).trim();
+      const defenderTokenUuid = String(btn.attr("data-defender-token-uuid") ?? fallbackUuid).trim();
       if (!defenderTokenUuid) return;
       const isResolved = resolvedContestDefenderUuids.has(defenderTokenUuid);
       if (!isResolved) return;
       btn.prop("disabled", true);
       const row = btn.closest("[data-contest-defender-token-uuid]");
       if (row.length) {
-        row.find("[data-role='contest-status']").text(
-          "Сопротивление уже выбрано"
-        );
+        row.find("[data-role='contest-status']").text("Сопротивление уже выбрано");
       }
     });
   }
-
-  // Apply damage (GM only)
-  html
-    .find("[data-action='vitruvium-apply-damage']")
-    .on("click", async (ev) => {
-      ev.preventDefault();
-      if (!game.user.isGM) return;
-
-      const flags = message.flags?.vitruvium ?? {};
-      if (flags.kind !== "resolve") return;
-
-      const defender = await actorFromTokenUuid(flags.defenderTokenUuid);
-      if (!defender) return;
-
-      const dmg = num(flags.damage, 0);
-      const cur = num(defender.system?.attributes?.hp?.value, 0);
-      await defender.update({
-        "system.attributes.hp.value": Math.max(0, cur - dmg),
-      });
-      html
-        .find("[data-action='vitruvium-apply-damage']")
-        .prop("disabled", true);
-    });
 
   // Defense button
   html.find("[data-action='vitruvium-defense']").on("click", async (ev) => {
@@ -1599,7 +1500,47 @@ Hooks.on("renderChatMessage", (message, html) => {
         reactionLabel = `Уклонение${modeSuffix}`;
       }
 
-      // Public defense roll
+      // Compute damage right here (GM may not be present instantly)
+      let hit = false;
+      let damage = 0;
+      let compact = "";
+      const attackKindDef = flags.attackKind ?? "weapon";
+      const defSDef = defRoll.successes;
+      const atkSDef = num(flags.atkSuccesses, 0);
+
+      if (attackKindDef === "ability") {
+        const damageValue = num(flags.abilityDamageValue, 0);
+        const hasDamage = num(flags.abilityDamageBase, 0) > 0;
+        const attackRollEnabled = flags.attackRoll === true;
+        if (hasDamage && attackRollEnabled) {
+          const dmgOut = computeAbilityDamage({ abilityValue: damageValue, atkS: atkSDef, defS: defSDef });
+          damage = dmgOut.damage;
+          compact = dmgOut.compact;
+          hit = atkSDef > defSDef;
+        } else if (hasDamage) {
+          damage = Math.max(0, damageValue);
+          compact = `${damageValue}`;
+          hit = true;
+        } else {
+          hit = attackRollEnabled ? atkSDef > defSDef : true;
+        }
+      } else {
+        const armorFull = getArmorTotal(defender, { includeShield: true });
+        const armorNoShield = getArmorTotal(defender, { includeShield: false });
+        const dmgOut = computeDamageCompact({
+          weaponDamage: num(flags.weaponDamage, 0),
+          atkS: atkSDef,
+          defS: defSDef,
+          defenseType,
+          armorFull,
+          armorNoShield,
+        });
+        damage = dmgOut.damage;
+        compact = dmgOut.compact;
+        hit = dmgOut.hit;
+      }
+
+      // Single public defense card — contains result + GM apply-damage button
       await ChatMessage.create({
         ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker({ actor: defender }),
@@ -1607,35 +1548,32 @@ Hooks.on("renderChatMessage", (message, html) => {
           defenderName: defender.name,
           reactionLabel,
           defRoll,
-          armorShown,
+          hit,
+          damage,
+          defenderTokenUuid,
         }),
         rolls: defRoll.rolls,
-      });
-
-      // Request GM to compute resolve. Players won't see.
-      await ChatMessage.create({
-        ...chatVisibilityData({ gmOnly: true }),
-        speaker: ChatMessage.getSpeaker({ actor: defender }),
-        content: "<!--vitruvium-resolve-request-->", // silent (will be deleted by GM hook)
         flags: {
           vitruvium: {
-            kind: "resolveRequest",
-            attackKind: flags.attackKind ?? "weapon",
-            attackerTokenUuid: flags.attackerTokenUuid,
-            attackerActorUuid:
-              flags.attackerActorUuid ?? speakerActor?.uuid ?? attacker?.uuid,
+            kind: "defense",
             defenderTokenUuid,
-            weaponName: flags.weaponName,
-            weaponDamage: flags.weaponDamage,
-            atkSuccesses: flags.atkSuccesses,
-            abilityDamageBase: flags.abilityDamageBase,
-            abilityDamageValue: flags.abilityDamageValue,
-            attackRoll: flags.attackRoll,
-            defSuccesses: defRoll.successes,
-            defenseType,
+            damage,
+            hit,
           },
         },
       });
+
+      // GM-only apply damage message
+      if (hit && damage > 0) {
+        const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
+        await ChatMessage.create({
+          content: `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+            <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}" style="flex:1;">Применить урон (${damage}) → ${esc(defender.name)}</button>
+          </div>`,
+          whisper: gmIds,
+          flags: { vitruvium: { kind: "applyDamage", defenderTokenUuid, damage } },
+        });
+      }
 
       const nextResolvedDefenderUuids = [
         ...new Set([...resolvedDefenderUuids, defenderTokenUuid]),
@@ -1752,42 +1690,40 @@ Hooks.on("renderChatMessage", (message, html) => {
         fullMode: finalFullMode,
       });
 
-      await ChatMessage.create({
-        ...chatVisibilityData(),
-        speaker: ChatMessage.getSpeaker({ actor: defender }),
-        content: contestRollCardTwoCols({
-          casterName: attacker.name,
-          defenderName: defender.name,
-          casterAttr: flags.contestCasterAttr,
-          defenderAttr: choice.attrKey,
-          casterSuccesses: num(flags.casterContestSuccesses, 0),
-          defRoll,
-        }),
-        rolls: defRoll.rolls,
+      // Single combined contest card: roll result + outcome
+      const casterSuccessesContest = num(flags.casterContestSuccesses, 0);
+      const targetSuccessesContest = defRoll.successes;
+      let appliedContest = targetSuccessesContest < casterSuccessesContest;
+      let stateNameContest = null;
+
+      if (appliedContest) {
+        const out = await replaceStateFromTemplate(
+          defender,
+          flags.contestStateUuid,
+          flags.contestStateDurationRounds
+        );
+        appliedContest = !!out.applied;
+        stateNameContest = out.stateName;
+      }
+
+      const contestCard = resolveContestCardHTML({
+        attackerName: attacker.name,
+        defenderName: defender.name,
+        abilityName: flags.weaponName ?? "Способность",
+        stateName: stateNameContest ?? "Состояние",
+        casterSuccesses: casterSuccessesContest,
+        targetSuccesses: targetSuccessesContest,
+        applied: appliedContest,
+        casterAttr: flags.contestCasterAttr,
+        defenderAttr: choice.attrKey,
+        defRoll,
       });
 
       await ChatMessage.create({
-        ...chatVisibilityData({ gmOnly: true }),
+        ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker({ actor: defender }),
-        content: "<!--vitruvium-resolve-request-->", // silent (deleted by GM hook)
-        flags: {
-          vitruvium: {
-            kind: "resolveRequest",
-            requestKind: "contestState",
-            attackKind: "ability",
-            attackerTokenUuid: flags.attackerTokenUuid,
-            attackerActorUuid:
-              flags.attackerActorUuid ?? speakerActor?.uuid ?? attacker?.uuid,
-            defenderTokenUuid,
-            weaponName: flags.weaponName,
-            contestStateUuid: flags.contestStateUuid,
-            contestStateDurationRounds: flags.contestStateDurationRounds,
-            contestCasterAttr: flags.contestCasterAttr,
-            contestTargetAttr: choice.attrKey,
-            casterContestSuccesses: num(flags.casterContestSuccesses, 0),
-            targetContestSuccesses: defRoll.successes,
-          },
-        },
+        content: contestCard,
+        rolls: defRoll.rolls,
       });
 
       const nextResolvedContestDefenderUuids = [
@@ -1914,22 +1850,27 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     let casterContestRoll = null;
     let casterContestSuccesses = 0;
     if (contestEnabled) {
-      const contestAttrMods = getAttributeRollModifiers(
-        effectTotals,
-        contestCasterAttr
-      );
-      const contestPool = clamp(
-        num(attackerActor.system?.attributes?.[contestCasterAttr], 1) +
-          contestAttrMods.dice,
-        1,
-        20
-      );
-      casterContestRoll = await rollPool(contestPool, {
-        luck: globalMods.adv + contestAttrMods.adv,
-        unluck: globalMods.dis + contestAttrMods.dis,
-        fullMode: globalMods.fullMode,
-      });
-      casterContestSuccesses = num(casterContestRoll?.successes, 0);
+      if (needsAttackRoll && atkAttrKey === contestCasterAttr && atkRoll) {
+        casterContestRoll = atkRoll;
+        casterContestSuccesses = num(atkRoll.successes, 0);
+      } else {
+        const contestAttrMods = getAttributeRollModifiers(
+          effectTotals,
+          contestCasterAttr
+        );
+        const contestPool = clamp(
+          num(attackerActor.system?.attributes?.[contestCasterAttr], 1) +
+            contestAttrMods.dice,
+          1,
+          20
+        );
+        casterContestRoll = await rollPool(contestPool, {
+          luck: globalMods.adv + contestAttrMods.adv,
+          unluck: globalMods.dis + contestAttrMods.dis,
+          fullMode: globalMods.fullMode,
+        });
+        casterContestSuccesses = num(casterContestRoll?.successes, 0);
+      }
     }
 
     const damageValue = damageBase;
@@ -1988,10 +1929,11 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       contestCasterSuccesses: casterContestSuccesses,
     });
 
-    const allRolls = [
-      ...(atkRoll?.rolls ?? []),
-      ...(casterContestRoll?.rolls ?? []),
-    ];
+    let allRolls = [];
+    if (atkRoll && atkRoll.rolls) allRolls.push(...atkRoll.rolls);
+    if (casterContestRoll && casterContestRoll !== atkRoll && casterContestRoll.rolls) {
+      allRolls.push(...casterContestRoll.rolls);
+    }
     const hasInteractiveTargets = hasDefenseTarget || (contestEnabled && hasContestTarget);
     await ChatMessage.create({
       ...chatVisibilityData(),
