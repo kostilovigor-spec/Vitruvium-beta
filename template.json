@@ -39,6 +39,7 @@
       "cost": 1,
       "actions": 1,
       "level": 1,
+      "type": "primary",
       "active": false,
       "attackRoll": false,
       "attackAttr": "combat",

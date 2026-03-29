@@ -84,9 +84,37 @@ export class VitruviumCharacterSheet extends ActorSheet {
     }
     data.vitruvium.inventory = Object.values(grouped);
     data.vitruvium.items = items;
-    data.vitruvium.abilities = (this.actor.items ?? []).filter(
-      (i) => i.type === "ability"
-    );
+
+    // Group abilities by type (primary / secondary / other).
+    const abilityCategoryLabels = {
+      primary: "Основные",
+      secondary: "Вторичные",
+      other: "Остальные",
+    };
+    const abiExpanded = this.actor.getFlag(game.system.id, "abilitiesExpanded") ?? {
+      primary: true,
+      secondary: true,
+      other: true,
+    };
+    const abiGrouped = {};
+    for (const [key, label] of Object.entries(abilityCategoryLabels)) {
+      abiGrouped[key] = {
+        key,
+        label,
+        items: [],
+        expanded: abiExpanded[key] !== false,
+      };
+    }
+    const abilities = (this.actor.items ?? []).filter((i) => i.type === "ability");
+    for (const ab of abilities) {
+      const type = ab.system.type || "primary";
+      if (abiGrouped[type]) {
+        abiGrouped[type].items.push(ab);
+      } else {
+        abiGrouped.primary.items.push(ab);
+      }
+    }
+    data.vitruvium.abilities = Object.values(abiGrouped);
     data.vitruvium.skills = (this.actor.items ?? []).filter(
       (i) => i.type === "skill"
     );
@@ -757,16 +785,25 @@ export class VitruviumCharacterSheet extends ActorSheet {
       if (item) item.sheet.render(true);
     });
 
-    // Toggle inventory folder.
+    // Toggle inventory / ability folder.
     html.find("[data-action='toggle-folder']").on("click", async (ev) => {
       ev.preventDefault();
       const folderKey = ev.currentTarget.dataset.folder;
-      const expanded = this.actor.getFlag(game.system.id, "inventoryExpanded") ?? {};
-      const next = expanded[folderKey] === false;
-      await this.actor.setFlag(game.system.id, "inventoryExpanded", {
-        ...expanded,
-        [folderKey]: next,
-      });
+      if (folderKey.startsWith("abi-")) {
+        const abiKey = folderKey.slice(4);
+        const expanded = this.actor.getFlag(game.system.id, "abilitiesExpanded") ?? {};
+        await this.actor.setFlag(game.system.id, "abilitiesExpanded", {
+          ...expanded,
+          [abiKey]: expanded[abiKey] === false,
+        });
+      } else {
+        const expanded = this.actor.getFlag(game.system.id, "inventoryExpanded") ?? {};
+        const next = expanded[folderKey] === false;
+        await this.actor.setFlag(game.system.id, "inventoryExpanded", {
+          ...expanded,
+          [folderKey]: next,
+        });
+      }
     });
 
     // Delete item (with confirmation).

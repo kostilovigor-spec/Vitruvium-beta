@@ -641,6 +641,33 @@ function contestDialog({
 
 /* ---------- Cards ---------- */
 
+function renderCollapsibleBox({ label, value, roll, detailHtml = "", extraClass = "", extraHtml = "" }) {
+  const rollHtml = roll && (chosenResults(roll).length || roll.pool)
+    ? `${renderModeDetailSmall(roll)}${renderFacesInline(chosenResults(roll))}`
+    : "";
+  const bodyContent = `${detailHtml}${rollHtml}`;
+  const cls = `v-box${extraClass ? ` ${extraClass}` : ""}`;
+  if (!bodyContent) {
+    return `<div class="${cls}">
+      <div class="v-box__label">${label}</div>
+      <div class="v-box__big">${value}</div>
+      ${extraHtml}
+    </div>`;
+  }
+  return `<div class="${cls}">
+    <details class="v-details">
+      <summary class="v-details__summary">
+        <span class="v-box__label">${label}</span>
+        <span class="v-box__big">${value}</span>
+      </summary>
+      <div class="v-details__body">
+        ${bodyContent}
+      </div>
+    </details>
+    ${extraHtml}
+  </div>`;
+}
+
 function attackCardTwoCols({
   attackerName,
   defenderLabel,
@@ -651,10 +678,10 @@ function attackCardTwoCols({
   defenseTargets = [],
   resolvedDefenderUuids = [],
 }) {
-  const predictedDamage = Math.max(
-    0,
-    num(weaponDamage, 0) + num(atkRoll?.successes, 0)
-  );
+  const wdmg = num(weaponDamage, 0);
+  const atkSucc = num(atkRoll?.successes, 0);
+  const predictedDamage = Math.max(0, wdmg + atkSucc);
+  const dmgFormula = `<div class="v-sub">${wdmg} (оружие) + ${atkSucc} (успехи) = ${predictedDamage}</div>`;
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack">
     <div class="v-head">
@@ -667,17 +694,8 @@ function attackCardTwoCols({
     </div>
 
     <div class="v-two">
-      <div class="v-box">
-        <div class="v-box__label">Атака</div>
-        <div class="v-box__big">${atkRoll.successes}</div>
-        ${renderModeDetailSmall(atkRoll)}
-        ${renderFacesInline(chosenResults(atkRoll))}
-      </div>
-
-      <div class="v-box">
-        <div class="v-box__label">Урон</div>
-        <div class="v-box__big">${predictedDamage}</div>
-      </div>
+      ${renderCollapsibleBox({ label: "Атака", value: atkRoll.successes, roll: atkRoll })}
+      ${renderCollapsibleBox({ label: "Урон", value: predictedDamage, detailHtml: dmgFormula })}
     </div>
     ${renderDefenseTargets({ defenseTargets, resolvedDefenderUuids })}
   </div>`;
@@ -785,31 +803,25 @@ function abilityAttackCard({
   const hasAttack = !!atkRoll;
   const hasDamage = !!damageInfo && damageInfo.base > 0;
   const hasHeal = !!healInfo && healInfo.base > 0;
+  const atkSucc = num(atkRoll?.successes, 0);
+  const dmgFormula = hasDamage
+    ? `<div class="v-sub">${damageInfo.base} (способность) + ${atkSucc} (успехи) = ${damageInfo.total}</div>`
+    : "";
+  const healFormula = hasHeal
+    ? `<div class="v-sub">${healInfo.base} (способность) + ${atkSucc} (успехи) = ${healInfo.total}</div>`
+    : "";
+  const healExtra = hasHeal && healInfo.applied < healInfo.total
+    ? `<div class="v-sub">Применено: ${healInfo.applied}</div>`
+    : "";
   const boxes = [
     hasAttack
-      ? `<div class="v-box">
-        <div class="v-box__label">Атака</div>
-        <div class="v-box__big">${atkRoll.successes}</div>
-        ${renderModeDetailSmall(atkRoll)}
-        ${renderFacesInline(chosenResults(atkRoll))}
-      </div>`
+      ? renderCollapsibleBox({ label: "Атака", value: atkRoll.successes, roll: atkRoll })
       : null,
     hasDamage
-      ? `<div class="v-box">
-        <div class="v-box__label">Урон</div>
-        <div class="v-box__big">${damageInfo.total}</div>
-      </div>`
+      ? renderCollapsibleBox({ label: "Урон", value: damageInfo.total, detailHtml: dmgFormula })
       : null,
     hasHeal
-      ? `<div class="v-box">
-        <div class="v-box__label">Хил</div>
-        <div class="v-box__big">${healInfo.total}</div>
-        ${
-          healInfo.applied < healInfo.total
-            ? `<div class="v-sub">Применено: ${healInfo.applied}</div>`
-            : ""
-        }
-      </div>`
+      ? renderCollapsibleBox({ label: "Хил", value: healInfo.total, detailHtml: healFormula, extraHtml: healExtra })
       : null,
   ]
     .filter(Boolean)
@@ -865,18 +877,22 @@ function defenseCardTwoCols({
   damage = 0,
   defenderTokenUuid = "",
   crit = false,
+  compact = "",
 }) {
   const critBadge = crit ? ' <span class="v-crit-badge">КРИТ!</span>' : '';
+  const dmgDetail = compact ? `<div class="v-sub">${compact}</div>` : "";
   const resultBox = hit === null
     ? `<div class="v-box">
         <div class="v-box__label">Расчёт...</div>
         <div class="v-box__big">—</div>
       </div>`
     : hit
-    ? `<div class="v-box${crit ? ' v-box--crit' : ''}">
-        <div class="v-box__label">Урон${critBadge}</div>
-        <div class="v-box__big">${damage}</div>
-      </div>`
+    ? renderCollapsibleBox({
+        label: `Урон${critBadge}`,
+        value: damage,
+        detailHtml: dmgDetail,
+        extraClass: crit ? "v-box--crit" : "",
+      })
     : `<div class="v-box">
         <div class="v-box__label">Результат</div>
         <div class="v-box__big" style="font-size:18px;">Miss</div>
@@ -901,12 +917,7 @@ function defenseCardTwoCols({
       <div class="v-sub">Действие: <b>${esc(reactionLabel)}</b></div>
     </div>
     <div class="v-two">
-      <div class="v-box">
-        <div class="v-box__label">Защита</div>
-        <div class="v-box__big">${defRoll.successes}</div>
-        ${renderFacesInline(chosenResults(defRoll))}
-        ${renderModeDetailSmall(defRoll)}
-      </div>
+      ${renderCollapsibleBox({ label: "Защита", value: defRoll.successes, roll: defRoll })}
       ${resultBox}
     </div>
     ${applyBtn}
@@ -931,16 +942,8 @@ function contestRollCardTwoCols({
     </div>
 
     <div class="v-two">
-      <div class="v-box">
-        <div class="v-box__label">Кастер</div>
-        <div class="v-box__big">${num(casterSuccesses, 0)}</div>
-      </div>
-      <div class="v-box">
-        <div class="v-box__label">Цель</div>
-        <div class="v-box__big">${defRoll.successes}</div>
-        ${renderFacesInline(chosenResults(defRoll))}
-        ${renderModeDetailSmall(defRoll)}
-      </div>
+      ${renderCollapsibleBox({ label: "Кастер", value: num(casterSuccesses, 0) })}
+      ${renderCollapsibleBox({ label: "Цель", value: defRoll.successes, roll: defRoll })}
     </div>
   </div>`;
 }
@@ -958,9 +961,6 @@ function resolveContestCardHTML({
   const tail = applied
     ? `Состояние <b>${esc(stateName)}</b> наложено`
     : "Цель устояла — состояние не наложено";
-  const defRollFaces = defRoll
-    ? `${renderFacesInline(chosenResults(defRoll))} ${renderModeDetailSmall(defRoll)}`
-    : "";
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
     <div class="v-head">
@@ -968,15 +968,8 @@ function resolveContestCardHTML({
       <div class="v-sub">${esc(attackerName)} · ${esc(abilityName)}</div>
     </div>
     <div class="v-two">
-      <div class="v-box">
-        <div class="v-box__label">Кастер</div>
-        <div class="v-box__big">${num(casterSuccesses, 0)}</div>
-      </div>
-      <div class="v-box">
-        <div class="v-box__label">Цель</div>
-        <div class="v-box__big">${num(targetSuccesses, 0)}</div>
-        ${defRollFaces}
-      </div>
+      ${renderCollapsibleBox({ label: "Кастер", value: num(casterSuccesses, 0) })}
+      ${renderCollapsibleBox({ label: "Цель", value: num(targetSuccesses, 0), roll: defRoll })}
     </div>
     <div class="v-sub" style="margin-top:8px;">${tail}</div>
   </div>`;
@@ -1200,6 +1193,13 @@ Hooks.once("ready", () => {
     .vitruvium-chatcard .v-actions{display:flex;gap:10px;align-items:center;margin-top:12px}
     .vitruvium-chatcard .v-box--crit{border-color:rgba(200,30,30,.5);background:rgba(255,220,220,.45)}
     .vitruvium-chatcard .v-crit-badge{display:inline-block;padding:1px 7px;border-radius:999px;background:rgba(200,30,30,.85);color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;margin-left:4px;vertical-align:middle}
+    .vitruvium-chatcard .v-details{margin:0}
+    .vitruvium-chatcard .v-details__summary{display:flex;align-items:baseline;gap:8px;cursor:pointer;list-style:none}
+    .vitruvium-chatcard .v-details__summary::-webkit-details-marker{display:none}
+    .vitruvium-chatcard .v-details__summary::marker{display:none;content:""}
+    .vitruvium-chatcard .v-details__summary .v-box__big{transition:color .15s}
+    .vitruvium-chatcard .v-details[open] .v-details__summary .v-box__big{color:rgba(0,0,0,.6)}
+    .vitruvium-chatcard .v-details__body{margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,.1)}
     `;
     document.head.appendChild(style);
   }
@@ -1582,6 +1582,7 @@ Hooks.on("renderChatMessage", (message, html) => {
           damage,
           defenderTokenUuid,
           crit,
+          compact,
         }),
         rolls: defRoll.rolls,
         flags: {

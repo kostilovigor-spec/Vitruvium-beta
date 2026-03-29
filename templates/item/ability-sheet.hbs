@@ -67,17 +67,17 @@
         />
       </label>
       <label class="v-item__stat">
-        <span>&#1044;&#1077;&#1081;&#1089;&#1090;&#1074;&#1080;&#1103;</span>
-        <div class="v-item__field-text">{{system.actions}}</div>
-        <input
-          class="v-item__field-input"
-          type="number"
-          name="system.actions"
-          value="{{system.actions}}"
-          data-dtype="Number"
-          min="1"
-          max="2"
-        />
+        <span>Тип</span>
+        <div class="v-item__field-text">
+          {{#if (eq system.type "primary")}}Основная
+          {{else if (eq system.type "secondary")}}Вторичная
+          {{else}}Остальные{{/if}}
+        </div>
+        <select name="system.type" class="v-item__field-input">
+          <option value="primary" {{#if (eq system.type "primary")}}selected{{/if}}>Основная</option>
+          <option value="secondary" {{#if (eq system.type "secondary")}}selected{{/if}}>Вторичная</option>
+          <option value="other" {{#if (eq system.type "other")}}selected{{/if}}>Остальные</option>
+        </select>
       </label>
 
       <label class="v-item__stat">

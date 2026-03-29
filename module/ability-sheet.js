@@ -139,6 +139,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $level = html.find("input[name='system.level']");
     const $cost = html.find("input[name='system.cost']");
     const $actions = html.find("input[name='system.actions']");
+    const $type = html.find("select[name='system.type']");
     const $desc = html.find("textarea[name='system.description']");
     const $rollDamageBase = html.find("input[name='system.rollDamageBase']");
     const $rollHealBase = html.find("input[name='system.rollHealBase']");
@@ -199,6 +200,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         1,
         2
       );
+      const newType = String($type.val() ?? this.item.system?.type ?? "primary");
       const newDesc = currentDesc();
       const newRollDamageBase = clamp(
         num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
@@ -239,6 +241,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.level": newLevel,
         "system.cost": newCost,
         "system.actions": newActions,
+        "system.type": newType,
         "system.rollDamageBase": newRollDamageBase,
         "system.rollHealBase": newRollHealBase,
         "system.attackAttr": newAttackAttr,
@@ -267,6 +270,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
     // Attack roll toggle.
     $attackRoll.on("change", async (ev) => {
       await this.item.update({ "system.attackRoll": ev.currentTarget.checked });
+    });
+    // Ability type selector.
+    $type.on("change", async (ev) => {
+      await this.item.update({
+        "system.type": String(ev.currentTarget.value ?? "primary"),
+      });
     });
     // Attack attribute selector.
     $attackAttr.on("change", async (ev) => {
