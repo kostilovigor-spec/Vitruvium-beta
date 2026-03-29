@@ -486,6 +486,39 @@ export class VitruviumCharacterSheet extends ActorSheet {
       });
     });
 
+    // Long rest: fully restore HP and inspiration.
+    html.find("[data-action='long-rest']").on("click", async (ev) => {
+      ev.preventDefault();
+
+      const attrs = this.actor.system.attributes ?? {};
+      const effectTotals = collectEffectTotals(this.actor);
+
+      // HP max = condition * 8 + hpMax effect.
+      const condition = clamp(num(attrs.condition, 1), 1, 6);
+      const hpMax = condition * 8 + getEffectValue(effectTotals, "hpMax");
+
+      // Inspiration max = base max + inspMax effect.
+      const insp = attrs.inspiration ?? { value: 6, max: 6 };
+      const baseInspMax = clamp(num(insp.max, 6), 0, 99);
+      const inspMax = clamp(
+        baseInspMax + getEffectValue(effectTotals, "inspMax"),
+        0,
+        99
+      );
+
+      await this.actor.update({
+        "system.attributes.hp.value": hpMax,
+        "system.attributes.hp.max": hpMax,
+        "system.attributes.inspiration.value": inspMax,
+        "system.attributes.inspiration.max": baseInspMax,
+      });
+
+      ChatMessage.create({
+        content: `<strong>${this.actor.name}</strong> завершает долгий отдых и полностью восстанавливает силы.`,
+        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+      });
+    });
+
     // Extra dice increment (flag).
     html.find("[data-action='extra-inc']").on("click", async (ev) => {
       ev.preventDefault();

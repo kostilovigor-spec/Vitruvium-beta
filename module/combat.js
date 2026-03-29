@@ -864,15 +864,17 @@ function defenseCardTwoCols({
   hit = null,
   damage = 0,
   defenderTokenUuid = "",
+  crit = false,
 }) {
+  const critBadge = crit ? ' <span class="v-crit-badge">КРИТ!</span>' : '';
   const resultBox = hit === null
     ? `<div class="v-box">
         <div class="v-box__label">Расчёт...</div>
         <div class="v-box__big">—</div>
       </div>`
     : hit
-    ? `<div class="v-box">
-        <div class="v-box__label">Урон</div>
+    ? `<div class="v-box${crit ? ' v-box--crit' : ''}">
+        <div class="v-box__label">Урон${critBadge}</div>
         <div class="v-box__big">${damage}</div>
       </div>`
     : `<div class="v-box">
@@ -881,8 +883,14 @@ function defenseCardTwoCols({
       </div>`;
 
   const applyBtn = hit && damage > 0
-    ? `<div class="v-actions gm-only">
-        <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}">Применить урон (${damage})</button>
+    ? `<div class="v-actions gm-only" style="display:flex;align-items:center;gap:4px;">
+        <select data-role="dmg-multiplier" style="height:28px;border-radius:4px;border:1px solid #999;padding:0 4px;width:auto;flex:0 0 auto;">
+          <option value="0.5">×0.5</option>
+          <option value="1" selected>×1</option>
+          <option value="1.5">×1.5</option>
+          <option value="2">×2</option>
+        </select>
+        <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}" style="flex:1;">Применить урон (${damage})</button>
       </div>`
     : ``;
 
@@ -1069,6 +1077,10 @@ async function replaceStateFromTemplate(
 
 /* ---------- Damage ---------- */
 
+function isCriticalHit(atk, def) {
+  return atk >= 2 && atk >= 2 * def && (atk - def) >= 2;
+}
+
 function computeDamageCompact({
   weaponDamage,
   atkS,
@@ -1100,23 +1112,29 @@ function computeDamageCompact({
     const baseAfter = Math.max(0, base - effBlock);
     const breakthrough = Math.max(0, atk - effBlock);
     const dmg = baseAfter + breakthrough + bonusAtk;
+    const crit = isCriticalHit(atk, def);
+    const finalDmg = crit ? dmg * 2 : dmg;
     const blockLabel = blockBonus
       ? `${def}+${blockBonus}`
       : `${def}`;
-    const compact = `max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${blockLabel}) + max(0, ${atk} - ${armorFull}) = ${dmg}`;
-    return { damage: dmg, compact, hit: true };
+    const formula = `max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${blockLabel}) + max(0, ${atk} - ${armorFull})`;
+    const compact = crit ? `(${formula}) × 2 [КРИТ] = ${finalDmg}` : `${formula} = ${dmg}`;
+    return { damage: finalDmg, compact, hit: true, crit };
   }
 
   const hit = atk > def;
   if (!hit) {
-    return { damage: 0, compact: `промах: ${atk} <= ${def} -> 0`, hit: false };
+    return { damage: 0, compact: `промах: ${atk} <= ${def} -> 0`, hit: false, crit: false };
   }
 
   const armorBase = num(armorNoShield, 0);
   const effAtk = Math.max(0, atk - armorBase);
   const dmg = base + effAtk;
-  const compact = `${base} + max(0, ${atk} - ${armorNoShield}) = ${dmg}`;
-  return { damage: dmg, compact, hit: true };
+  const crit = isCriticalHit(atk, def);
+  const finalDmg = crit ? dmg * 2 : dmg;
+  const formula = `${base} + max(0, ${atk} - ${armorNoShield})`;
+  const compact = crit ? `(${formula}) × 2 [КРИТ] = ${finalDmg}` : `${formula} = ${dmg}`;
+  return { damage: finalDmg, compact, hit: true, crit };
 }
 
 function computeAbilityDamage({ abilityValue, atkS, defS }) {
@@ -1126,10 +1144,13 @@ function computeAbilityDamage({ abilityValue, atkS, defS }) {
   const hit = atk > def;
   const total = base + atk;
   const dmg = hit ? Math.max(0, total) : 0;
+  const crit = hit ? isCriticalHit(atk, def) : false;
+  const finalDmg = crit ? dmg * 2 : dmg;
+  const formula = `${base} + ${atk}`;
   const compact = hit
-    ? `${base} + ${atk} = ${dmg}`
+    ? (crit ? `(${formula}) × 2 [КРИТ] = ${finalDmg}` : `${formula} = ${dmg}`)
     : `промах: ${atk} <= ${def} -> 0`;
-  return { damage: dmg, compact, hit, atkS: atk, defS: def };
+  return { damage: finalDmg, compact, hit, crit, atkS: atk, defS: def };
 }
 
 /* ---------- Token/Actor helpers ---------- */
@@ -1177,6 +1198,8 @@ Hooks.once("ready", () => {
     .vitruvium-chatcard .v-box__label{font-size:12px;opacity:.75;margin-bottom:6px}
     .vitruvium-chatcard .v-box__big{font-size:26px;font-weight:800;line-height:1}
     .vitruvium-chatcard .v-actions{display:flex;gap:10px;align-items:center;margin-top:12px}
+    .vitruvium-chatcard .v-box--crit{border-color:rgba(200,30,30,.5);background:rgba(255,220,220,.45)}
+    .vitruvium-chatcard .v-crit-badge{display:inline-block;padding:1px 7px;border-radius:999px;background:rgba(200,30,30,.85);color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;margin-left:4px;vertical-align:middle}
     `;
     document.head.appendChild(style);
   }
@@ -1248,13 +1271,17 @@ Hooks.on("renderChatMessage", (message, html) => {
       ev.preventDefault();
       if (!game.user.isGM) return;
       const btn = $(ev.currentTarget);
+      const container = btn.closest("div");
       const tokenUuid = String(btn.attr("data-defender-token-uuid") ?? f.defenderTokenUuid ?? "");
       const dmg = num(btn.attr("data-damage") ?? f.damage, 0);
+      const multiplier = num(container.find("[data-role='dmg-multiplier']").val(), 1);
+      const finalDmg = Math.floor(dmg * multiplier);
       const actor = await actorFromTokenUuid(tokenUuid);
       if (!actor) return;
       const cur = num(actor.system?.attributes?.hp?.value, 0);
-      await actor.update({ "system.attributes.hp.value": Math.max(0, cur - dmg) });
-      btn.prop("disabled", true).text("Урон применён ✓");
+      await actor.update({ "system.attributes.hp.value": Math.max(0, cur - finalDmg) });
+      btn.prop("disabled", true).text(`Урон применён (${finalDmg}) ✓`);
+      container.find("[data-role='dmg-multiplier']").prop("disabled", true);
     });
     return;
   }
@@ -1504,6 +1531,7 @@ Hooks.on("renderChatMessage", (message, html) => {
       let hit = false;
       let damage = 0;
       let compact = "";
+      let crit = false;
       const attackKindDef = flags.attackKind ?? "weapon";
       const defSDef = defRoll.successes;
       const atkSDef = num(flags.atkSuccesses, 0);
@@ -1517,6 +1545,7 @@ Hooks.on("renderChatMessage", (message, html) => {
           damage = dmgOut.damage;
           compact = dmgOut.compact;
           hit = atkSDef > defSDef;
+          crit = dmgOut.crit ?? false;
         } else if (hasDamage) {
           damage = Math.max(0, damageValue);
           compact = `${damageValue}`;
@@ -1538,6 +1567,7 @@ Hooks.on("renderChatMessage", (message, html) => {
         damage = dmgOut.damage;
         compact = dmgOut.compact;
         hit = dmgOut.hit;
+        crit = dmgOut.crit ?? false;
       }
 
       // Single public defense card — contains result + GM apply-damage button
@@ -1551,6 +1581,7 @@ Hooks.on("renderChatMessage", (message, html) => {
           hit,
           damage,
           defenderTokenUuid,
+          crit,
         }),
         rolls: defRoll.rolls,
         flags: {
@@ -1559,6 +1590,7 @@ Hooks.on("renderChatMessage", (message, html) => {
             defenderTokenUuid,
             damage,
             hit,
+            crit,
           },
         },
       });
@@ -1567,11 +1599,17 @@ Hooks.on("renderChatMessage", (message, html) => {
       if (hit && damage > 0) {
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
         await ChatMessage.create({
-          content: `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-            <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}" style="flex:1;">Применить урон (${damage}) → ${esc(defender.name)}</button>
+          content: `<div style="display:flex;align-items:center;gap:4px;padding:4px 0;">
+            <select data-role="dmg-multiplier" style="height:28px;border-radius:4px;border:1px solid #999;padding:0 4px;width:auto;flex:0 0 auto;">
+              <option value="0.5">×0.5</option>
+              <option value="1" selected>×1</option>
+              <option value="1.5">×1.5</option>
+              <option value="2">×2</option>
+            </select>
+            <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}" style="flex:1;">Применить урон (${damage})${crit ? ' [КРИТ ×2]' : ''} → ${esc(defender.name)}</button>
           </div>`,
           whisper: gmIds,
-          flags: { vitruvium: { kind: "applyDamage", defenderTokenUuid, damage } },
+          flags: { vitruvium: { kind: "applyDamage", defenderTokenUuid, damage, crit } },
         });
       }
 
