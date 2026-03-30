@@ -1,4 +1,3 @@
-import { VitruviumCharacterSheet } from "./character-sheet.js";
 import {
   collectEffectTotals,
   getEffectValue,
@@ -6,14 +5,18 @@ import {
   getGlobalRollModifiers,
 } from "./effects.js";
 import { rollSuccessDice } from "./rolls.js";
+import { chatVisibilityData } from "./chat-visibility.js";
+import { playAutomatedAnimation } from "./auto-animations.js";
 
-export class VitruviumNPCSheet extends VitruviumCharacterSheet {
+export class VitruviumNPCSheet extends ActorSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["vitruvium", "sheet", "actor", "npc"],
       template: "systems/Vitruvium/templates/actor/npc-sheet.hbs",
       width: 640,
       height: 640,
+      submitOnChange: false,
+      submitOnClose: true,
     });
   }
 
@@ -32,7 +35,8 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
     const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
 
     const getAttr = (k) => {
-      const base = num(attrs[k], 0);
+      const attr = attrs[k];
+      const base = num(attr?.value ?? 0, 0);
       const total = base + getEffectValue(effectTotals, k);
       return Number.isFinite(total) ? total : base;
     };
@@ -93,9 +97,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
       "thinking",
       "communication",
     ];
-    const keys = allowed.filter((k) => typeof attrs[k] === "number");
-    const finalKeys = keys.length ? keys : allowed;
-    data.vitruvium.attributes = finalKeys.map((key) => ({
+    data.vitruvium.attributes = allowed.map((key) => ({
       key,
       label: attrLabels[key] ?? key,
       value: getAttr(key),
@@ -111,35 +113,68 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
     const inspValue = clamp(num(insp.value, inspMax), 0, inspMax);
     data.vitruvium.inspiration = { value: inspValue, max: inspMax };
 
+    // HP - читаем напрямую из actor, не вычисляем
     const hp = attrs.hp ?? { value: 0, max: 0 };
     const hpMax = clamp(num(hp.max, 0), 0, 999);
-    const hpValue = clamp(num(hp.value, hpMax), 0, hpMax);
+    const hpValue = clamp(num(hp.value, 0), 0, 999);
     data.vitruvium.hp = { value: hpValue, max: hpMax };
 
+    // Сохраняем для шаблона
     data.system = data.system || {};
     data.system.attributes = data.system.attributes || {};
-    data.system.attributes.hp = data.system.attributes.hp || {};
-    data.system.attributes.hp.value = hpValue;
-    data.system.attributes.hp.max = hpMax;
+    data.system.attributes.hp = { value: hpValue, max: hpMax };
 
     const scope = game.system.id;
     const savedExtra = this.actor.getFlag(scope, "extraDice");
     data.vitruvium.extraDice = clamp(num(savedExtra, 2), 1, 20);
 
-    // Armor total from equipped items (NPC)
-    let bonusArmor = 0;
-    const clamp6 = (n) => Math.min(Math.max(Number(n ?? 0), 0), 6);
-    for (const it of this.actor.items) {
-      if (it.type !== "item") continue;
-      if (!it.system?.equipped) continue;
-      bonusArmor += clamp6(it.system.armorBonus);
-    }
-    data.vitruvium.armorTotal = bonusArmor;
+    // Armor - читаем напрямую
+    const armor = attrs.armor ?? { value: 0 };
+    const armorValue = clamp(num(armor.value, 0), 0, 999);
+    data.vitruvium.armor = { value: armorValue };
+    data.system.attributes.armor = { value: armorValue };
 
-    const mv = getAttr("movement");
-    data.vitruvium.speed = 5 + mv + getEffectValue(effectTotals, "speed");
+    // Speed - читаем напрямую (не вычисляем из movement)
+    const speed = attrs.speed ?? { value: 0 };
+    const speedValue = clamp(num(speed.value, 0), 0, 999);
+    data.vitruvium.speed = { value: speedValue };
+    data.system.attributes.speed = { value: speedValue };
 
     return data;
+  }
+
+  async _updateObject(_event, formData) {
+    // Обработка пустых значений для HP
+    for (const key of ["hp.value", "hp.max"]) {
+      const path = `system.attributes.${key}`;
+      if (!(path in formData)) continue;
+      const raw = formData[path];
+      if (raw === "" || raw === null || raw === undefined) {
+        formData[path] = 0;
+        continue;
+      }
+      const parsed = Number(raw);
+      formData[path] = Number.isFinite(parsed)
+        ? Math.max(0, Math.round(parsed))
+        : 0;
+    }
+
+    // Обработка пустых значений для armor и speed
+    for (const key of ["armor.value", "speed.value"]) {
+      const path = `system.attributes.${key}`;
+      if (!(path in formData)) continue;
+      const raw = formData[path];
+      if (raw === "" || raw === null || raw === undefined) {
+        formData[path] = 0;
+        continue;
+      }
+      const parsed = Number(raw);
+      formData[path] = Number.isFinite(parsed)
+        ? Math.max(0, Math.round(parsed))
+        : 0;
+    }
+
+    return this.actor.update(formData);
   }
 
   activateListeners(html) {
@@ -151,12 +186,17 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
       return Number.isNaN(x) ? d : x;
     };
 
-    // Immediate save for NPC name on change.
-    html.find("input[name='name']").on("change", async (ev) => {
-      const v = String(ev.currentTarget.value ?? this.actor.name);
-      if (v && v !== this.actor.name) await this.actor.update({ name: v });
-    });
+    const esc = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
+    const scope = game.system.id;
+
+    // Roll mode dialog
     const rollModeDialog = async (title) =>
       new Promise((resolve) => {
         const defaultLuck = 0;
@@ -216,138 +256,333 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
           close: () => resolve(null),
         }).render(true);
       });
-    // Override attribute +/- to remove 1..6 clamp and auto-HP logic
-    html
-      .find("[data-action='attr-inc']")
-      .off("click")
-      .on("click", async (ev) => {
-        ev.preventDefault();
-        const key = ev.currentTarget.dataset.attr;
-        const attrs = this.actor.system.attributes ?? {};
-        const current = num(attrs[key], 0);
-        const next = clamp(current + 1, 0, 99);
-        await this.actor.update({ [`system.attributes.${key}`]: next });
+
+    // Name change
+    html.find("input[name='name']").on("change", async (ev) => {
+      const v = String(ev.currentTarget.value ?? this.actor.name);
+      if (v && v !== this.actor.name) await this.actor.update({ name: v });
+    });
+
+    // Attribute +/-
+    html.find("[data-action='attr-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      const key = ev.currentTarget.dataset.attr;
+      const attrs = this.actor.system.attributes ?? {};
+      const current = num(attrs[key]?.value ?? 0, 0);
+      const next = clamp(current + 1, 0, 99);
+      await this.actor.update({ [`system.attributes.${key}.value`]: next });
+    });
+
+    html.find("[data-action='attr-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      const key = ev.currentTarget.dataset.attr;
+      const attrs = this.actor.system.attributes ?? {};
+      const current = num(attrs[key]?.value ?? 0, 0);
+      const next = clamp(current - 1, 0, 99);
+      await this.actor.update({ [`system.attributes.${key}.value`]: next });
+    });
+
+    // Attribute roll
+    html.find("[data-action='roll-attribute']").on("click", async (ev) => {
+      ev.preventDefault();
+      const btn = ev.currentTarget;
+      const key = btn.dataset.attr;
+      const label = btn.dataset.label ?? key;
+      const attrs = this.actor.system.attributes ?? {};
+      const effectTotals = collectEffectTotals(this.actor);
+      const globalMods = getGlobalRollModifiers(effectTotals);
+      const attrMods = getAttributeRollModifiers(effectTotals, key);
+      const base = num(attrs[key]?.value ?? 0, 0);
+      const choice = await rollModeDialog(`Проверка: ${label}`);
+      if (!choice) return;
+      const pool = clamp(
+        Math.max(1, base + getEffectValue(effectTotals, key)) +
+          attrMods.dice +
+          num(choice.extraDice, 0),
+        1,
+        20,
+      );
+      const rollLuck = choice.luck + globalMods.adv + attrMods.adv;
+      const rollUnluck = choice.unluck + globalMods.dis + attrMods.dis;
+      const rollFullMode =
+        globalMods.fullMode !== "normal"
+          ? globalMods.fullMode
+          : choice.fullMode;
+
+      await rollSuccessDice({
+        pool,
+        actorName: this.actor.name,
+        checkName: label,
+        luck: rollLuck,
+        unluck: rollUnluck,
+        fullMode: rollFullMode,
       });
+    });
 
-    html
-      .find("[data-action='attr-dec']")
-      .off("click")
-      .on("click", async (ev) => {
-        ev.preventDefault();
-        const key = ev.currentTarget.dataset.attr;
-        const attrs = this.actor.system.attributes ?? {};
-        const current = num(attrs[key], 0);
-        const next = clamp(current - 1, 0, 99);
-        await this.actor.update({ [`system.attributes.${key}`]: next });
-      });
-
-    // Override attribute roll to avoid 1..6 clamp
-    html
-      .find("[data-action='roll-attribute']")
-      .off("click")
-      .on("click", async (ev) => {
-        ev.preventDefault();
-        const btn = ev.currentTarget;
-        const key = btn.dataset.attr;
-        const label = btn.dataset.label ?? key;
-        const attrs = this.actor.system.attributes ?? {};
-        const effectTotals = collectEffectTotals(this.actor);
-        const globalMods = getGlobalRollModifiers(effectTotals);
-        const attrMods = getAttributeRollModifiers(effectTotals, key);
-        const base = num(attrs[key], 0);
-        const choice = await rollModeDialog(`Проверка: ${label}`);
-        if (!choice) return;
-        const pool = clamp(
-          Math.max(1, base + getEffectValue(effectTotals, key)) +
-            attrMods.dice +
-            num(choice.extraDice, 0),
-          1,
-          20,
-        );
-        const rollLuck = choice.luck + globalMods.adv + attrMods.adv;
-        const rollUnluck = choice.unluck + globalMods.dis + attrMods.dis;
-        const rollFullMode =
-          globalMods.fullMode !== "normal"
-            ? globalMods.fullMode
-            : choice.fullMode;
-
-        await rollSuccessDice({
-          pool,
-          actorName: this.actor.name,
-          checkName: label,
-          luck: rollLuck,
-          unluck: rollUnluck,
-          fullMode: rollFullMode,
-        });
-      });
-
-    // Override HP handlers to allow manual max
-    const hpValueInput = html.find("input[name='system.attributes.hp.value']");
-    const hpMaxInput = html.find("input[name='system.attributes.hp.max']");
-    if (hpValueInput.length || hpMaxInput.length) {
-      hpValueInput.off("input change blur keydown");
-      hpMaxInput.off("input change blur keydown");
-      html.find("button").off("mousedown");
-
-      let hpTimer = null;
-
-      const readHpMax = () => clamp(num(hpMaxInput.val(), 0), 0, 999);
-      const readHpValue = (max) => clamp(num(hpValueInput.val(), 0), 0, max);
-
-      const saveHpNow = async () => {
-        const max = readHpMax();
-        const value = readHpValue(max);
-        const cur = this.actor.system.attributes?.hp ?? {};
-        const curValue = num(cur.value, 0);
-        const curMax = num(cur.max, 0);
-        if (value === curValue && max === curMax) return;
-        await this.actor.update({
-          "system.attributes.hp.value": value,
-          "system.attributes.hp.max": max,
-        });
+    // Inspiration +/-
+    html.find("[data-action='insp-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      const insp = this.actor.system.attributes?.inspiration ?? {
+        value: 6,
+        max: 6,
       };
+      const effectTotals = collectEffectTotals(this.actor);
+      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const effMax = clamp(
+        baseMax + getEffectValue(effectTotals, "inspMax"),
+        0,
+        99,
+      );
+      const v = clamp(num(insp.value, 6), 0, effMax);
+      const next = clamp(v + 1, 0, effMax);
+      await this.actor.update({
+        "system.attributes.inspiration.max": baseMax,
+        "system.attributes.inspiration.value": next,
+      });
+    });
 
-      const scheduleSave = () => {
-        if (hpTimer) clearTimeout(hpTimer);
-        hpTimer = setTimeout(() => {
-          hpTimer = null;
-          saveHpNow().catch(console.error);
-        }, 150);
+    html.find("[data-action='insp-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      const insp = this.actor.system.attributes?.inspiration ?? {
+        value: 6,
+        max: 6,
       };
+      const effectTotals = collectEffectTotals(this.actor);
+      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const effMax = clamp(
+        baseMax + getEffectValue(effectTotals, "inspMax"),
+        0,
+        99,
+      );
+      const v = clamp(num(insp.value, 6), 0, effMax);
+      const next = clamp(v - 1, 0, effMax);
+      await this.actor.update({
+        "system.attributes.inspiration.max": baseMax,
+        "system.attributes.inspiration.value": next,
+      });
+    });
 
-      hpValueInput.on("input", scheduleSave);
-      hpMaxInput.on("input", scheduleSave);
-      hpValueInput.on("change", scheduleSave);
-      hpMaxInput.on("change", scheduleSave);
-      hpValueInput.on("blur", scheduleSave);
-      hpMaxInput.on("blur", scheduleSave);
+    // Extra dice
+    html.find("[data-action='extra-inc']").on("click", async (ev) => {
+      ev.preventDefault();
+      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      cur = clamp(cur + 1, 1, 20);
+      await this.actor.setFlag(scope, "extraDice", cur);
+    });
 
-      hpValueInput.on("keydown", async (ev) => {
-        if (ev.key !== "Enter") return;
+    html.find("[data-action='extra-dec']").on("click", async (ev) => {
+      ev.preventDefault();
+      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      cur = clamp(cur - 1, 1, 20);
+      await this.actor.setFlag(scope, "extraDice", cur);
+    });
+
+    html.find("[data-action='extra-roll']").on("click", async (ev) => {
+      ev.preventDefault();
+      const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      const choice = await rollModeDialog("Доп. бросок");
+      if (!choice) return;
+      const pool = clamp(cur + num(choice.extraDice, 0), 1, 20);
+      const effectTotals = collectEffectTotals(this.actor);
+      const globalMods = getGlobalRollModifiers(effectTotals);
+      const rollLuck = choice.luck + globalMods.adv;
+      const rollUnluck = choice.unluck + globalMods.dis;
+      const rollFullMode =
+        globalMods.fullMode !== "normal"
+          ? globalMods.fullMode
+          : choice.fullMode;
+
+      await rollSuccessDice({
+        pool,
+        actorName: this.actor.name,
+        checkName: "Дополнительные кубы",
+        luck: rollLuck,
+        unluck: rollUnluck,
+        fullMode: rollFullMode,
+      });
+    });
+
+    // Create item
+    html.find("[data-action='create-item']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новый предмет",
+          type: "item",
+          system: {
+            description: "",
+            quantity: 1,
+            actions: 1,
+            type: "equipment",
+            equipped: false,
+            attackAttr: "combat",
+            attackBonus: 0,
+            armorBonus: 0,
+            damage: 0,
+            canBlock: false,
+            effects: [],
+          },
+        },
+      ]);
+    });
+
+    // Toggle equip
+    html.find("[data-action='toggle-equip']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+      await item.update({ "system.equipped": !item.system?.equipped });
+    });
+
+    // Weapon attack
+    html.find("[data-action='weapon-attack']").on("click", async (ev) => {
+      ev.preventDefault();
+      const weaponId = ev.currentTarget.dataset.itemId;
+      const weapon = this.actor.items.get(weaponId);
+      if (!weapon) return;
+      if (game.vitruvium?.startWeaponAttackFlow) {
+        await game.vitruvium.startWeaponAttackFlow(this.actor, weapon);
+      }
+    });
+
+    // Item chat
+    html.find("[data-action='item-chat']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+
+      const desc = String(item.system?.description ?? "");
+      const descHtml = desc
+        ? esc(desc).replace(/\n/g, "<br>")
+        : `<span class="hint">Описание не задано.</span>`;
+
+      const qty = Number(item.system?.quantity ?? 1);
+      const img = item.img || "icons/svg/item-bag.svg";
+      const typeLabel =
+        item.type === "ability"
+          ? "Способность"
+          : item.type === "state"
+            ? "Состояние"
+            : "Предмет";
+
+      const content = `
+        <div class="vitruvium-chatcard v-itemcard">
+          <div class="v-itemcard__top">
+            <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
+            <div class="v-itemcard__head">
+              <div class="v-itemcard__title">${esc(item.name)}${Number.isFinite(qty) ? ` ×${qty}` : ""}</div>
+              <div class="v-itemcard__sub">${esc(this.actor.name)} · ${typeLabel}</div>
+            </div>
+          </div>
+          <div class="v-itemcard__desc">${descHtml}</div>
+        </div>
+      `;
+
+      await ChatMessage.create({
+        ...chatVisibilityData(),
+        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+        content,
+      });
+
+      if (game.vitruvium?.playAutomatedAnimation) {
+        await playAutomatedAnimation({ actor: this.actor, item });
+      }
+    });
+
+    // Create ability
+    html.find("[data-action='create-ability']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новая способность",
+          type: "ability",
+          system: {
+            cost: 1,
+            actions: 1,
+            level: 1,
+            type: "primary",
+            active: false,
+            attackRoll: false,
+            attackAttr: "combat",
+            rollDamageBase: 0,
+            rollHealBase: 0,
+            description: "",
+            effects: [],
+          },
+        },
+      ]);
+    });
+
+    // Use ability
+    html.find("[data-action='use-ability']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const ability = this.actor.items.get(id);
+      if (!ability) return;
+      if (game.vitruvium?.startAbilityFlow) {
+        await game.vitruvium.startAbilityFlow(this.actor, ability);
+      }
+    });
+
+    // Toggle ability active
+    html
+      .find("[data-action='toggle-ability-active']")
+      .on("click", async (ev) => {
         ev.preventDefault();
-        ev.stopPropagation();
-        if (hpTimer) clearTimeout(hpTimer);
-        hpTimer = null;
-        await saveHpNow();
-        hpValueInput.blur();
+        const id = ev.currentTarget.dataset.itemId;
+        const item = this.actor.items.get(id);
+        if (!item) return;
+        await item.update({ "system.active": !item.system?.active });
       });
 
-      hpMaxInput.on("keydown", async (ev) => {
-        if (ev.key !== "Enter") return;
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (hpTimer) clearTimeout(hpTimer);
-        hpTimer = null;
-        await saveHpNow();
-        hpMaxInput.blur();
-      });
+    // Create state
+    html.find("[data-action='create-state']").on("click", async (ev) => {
+      ev.preventDefault();
+      await this.actor.createEmbeddedDocuments("Item", [
+        {
+          name: "Новое состояние",
+          type: "state",
+          system: {
+            active: true,
+            durationRounds: 0,
+            durationRemaining: 0,
+            description: "",
+            effects: [],
+          },
+        },
+      ]);
+    });
 
-      html.find("button").on("mousedown", async () => {
-        if (!hpTimer) return;
-        clearTimeout(hpTimer);
-        hpTimer = null;
-        await saveHpNow();
-      });
-    }
+    // Toggle state active
+    html.find("[data-action='toggle-state-active']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+      await item.update({ "system.active": !item.system?.active });
+    });
+
+    // Edit item
+    html.find("[data-action='edit-item']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      const item = this.actor.items.get(id);
+      if (!item) return;
+      await item.sheet?.render(true);
+    });
+
+    // Delete item
+    html.find("[data-action='delete-item']").on("click", async (ev) => {
+      ev.preventDefault();
+      const id = ev.currentTarget.dataset.itemId;
+      await this.actor.deleteEmbeddedDocuments("Item", [id]);
+    });
+
+    // Tab switching
+    html.find(".v-tabs__toggle").on("change", (ev) => {
+      this._activeTab = String(ev.currentTarget.value);
+    });
   }
 }

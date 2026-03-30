@@ -377,12 +377,18 @@ function hasHeavyArmorEquipped(actor) {
 }
 
 function hasBlockWeaponEquipped(actor) {
+  // Проверяем наличие предмета с флагом canBlock
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
     if (!it.system?.equipped) continue;
     if (it.system?.canBlock) return true;
   }
-  return false;
+
+  // Проверяем наличие эффекта blockValue
+  const effectTotals = collectEffectTotals(actor);
+  const blockFromEffects = getEffectValue(effectTotals, "blockValue");
+
+  return blockFromEffects > 0;
 }
 
 function getArmorTotal(actor, { includeShield = true } = {}) {
@@ -395,7 +401,12 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
     if (!includeShield && isShield) continue;
     bonus += clamp(num(it.system.armorBonus, 0), 0, 6);
   }
-  return base + bonus;
+
+  // Добавляем значение брони из эффектов
+  const effectTotals = collectEffectTotals(actor);
+  const armorFromEffects = getEffectValue(effectTotals, "armorValue");
+
+  return base + bonus + armorFromEffects;
 }
 
 /* ---------- Dialogs ---------- */
@@ -1169,26 +1180,33 @@ function computeDamageCompact({
   const base = num(weaponDamage, 0);
 
   // Блок:
-  // 1) База: урон оружия, срезанный блоком.
-  // 2) Пролом: если атака выше блока, разница добавляется отдельно.
-  // 3) Бонус: успехи атаки, срезанные броней.
-  // Пролом не уменьшается броней.
+  // 1) Блок уменьшает как урон оружия, так и успехи атаки
+  // 2) Формула: (урон оружия - успехи блока) + (успехи атаки - броня) + пролом
+  // 3) Пролом = успехи атаки - успехи блока
+  // 4) Но итоговый урон не может превышать (урон оружия + max(0, успехи атаки - броня))
   if (defenseType === "block") {
     const armorVal = num(armorFull, 0);
-    const bonusAtk = Math.max(0, atk - armorVal);
     const blockBonusEnabled = false;
     const blockBonusMinArmor = 2;
     const blockBonusValue = 1;
     const blockBonus =
       blockBonusEnabled && armorVal >= blockBonusMinArmor ? blockBonusValue : 0;
     const effBlock = Math.max(0, def + blockBonus);
-    const baseAfter = Math.max(0, base - effBlock);
-    const breakthrough = Math.max(0, atk - effBlock);
-    const dmg = baseAfter + breakthrough + bonusAtk;
+
+    // Рассчитываем урон по новой формуле
+    const weaponDamageAfterBlock = Math.max(0, base - effBlock); // Урон оружия после блока
+    const attackAfterArmor = Math.max(0, atk - armorVal); // Успехи атаки после брони
+    const breakthrough = Math.max(0, atk - effBlock); // Пролом = успехи атаки - успехи блока
+    const rawDmg = weaponDamageAfterBlock + attackAfterArmor + breakthrough;
+
+    // Максимально возможный урон не должен превышать (base + max(0, atk - armorVal))
+    const maxPossibleDmg = base + Math.max(0, atk - armorVal);
+    const dmg = Math.min(rawDmg, maxPossibleDmg);
+
     const crit = isCriticalHit(atk, def);
     const finalDmg = crit ? dmg * 2 : dmg;
     const blockLabel = blockBonus ? `${def}+${blockBonus}` : `${def}`;
-    const formula = `max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${blockLabel}) + max(0, ${atk} - ${armorFull})`;
+    const formula = `min(max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${armorFull}) + max(0, ${atk} - ${blockLabel}), ${base} + max(0, ${atk} - ${armorFull}))`;
     const compact = crit
       ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
       : `${formula} = ${dmg}`;

@@ -52,8 +52,8 @@ export class VitruviumItemSheet extends ItemSheet {
     const defaultAttr = finalKeys.includes(sys.attackAttr)
       ? sys.attackAttr
       : finalKeys.includes("combat")
-      ? "combat"
-      : finalKeys[0];
+        ? "combat"
+        : finalKeys[0];
     data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
       key,
       label: attrLabels[key] ?? key,
@@ -115,7 +115,10 @@ export class VitruviumItemSheet extends ItemSheet {
           current: this.item.img,
           callback: async (path) => {
             const descVal = currentDesc();
-            await this.item.update({ img: path, "system.description": descVal });
+            await this.item.update({
+              img: path,
+              "system.description": descVal,
+            });
           },
         }).browse();
       });
@@ -170,7 +173,9 @@ export class VitruviumItemSheet extends ItemSheet {
       await this.item.update({ "system.type": String(ev.currentTarget.value) });
     });
     html.find("select[name='system.attackAttr']").on("change", async (ev) => {
-      await this.item.update({ "system.attackAttr": String(ev.currentTarget.value) });
+      await this.item.update({
+        "system.attackAttr": String(ev.currentTarget.value),
+      });
     });
 
     // Immediate save for checkboxes.
@@ -184,7 +189,9 @@ export class VitruviumItemSheet extends ItemSheet {
       await this.item.update({ "system.canBlock": ev.currentTarget.checked });
     });
     html.find("input[name='system.isHeavyArmor']").on("change", async (ev) => {
-      await this.item.update({ "system.isHeavyArmor": ev.currentTarget.checked });
+      await this.item.update({
+        "system.isHeavyArmor": ev.currentTarget.checked,
+      });
     });
 
     // Clamp item bonuses to 0..6 (only for item type)
@@ -210,13 +217,33 @@ export class VitruviumItemSheet extends ItemSheet {
     const renderEffectRow = (effect = {}) => {
       const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
       const value = Number.isFinite(effect.value) ? effect.value : 0;
-      const options = EFFECT_TARGETS.map((opt, idx) => {
-        const selected =
-          key ? opt.key === key : idx === 0 ? true : false;
-        return `<option value="${opt.key}"${
-          selected ? " selected" : ""
-        }>${opt.label}</option>`;
-      }).join("");
+
+      // Группируем эффекты по категориям
+      const groupedOptions = {};
+      for (const opt of EFFECT_TARGETS) {
+        const group = opt.group || "other";
+        if (!groupedOptions[group]) {
+          groupedOptions[group] = [];
+        }
+        groupedOptions[group].push(opt);
+      }
+
+      // Создаем опции с группировкой
+      let options = "";
+      for (const [groupName, groupItems] of Object.entries(groupedOptions)) {
+        if (groupItems.length > 0) {
+          options += `<optgroup label="${groupName}">`;
+          for (const opt of groupItems) {
+            const selected = key
+              ? opt.key === key
+              : opt === groupItems[0]
+                ? true
+                : false;
+            options += `<option value="${opt.key}"${selected ? " selected" : ""}>${opt.label}</option>`;
+          }
+          options += `</optgroup>`;
+        }
+      }
 
       return `
         <div class="v-effects__row">

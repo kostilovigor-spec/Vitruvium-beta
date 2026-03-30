@@ -67,11 +67,29 @@
           <div class="v-npc__statrow v-npc__statrow--tight">
             <div class="v-npc__stat v-npc__stat--mini v-npc__stat--armor">
               <div class="v-npc__statLabel">Armor</div>
-              <div class="v-npc__statValue">{{vitruvium.armorTotal}}</div>
+              <div class="v-npc__statCtrl">
+                <input
+                  class="v-npc__statInput"
+                  type="number"
+                  name="system.attributes.armor.value"
+                  value="{{system.attributes.armor.value}}"
+                  min="0"
+                  data-dtype="Number"
+                />
+              </div>
             </div>
             <div class="v-npc__stat v-npc__stat--mini v-npc__stat--speed">
               <div class="v-npc__statLabel">Speed</div>
-              <div class="v-npc__statValue">{{vitruvium.speed}}</div>
+              <div class="v-npc__statCtrl">
+                <input
+                  class="v-npc__statInput"
+                  type="number"
+                  name="system.attributes.speed.value"
+                  value="{{system.attributes.speed.value}}"
+                  min="0"
+                  data-dtype="Number"
+                />
+              </div>
             </div>
           </div>
 

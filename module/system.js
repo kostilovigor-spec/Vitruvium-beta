@@ -17,12 +17,111 @@ import { setupFloatingTextHook, showFloatingText } from "./floating-text.js";
 
 Hooks.once("init", () => {
   console.log("Vitruvium | Initializing system");
+
+  // Migration: convert old NPC attribute format to new format
+  Hooks.on("ready", async () => {
+    if (!game.user.isGM) return;
+
+    const npcActors = game.actors.filter((a) => a.type === "npc");
+    const updates = [];
+
+    for (const actor of npcActors) {
+      const attrs = actor.system?.attributes ?? {};
+      const needsUpdate = {};
+
+      // Convert flat number attributes to {value: X}
+      for (const key of [
+        "condition",
+        "attention",
+        "movement",
+        "combat",
+        "thinking",
+        "communication",
+      ]) {
+        const attr = attrs[key];
+        if (typeof attr === "number") {
+          needsUpdate[`system.attributes.${key}.value`] = attr;
+        } else if (attr === undefined || attr === null) {
+          needsUpdate[`system.attributes.${key}.value`] = 1;
+        }
+      }
+
+      // Ensure hp has value and max
+      const hp = attrs.hp ?? {};
+      if (typeof hp.value !== "number")
+        needsUpdate["system.attributes.hp.value"] = 5;
+      if (typeof hp.max !== "number")
+        needsUpdate["system.attributes.hp.max"] = 5;
+
+      // Ensure armor exists
+      if (!attrs.armor || typeof attrs.armor.value !== "number") {
+        needsUpdate["system.attributes.armor.value"] = 0;
+      }
+
+      // Ensure speed exists
+      if (!attrs.speed || typeof attrs.speed.value !== "number") {
+        needsUpdate["system.attributes.speed.value"] = 0;
+      }
+
+      // Ensure inspiration exists
+      const insp = attrs.inspiration ?? {};
+      if (typeof insp.value !== "number")
+        needsUpdate["system.attributes.inspiration.value"] = 6;
+      if (typeof insp.max !== "number")
+        needsUpdate["system.attributes.inspiration.max"] = 6;
+
+      if (Object.keys(needsUpdate).length > 0) {
+        updates.push(actor.update(needsUpdate));
+      }
+    }
+
+    if (updates.length > 0) {
+      console.log(`Vitruvium | Migrating ${updates.length} NPC actors`);
+      await Promise.all(updates);
+      console.log("Vitruvium | Migration complete");
+    }
+  });
+
   patchVitruviumInitiative();
   registerStateDurationHooks();
   setupFloatingTextHook();
 
   // Register Handlebars helper for incrementing numbers
   Handlebars.registerHelper("inc", (value) => Number(value) + 1);
+
+  // Register Handlebars helper for grouping options by category
+  Handlebars.registerHelper(
+    "grouped_options",
+    function (effectTargets, options) {
+      const selectedValue = options.hash.selected;
+      const groups = {};
+
+      // Group effects by their group property
+      for (const target of effectTargets) {
+        const group = target.group || "other";
+        if (!groups[group]) {
+          groups[group] = [];
+        }
+        groups[group].push(target);
+      }
+
+      let result = "";
+      for (const [groupName, groupItems] of Object.entries(groups)) {
+        if (groupItems.length > 0) {
+          result += `<optgroup label="${groupName}">`;
+          for (const item of groupItems) {
+            const isSelected = selectedValue
+              ? item.key === selectedValue
+              : item === groupItems[0];
+            result += `<option value="${item.key}"${isSelected ? " selected" : ""}>${item.label}</option>`;
+          }
+          result += "</optgroup>";
+        }
+      }
+
+      return new Handlebars.SafeString(result);
+    },
+  );
 
   const NS = game.system.id; // у тебя это "Vitruvium"
 

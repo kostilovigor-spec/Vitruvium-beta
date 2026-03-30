@@ -1,41 +1,124 @@
 export const EFFECT_TARGETS = [
-  { key: "condition", label: "Самочувствие" },
-  { key: "attention", label: "Внимание" },
-  { key: "movement", label: "Движение" },
-  { key: "combat", label: "Сражение" },
-  { key: "thinking", label: "Мышление" },
-  { key: "communication", label: "Общение" },
-  { key: "conditionRollLuck", label: "Самочувствие: преимущество/помеха" },
-  { key: "conditionRollDice", label: "Самочувствие: доп. кубы" },
-  { key: "attentionRollLuck", label: "Внимание: преимущество/помеха" },
-  { key: "attentionRollDice", label: "Внимание: доп. кубы" },
-  { key: "movementRollLuck", label: "Движение: преимущество/помеха" },
-  { key: "movementRollDice", label: "Движение: доп. кубы" },
-  { key: "combatRollLuck", label: "Сражение: преимущество/помеха" },
-  { key: "combatRollDice", label: "Сражение: доп. кубы" },
-  { key: "thinkingRollLuck", label: "Мышление: преимущество/помеха" },
-  { key: "thinkingRollDice", label: "Мышление: доп. кубы" },
-  { key: "communicationRollLuck", label: "Общение: преимущество/помеха" },
-  { key: "communicationRollDice", label: "Общение: доп. кубы" },
-  { key: "attackRollLuck", label: "Атака: преимущество/помеха" },
-  { key: "attackRollDice", label: "Атака: доп. кубы" },
-  { key: "rollLuck", label: "Все броски: преимущество/помеха" },
+  // Атрибуты
+  { key: "condition", label: "Самочувствие", group: "attributes" },
+  { key: "attention", label: "Внимание", group: "attributes" },
+  { key: "movement", label: "Движение", group: "attributes" },
+  { key: "combat", label: "Сражение", group: "attributes" },
+  { key: "thinking", label: "Мышление", group: "attributes" },
+  { key: "communication", label: "Общение", group: "attributes" },
+
+  // Броски атрибутов
+  {
+    key: "conditionRollLuck",
+    label: "Самочувствие: преимущество/помеха",
+    group: "attribute_rolls",
+  },
+  {
+    key: "conditionRollDice",
+    label: "Самочувствие: доп. кубы",
+    group: "attribute_rolls",
+  },
+  {
+    key: "attentionRollLuck",
+    label: "Внимание: преимущество/помеха",
+    group: "attribute_rolls",
+  },
+  {
+    key: "attentionRollDice",
+    label: "Внимание: доп. кубы",
+    group: "attribute_rolls",
+  },
+  {
+    key: "movementRollLuck",
+    label: "Движение: преимущество/помеха",
+    group: "attribute_rolls",
+  },
+  {
+    key: "movementRollDice",
+    label: "Движение: доп. кубы",
+    group: "attribute_rolls",
+  },
+  {
+    key: "combatRollLuck",
+    label: "Сражение: преимущество/помеха",
+    group: "attribute_rolls",
+  },
+  {
+    key: "combatRollDice",
+    label: "Сражение: доп. кубы",
+    group: "attribute_rolls",
+  },
+  {
+    key: "thinkingRollLuck",
+    label: "Мышление: преимущество/помеха",
+    group: "attribute_rolls",
+  },
+  {
+    key: "thinkingRollDice",
+    label: "Мышление: доп. кубы",
+    group: "attribute_rolls",
+  },
+  {
+    key: "communicationRollLuck",
+    label: "Общение: преимущество/помеха",
+    group: "attribute_rolls",
+  },
+  {
+    key: "communicationRollDice",
+    label: "Общение: доп. кубы",
+    group: "attribute_rolls",
+  },
+
+  // Броски специальных действий
+  {
+    key: "attackRollLuck",
+    label: "Атака: преимущество/помеха",
+    group: "special_rolls",
+  },
+  { key: "attackRollDice", label: "Атака: доп. кубы", group: "special_rolls" },
+  {
+    key: "weaponLuck",
+    label: "Атака оружием: преимущество/помеха",
+    group: "special_rolls",
+  },
+  {
+    key: "dodgeLuck",
+    label: "Уворот: преимущество/помеха",
+    group: "special_rolls",
+  },
+  { key: "dodgeDice", label: "Уворот: доп. кубы", group: "special_rolls" },
+  {
+    key: "blockLuck",
+    label: "Блок: преимущество/помеха",
+    group: "special_rolls",
+  },
+  { key: "blockDice", label: "Блок: доп. кубы", group: "special_rolls" },
+
+  // Защита
+  { key: "armorValue", label: "Броня: значение", group: "protection" },
+  { key: "blockValue", label: "Блок: значение", group: "protection" },
+
+  // Общие модификаторы
+  {
+    key: "rollLuck",
+    label: "Все броски: преимущество/помеха",
+    group: "general_modifiers",
+  },
   {
     key: "rollFullAdv",
     label: "Все броски: удачливый (полный переброс)",
+    group: "general_modifiers",
   },
   {
     key: "rollFullDis",
     label: "Все броски: неудачливый (полный переброс)",
+    group: "general_modifiers",
   },
-  { key: "hpMax", label: "Макс. HP" },
-  { key: "inspMax", label: "Макс. вдохновение" },
-  { key: "speed", label: "Скорость" },
-  { key: "weaponLuck", label: "Атака оружием: преимущество/помеха" },
-  { key: "dodgeLuck", label: "Уворот: преимущество/помеха" },
-  { key: "dodgeDice", label: "Уворот: доп. кубы" },
-  { key: "blockLuck", label: "Блок: преимущество/помеха" },
-  { key: "blockDice", label: "Блок: доп. кубы" },
+
+  // Характеристики
+  { key: "hpMax", label: "Макс. HP", group: "characteristics" },
+  { key: "inspMax", label: "Макс. вдохновение", group: "characteristics" },
+  { key: "speed", label: "Скорость", group: "characteristics" },
 ];
 
 const LEGACY_EFFECT_KEY_MAP = {
@@ -213,12 +296,33 @@ export const getAttackRollModifiers = (totals, { attrKey = null } = {}) => {
 };
 
 const renderEffectRow = (effect = {}) => {
-  const key = EFFECT_KEYS.has(effect.key) ? effect.key : EFFECT_TARGETS[0].key;
+  const key = EFFECT_TARGETS.has(effect.key)
+    ? effect.key
+    : EFFECT_TARGETS[0].key;
   const value = Number.isFinite(effect.value) ? effect.value : 0;
-  const options = EFFECT_TARGETS.map((opt) => {
-    const selected = opt.key === key ? " selected" : "";
-    return `<option value="${opt.key}"${selected}>${opt.label}</option>`;
-  }).join("");
+
+  // Группируем эффекты по категориям
+  const groupedOptions = {};
+  for (const opt of EFFECT_TARGETS) {
+    const group = opt.group || "other";
+    if (!groupedOptions[group]) {
+      groupedOptions[group] = [];
+    }
+    groupedOptions[group].push(opt);
+  }
+
+  // Создаем опции с группировкой
+  let options = "";
+  for (const [groupName, groupItems] of Object.entries(groupedOptions)) {
+    if (groupItems.length > 0) {
+      options += `<optgroup label="${groupName}">`;
+      for (const opt of groupItems) {
+        const selected = opt.key === key ? " selected" : "";
+        options += `<option value="${opt.key}"${selected}>${opt.label}</option>`;
+      }
+      options += `</optgroup>`;
+    }
+  }
 
   return `
     <div class="v-effects__row">
