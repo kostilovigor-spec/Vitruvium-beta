@@ -14,7 +14,7 @@ Hooks.once("diceSoNiceReady", (dice3d) => {
   // Register system (so presets are grouped under your system)
   dice3d.addSystem(
     { id: systemId, name: game.system?.title ?? "Vitruvium" },
-    true
+    true,
   );
 
   const base = `systems/${game.system.id}/assets/dice`;
@@ -30,5 +30,6 @@ Hooks.once("diceSoNiceReady", (dice3d) => {
     type: "dV",
     labels,
     system: systemId,
+    shape: "d6",
   });
 });
