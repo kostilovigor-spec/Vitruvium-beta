@@ -758,10 +758,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
             rollDamageBase: 0,
             rollHealBase: 0,
             contestStates: [
-              { uuid: "", durationRounds: 1, applyMode: "targetContest" },
+              {
+                uuid: "",
+                durationRounds: 1,
+                applyMode: "targetContest",
+                casterAttr: "combat",
+                targetAttr: "combat",
+              },
             ],
-            contestCasterAttr: "combat",
-            contestTargetAttr: "combat",
             description: "",
             effects: [],
           },

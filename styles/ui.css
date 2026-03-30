@@ -364,7 +364,7 @@
 }
 .v-contest-states__fields {
   display: grid;
-  grid-template-columns: 1fr 110px 1fr;
+  grid-template-columns: 1.5fr 100px 1fr 1fr 1fr;
   gap: 8px;
   align-items: start;
 }
@@ -374,8 +374,13 @@
 }
 .v-contest-states__remove {
   height: 20px;
-  padding: 0 4px;
+  padding: 0 6px;
   line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.v-contest-states__remove:hover {
+  background: rgba(200, 50, 50, 0.3);
 }
 
 /* ---------- Inputs ---------- */

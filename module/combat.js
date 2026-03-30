@@ -1963,14 +1963,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         )
           ? s.applyMode
           : "targetContest",
+        casterAttr: String(s.casterAttr ?? "combat").trim(),
+        targetAttr: String(s.targetAttr ?? "combat").trim(),
       }));
 
-    const contestCasterAttr = String(
-      abilityItem?.system?.contestCasterAttr ?? "combat",
-    ).trim();
-    const contestTargetAttr = String(
-      abilityItem?.system?.contestTargetAttr ?? "combat",
-    ).trim();
     const hasDamage = damageBase > 0;
     const hasHeal = healBase > 0;
     const hasContestStates = contestStates.length > 0;
@@ -2085,6 +2081,15 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       (s) => s.applyMode === "targetContest",
     );
     const doContestRoll = targetContestStates.length > 0 && hasContestTarget;
+    // Use caster/target attr from the first targetContest state
+    const contestCasterAttr =
+      targetContestStates.length > 0
+        ? targetContestStates[0].casterAttr
+        : "combat";
+    const contestTargetAttr =
+      targetContestStates.length > 0
+        ? targetContestStates[0].targetAttr
+        : "combat";
 
     const attackerToken =
       attackerActor?.getActiveTokens?.(true, true)?.[0] ??

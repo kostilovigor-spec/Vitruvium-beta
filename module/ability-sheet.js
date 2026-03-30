@@ -66,12 +66,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
       : finalKeys.includes("combat")
         ? "combat"
         : finalKeys[0];
-    const contestCasterAttr = finalKeys.includes(sys.contestCasterAttr)
-      ? sys.contestCasterAttr
-      : defaultAttr;
-    const contestTargetAttr = finalKeys.includes(sys.contestTargetAttr)
-      ? sys.contestTargetAttr
-      : defaultAttr;
     const stateTemplates = await listSystemStateTemplates();
     // Normalize contestStates array - support both old and new format
     let contestStates = Array.isArray(sys.contestStates)
@@ -88,13 +82,21 @@ export class VitruviumAbilitySheet extends ItemSheet {
           )
             ? sys.contestApplyMode
             : "targetContest",
+          casterAttr: String(sys.contestCasterAttr ?? defaultAttr),
+          targetAttr: String(sys.contestTargetAttr ?? defaultAttr),
         },
       ];
     }
     // Ensure at least one empty state entry
     if (contestStates.length === 0) {
       contestStates = [
-        { uuid: "", durationRounds: 1, applyMode: "targetContest" },
+        {
+          uuid: "",
+          durationRounds: 1,
+          applyMode: "targetContest",
+          casterAttr: defaultAttr,
+          targetAttr: defaultAttr,
+        },
       ];
     }
     // Normalize each state entry
@@ -106,14 +108,14 @@ export class VitruviumAbilitySheet extends ItemSheet {
       )
         ? s.applyMode
         : "targetContest",
+      casterAttr: String(s.casterAttr ?? defaultAttr),
+      targetAttr: String(s.targetAttr ?? defaultAttr),
     }));
     data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
       key,
       label: attrLabels[key] ?? key,
     }));
     data.vitruvium.attackAttrDefault = defaultAttr;
-    data.vitruvium.contestCasterAttr = contestCasterAttr;
-    data.vitruvium.contestTargetAttr = contestTargetAttr;
     data.vitruvium.contestStates = contestStates;
     data.vitruvium.stateTemplateOptions = stateTemplates;
     data.vitruvium.hasStateTemplates = stateTemplates.length > 0;
@@ -188,12 +190,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $active = html.find("input[name='system.active']");
     const $attackRoll = html.find("input[name='system.attackRoll']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
-    const $contestCasterAttr = html.find(
-      "select[name='system.contestCasterAttr']",
-    );
-    const $contestTargetAttr = html.find(
-      "select[name='system.contestTargetAttr']",
-    );
 
     // Edit mode toggling.
     const form = html.closest("form");
@@ -256,7 +252,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       const newAttackAttr = String(
         $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat",
       );
-      // Collect contestStates from form
+      // Collect contestStates from form - include all rows, even without uuid
       const contestStates = [];
       html.find(".v-contest-states__row").each((_, row) => {
         const $row = $(row);
@@ -272,28 +268,30 @@ export class VitruviumAbilitySheet extends ItemSheet {
         const applyMode = String(
           $row.find("select[name$='.applyMode']").val() ?? "targetContest",
         );
-        if (uuid) {
-          contestStates.push({ uuid, durationRounds, applyMode });
-        }
+        const casterAttr = String(
+          $row.find("select[name$='.casterAttr']").val() ?? "combat",
+        );
+        const targetAttr = String(
+          $row.find("select[name$='.targetAttr']").val() ?? "combat",
+        );
+        contestStates.push({
+          uuid,
+          durationRounds,
+          applyMode,
+          casterAttr,
+          targetAttr,
+        });
       });
-      // Ensure at least one entry (even empty) for migration compatibility
+      // Ensure at least one entry for migration compatibility
       if (contestStates.length === 0) {
         contestStates.push({
           uuid: "",
           durationRounds: 1,
           applyMode: "targetContest",
+          casterAttr: "combat",
+          targetAttr: "combat",
         });
       }
-      const newContestCasterAttr = String(
-        $contestCasterAttr.val() ??
-          this.item.system?.contestCasterAttr ??
-          "combat",
-      );
-      const newContestTargetAttr = String(
-        $contestTargetAttr.val() ??
-          this.item.system?.contestTargetAttr ??
-          "combat",
-      );
 
       await this.item.update({
         name: newName,
@@ -305,8 +303,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.rollHealBase": newRollHealBase,
         "system.attackAttr": newAttackAttr,
         "system.contestStates": contestStates,
-        "system.contestCasterAttr": newContestCasterAttr,
-        "system.contestTargetAttr": newContestTargetAttr,
         "system.description": newDesc,
       });
     };
@@ -342,25 +338,28 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
       });
     });
-    $contestCasterAttr.on("change", async (ev) => {
-      await this.item.update({
-        "system.contestCasterAttr": String(ev.currentTarget.value ?? "combat"),
-      });
-    });
-    $contestTargetAttr.on("change", async (ev) => {
-      await this.item.update({
-        "system.contestTargetAttr": String(ev.currentTarget.value ?? "combat"),
-      });
-    });
 
     // Contest states: Add row button.
-    html.on("click", "[data-action='add-contest-state']", (ev) => {
+    // Use event delegation on the form element for dynamic content
+    const $form = html.closest("form");
+    $form.on("click", "[data-action='add-contest-state']", async (ev) => {
       ev.preventDefault();
       const $container = html.find(".v-contest-states__rows");
       const idx = $container.find(".v-contest-states__row").length;
-      const stateTemplates = data.vitruvium?.stateTemplateOptions ?? [];
-      const options = stateTemplates
+      const sheetData = await this.getData();
+      const stateTemplates = sheetData.vitruvium?.stateTemplateOptions ?? [];
+      const attrOptions = sheetData.vitruvium?.attackAttrOptions ?? [];
+      const defaultAttr = sheetData.vitruvium?.attackAttrDefault ?? "combat";
+      const stateOptions = stateTemplates
         .map((st) => `<option value="${st.uuid}">${st.name}</option>`)
+        .join("");
+      const attrOptionsHtml = attrOptions
+        .map(
+          (opt) =>
+            `<option value="${opt.key}"${
+              opt.key === defaultAttr ? " selected" : ""
+            }>${opt.label}</option>`,
+        )
         .join("");
       const rowHtml = `
         <div class="v-contest-states__row" data-idx="${idx}">
@@ -373,7 +372,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
               <span>Состояние</span>
               <select name="system.contestStates.${idx}.uuid" class="v-item__select">
                 <option value="">Не накладывать</option>
-                ${options}
+                ${stateOptions}
               </select>
             </label>
             <label class="v-contest-states__duration">
@@ -395,91 +394,72 @@ export class VitruviumAbilitySheet extends ItemSheet {
                 <option value="targetContest" selected>Цель: соревнование</option>
               </select>
             </label>
+            <label>
+              <span>Атрибут кастера</span>
+              <select name="system.contestStates.${idx}.casterAttr" class="v-item__select">
+                ${attrOptionsHtml}
+              </select>
+            </label>
+            <label>
+              <span>Атрибут цели</span>
+              <select name="system.contestStates.${idx}.targetAttr" class="v-item__select">
+                ${attrOptionsHtml}
+              </select>
+            </label>
           </div>
         </div>
       `;
       $container.append(rowHtml);
-      // Save after adding
-      const $rows = html.find(".v-contest-states__row");
-      const contestStates = [];
-      $rows.each((_, row) => {
-        const $r = $(row);
-        const uuid = String($r.find("select[name$='.uuid']").val() ?? "");
-        const durationRounds = Math.max(
-          0,
-          Math.round(num($r.find("input[name$='.durationRounds']").val(), 1)),
-        );
-        const applyMode = String(
-          $r.find("select[name$='.applyMode']").val() ?? "targetContest",
-        );
-        if (uuid) {
-          contestStates.push({ uuid, durationRounds, applyMode });
-        }
-      });
-      if (contestStates.length === 0) {
-        contestStates.push({
-          uuid: "",
-          durationRounds: 1,
-          applyMode: "targetContest",
-        });
-      }
-      this.item.update({ "system.contestStates": contestStates });
+      // Save after adding - use saveContestStates helper
+      saveContestStates();
     });
 
     // Contest states: Remove row button.
-    html.on("click", ".v-contest-states__remove", (ev) => {
+    // Use event delegation on the form element for dynamic content
+    $form.on("click", ".v-contest-states__remove", (ev) => {
       ev.preventDefault();
-      $(ev.currentTarget).closest(".v-contest-states__row").remove();
+      const $btn = $(ev.currentTarget);
+      const $row = $btn.closest(".v-contest-states__row");
+      $row.remove();
       // Re-index rows
       const $container = html.find(".v-contest-states__rows");
       $container.find(".v-contest-states__row").each((idx, row) => {
-        $(row).attr("data-idx", idx);
-        $(row)
-          .find("span")
+        const $r = $(row);
+        $r.attr("data-idx", idx);
+        $r.find("span")
           .first()
           .text(`Состояние #${idx + 1}`);
-        $(row)
-          .find("select[name$='.uuid']")
-          .attr("name", `system.contestStates.${idx}.uuid`);
-        $(row)
-          .find("input[name$='.durationRounds']")
-          .attr("name", `system.contestStates.${idx}.durationRounds`);
-        $(row)
-          .find("select[name$='.applyMode']")
-          .attr("name", `system.contestStates.${idx}.applyMode`);
-      });
-      // Save after removing
-      const $rows = html.find(".v-contest-states__row");
-      const contestStates = [];
-      $rows.each((_, row) => {
-        const $r = $(row);
-        const uuid = String($r.find("select[name$='.uuid']").val() ?? "");
-        const durationRounds = Math.max(
-          0,
-          Math.round(num($r.find("input[name$='.durationRounds']").val(), 1)),
+        $r.find("select[name$='.uuid']").attr(
+          "name",
+          `system.contestStates.${idx}.uuid`,
         );
-        const applyMode = String(
-          $r.find("select[name$='.applyMode']").val() ?? "targetContest",
+        $r.find("input[name$='.durationRounds']").attr(
+          "name",
+          `system.contestStates.${idx}.durationRounds`,
         );
-        if (uuid) {
-          contestStates.push({ uuid, durationRounds, applyMode });
-        }
+        $r.find("select[name$='.applyMode']").attr(
+          "name",
+          `system.contestStates.${idx}.applyMode`,
+        );
+        $r.find("select[name$='.casterAttr']").attr(
+          "name",
+          `system.contestStates.${idx}.casterAttr`,
+        );
+        $r.find("select[name$='.targetAttr']").attr(
+          "name",
+          `system.contestStates.${idx}.targetAttr`,
+        );
       });
-      if (contestStates.length === 0) {
-        contestStates.push({
-          uuid: "",
-          durationRounds: 1,
-          applyMode: "targetContest",
-        });
-      }
-      this.item.update({ "system.contestStates": contestStates });
+      // Save after removing - use saveContestStates helper
+      saveContestStates();
     });
 
     // Contest states: Save on change for all fields.
-    html.on(
-      "change",
-      ".v-contest-states__row select, .v-contest-states__row input",
-      () => {
+    // Use debounce to avoid multiple rapid saves
+    let contestStatesSaveTimeout = null;
+    const saveContestStates = () => {
+      if (contestStatesSaveTimeout) clearTimeout(contestStatesSaveTimeout);
+      contestStatesSaveTimeout = setTimeout(async () => {
         const $rows = html.find(".v-contest-states__row");
         const contestStates = [];
         $rows.each((_, row) => {
@@ -492,19 +472,39 @@ export class VitruviumAbilitySheet extends ItemSheet {
           const applyMode = String(
             $r.find("select[name$='.applyMode']").val() ?? "targetContest",
           );
-          if (uuid) {
-            contestStates.push({ uuid, durationRounds, applyMode });
-          }
+          const casterAttr = String(
+            $r.find("select[name$='.casterAttr']").val() ?? "combat",
+          );
+          const targetAttr = String(
+            $r.find("select[name$='.targetAttr']").val() ?? "combat",
+          );
+          // Include states even without uuid to preserve attr selections
+          contestStates.push({
+            uuid,
+            durationRounds,
+            applyMode,
+            casterAttr,
+            targetAttr,
+          });
         });
         if (contestStates.length === 0) {
           contestStates.push({
             uuid: "",
             durationRounds: 1,
             applyMode: "targetContest",
+            casterAttr: "combat",
+            targetAttr: "combat",
           });
         }
-        this.item.update({ "system.contestStates": contestStates });
-      },
+        await this.item.update({ "system.contestStates": contestStates });
+      }, 250);
+    };
+
+    // Use event delegation on the form element for dynamic content
+    $form.on(
+      "change",
+      ".v-contest-states__row select, .v-contest-states__row input",
+      saveContestStates,
     );
 
     // Immediate save on change for all editable fields.
