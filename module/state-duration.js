@@ -47,7 +47,7 @@ const normalizeStateSource = (itemDoc, change = {}) => {
   const currentDuration = toRounds(itemDoc.system?.durationRounds, 0);
   const currentRemaining = toRounds(
     itemDoc.system?.durationRemaining,
-    currentActive ? currentDuration : 0
+    currentActive ? currentDuration : 0,
   );
 
   const hasActive = hasOwn(next, "active");
@@ -101,7 +101,7 @@ const applyRoundTickToCombat = async (combat, ticks) => {
 
       const startRemaining = toRounds(
         item.system?.durationRemaining,
-        durationRounds
+        durationRounds,
       );
       const nextRemaining = Math.max(0, startRemaining - ticks);
       const patch = {
@@ -150,6 +150,45 @@ export const registerStateDurationHooks = () => {
 
   Hooks.on("preUpdateItem", (itemDoc, change) => {
     normalizeStateSource(itemDoc, change);
+  });
+
+  // Удаляем Active Effect при удалении или истечении состояния
+  Hooks.on("updateItem", async (item, change) => {
+    if (item.type !== "state") return;
+
+    const durationRemaining = item.system?.durationRemaining ?? 0;
+    const wasActive = item.system?.active !== false;
+    const isNowInactive =
+      change.system?.active === false || durationRemaining <= 0;
+
+    if (isNowInactive && wasActive) {
+      // Находим и удаляем Active Effect, связанный с этим состоянием
+      const effectsToRemove =
+        item.actor?.effects?.filter((ef) => ef.origin?.includes(item.uuid)) ||
+        [];
+
+      if (effectsToRemove.length > 0) {
+        await item.actor.deleteEmbeddedDocuments(
+          "ActiveEffect",
+          effectsToRemove.map((ef) => ef.id),
+        );
+      }
+    }
+  });
+
+  Hooks.on("deleteItem", async (item) => {
+    if (item.type !== "state") return;
+
+    // Удаляем Active Effect, связанный с этим состоянием
+    const effectsToRemove =
+      item.actor?.effects?.filter((ef) => ef.origin?.includes(item.uuid)) || [];
+
+    if (effectsToRemove.length > 0) {
+      await item.actor.deleteEmbeddedDocuments(
+        "ActiveEffect",
+        effectsToRemove.map((ef) => ef.id),
+      );
+    }
   });
 
   Hooks.once("ready", () => {

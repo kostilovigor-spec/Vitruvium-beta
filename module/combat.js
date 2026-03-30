@@ -1086,7 +1086,19 @@ export async function replaceStateFromTemplate(
   const oldStateIds = (defenderActor.items ?? [])
     .filter((it) => it.type === "state" && it.name === templateDoc.name)
     .map((it) => it.id);
+
+  // Удаляем старые Active Effects, связанные с этими состояниями
   if (oldStateIds.length) {
+    const oldEffects =
+      defenderActor.effects?.filter((ef) =>
+        oldStateIds.some((id) => ef.origin?.includes(id)),
+      ) || [];
+    if (oldEffects.length > 0) {
+      await defenderActor.deleteEmbeddedDocuments(
+        "ActiveEffect",
+        oldEffects.map((ef) => ef.id),
+      );
+    }
     await defenderActor.deleteEmbeddedDocuments("Item", oldStateIds);
   }
 
@@ -1099,7 +1111,7 @@ export async function replaceStateFromTemplate(
   sourceSystem.durationRounds = duration;
   sourceSystem.durationRemaining = duration;
 
-  await defenderActor.createEmbeddedDocuments("Item", [
+  const createdState = await defenderActor.createEmbeddedDocuments("Item", [
     {
       name: templateDoc.name,
       type: "state",
@@ -1107,6 +1119,25 @@ export async function replaceStateFromTemplate(
       system: sourceSystem,
     },
   ]);
+
+  // Создаём Active Effect с иконкой состояния для отображения на токене
+  if (createdState?.[0]) {
+    const stateItem = createdState[0];
+    await defenderActor.createEmbeddedDocuments("ActiveEffect", [
+      {
+        name: templateDoc.name,
+        label: templateDoc.name,
+        icon: templateDoc.img ?? "icons/svg/aura.svg",
+        origin: stateItem.uuid,
+        duration: {
+          rounds: duration,
+        },
+        // Эффект не меняет характеристики, просто отображает иконку
+        changes: [],
+        disabled: false,
+      },
+    ]);
+  }
 
   // Показываем всплывающий текст с названием состояния
   if (defenderTokenUuid && canvas) {
@@ -2041,6 +2072,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       );
       if (out.applied) {
         appliedSelfStates.push(out.stateName ?? "Состояние");
+        // Показываем всплывающий текст, если есть токен
+        if (attackerToken && canvas) {
+          showFloatingText(attackerToken, 0, out.stateName ?? "Состояние");
+        }
       }
     }
 

@@ -18,7 +18,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
   }
 
   getData() {
-    const data = ActorSheet.prototype.getData.call(this);
+    const data = super.getData();
 
     const sys = data.system ?? this.actor.system ?? {};
     const attrs = sys.attributes ?? {};
