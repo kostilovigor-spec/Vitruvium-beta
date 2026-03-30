@@ -125,6 +125,21 @@ export class VitruviumSkillSheet extends ItemSheet {
       await saveDescriptionDraft();
     });
 
+    // Immediate save for name on change.
+    $name.on("change", async () => {
+      const v = String($name.val() ?? this.item.name);
+      if (v && v !== this.item.name) await this.item.update({ name: v });
+    });
+
+    // Immediate save for state-specific fields.
+    html.find("input[name='system.active']").on("change", async (ev) => {
+      await this.item.update({ "system.active": ev.currentTarget.checked });
+    });
+    html.find("input[name='system.durationRounds']").on("change", async (ev) => {
+      const v = Math.max(0, Math.round(Number(ev.currentTarget.value) || 0));
+      await this.item.update({ "system.durationRounds": v });
+    });
+
     const renderEffectRow = (effect = {}) => {
       const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
       const value = Number.isFinite(effect.value) ? effect.value : 0;

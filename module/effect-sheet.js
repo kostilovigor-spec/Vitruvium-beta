@@ -20,8 +20,40 @@ export class VitruviumEffectSheet extends ItemSheet {
     return data;
   }
 
+  async close(options) {
+    try {
+      if (typeof this._saveDescOnClose === "function") {
+        await this._saveDescOnClose();
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return super.close(options);
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
+
+    // Immediate save for name on change.
+    const $name = html.find("input[name='name']");
+    $name.on("change", async () => {
+      const v = String($name.val() ?? this.item.name);
+      if (v && v !== this.item.name) await this.item.update({ name: v });
+    });
+
+    // Immediate save for description on blur.
+    const $desc = html.find("textarea[name='system.description']");
+    const saveDescriptionDraft = async () => {
+      const newDesc = String($desc.val() ?? "");
+      if (newDesc !== String(this.item.system?.description ?? "")) {
+        await this.item.update({ "system.description": newDesc });
+      }
+    };
+    this._saveDescOnClose = saveDescriptionDraft;
+
+    $desc.on("blur", async () => {
+      await saveDescriptionDraft();
+    });
 
     html.find("[data-action='edit-effects']").on("click", async (ev) => {
       ev.preventDefault();

@@ -88,6 +88,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
     data.vitruvium.stateTemplateOptions = stateTemplates;
     data.vitruvium.selectedStateUuid = hasSelectedState ? selectedStateUuid : "";
     data.vitruvium.hasStateTemplates = stateTemplates.length > 0;
+    const contestApplyMode = ["self", "targetNoCheck", "targetContest"].includes(
+      sys.contestApplyMode
+    )
+      ? sys.contestApplyMode
+      : "targetContest";
+    data.vitruvium.contestApplyMode = contestApplyMode;
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
@@ -108,6 +114,15 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
   activateListeners(html) {
     super.activateListeners(html);
+
+    // Restore active tab (Описание / Эффекты) after re-render.
+    if (this._abilityTab === "effects") {
+      const effectsRadio = html.find("#v-ability-tab-effects");
+      if (effectsRadio.length) effectsRadio.prop("checked", true);
+    }
+    html.find(".v-itemtabs__toggle").on("change", (ev) => {
+      this._abilityTab = ev.currentTarget.id === "v-ability-tab-effects" ? "effects" : "desc";
+    });
 
     // Icon editing should always be available.
     html
@@ -156,6 +171,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $contestTargetAttr = html.find(
       "select[name='system.contestTargetAttr']"
     );
+    const $contestApplyMode = html.find("select[name='system.contestApplyMode']");
 
     // Edit mode toggling.
     const form = html.closest("form");
@@ -235,6 +251,9 @@ export class VitruviumAbilitySheet extends ItemSheet {
       const newContestTargetAttr = String(
         $contestTargetAttr.val() ?? this.item.system?.contestTargetAttr ?? "combat"
       );
+      const newContestApplyMode = String(
+        $contestApplyMode.val() ?? this.item.system?.contestApplyMode ?? "targetContest"
+      );
 
       await this.item.update({
         name: newName,
@@ -249,6 +268,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.contestStateDurationRounds": newContestStateDurationRounds,
         "system.contestCasterAttr": newContestCasterAttr,
         "system.contestTargetAttr": newContestTargetAttr,
+        "system.contestApplyMode": newContestApplyMode,
         "system.description": newDesc,
       });
     };
@@ -305,6 +325,46 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({
         "system.contestTargetAttr": String(ev.currentTarget.value ?? "combat"),
       });
+    });
+
+    // Contest apply mode selector.
+    const $contestAttrBlock = html.find("[data-role='contest-attrs']");
+    const updateContestVisibility = (mode) => {
+      $contestAttrBlock.toggle(mode === "targetContest");
+    };
+    updateContestVisibility(
+      String($contestApplyMode.val() || this.item.system?.contestApplyMode || "targetContest")
+    );
+    $contestApplyMode.on("change", async (ev) => {
+      const mode = String(ev.currentTarget.value ?? "targetContest");
+      updateContestVisibility(mode);
+      await this.item.update({ "system.contestApplyMode": mode });
+    });
+
+    // Immediate save on change for all editable fields.
+    $name.on("change", async () => {
+      const v = String($name.val() ?? this.item.name);
+      if (v && v !== this.item.name) await this.item.update({ name: v });
+    });
+    $level.on("change", async () => {
+      const v = clamp(num($level.val(), num(this.item.system?.level, 1)), 1, 6);
+      await this.item.update({ "system.level": v });
+    });
+    $cost.on("change", async () => {
+      const v = clamp(num($cost.val(), num(this.item.system?.cost, 1)), 0, 6);
+      await this.item.update({ "system.cost": v });
+    });
+    $actions.on("change", async () => {
+      const v = clamp(num($actions.val(), num(this.item.system?.actions, 1)), 1, 2);
+      await this.item.update({ "system.actions": v });
+    });
+    $rollDamageBase.on("change", async () => {
+      const v = clamp(num($rollDamageBase.val(), 0), 0, 99);
+      await this.item.update({ "system.rollDamageBase": v });
+    });
+    $rollHealBase.on("change", async () => {
+      const v = clamp(num($rollHealBase.val(), 0), 0, 99);
+      await this.item.update({ "system.rollHealBase": v });
     });
 
     // Save description draft on blur to avoid losing changes on rerender.

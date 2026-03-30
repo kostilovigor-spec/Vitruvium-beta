@@ -151,6 +151,12 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
       return Number.isNaN(x) ? d : x;
     };
 
+    // Immediate save for NPC name on change.
+    html.find("input[name='name']").on("change", async (ev) => {
+      const v = String(ev.currentTarget.value ?? this.actor.name);
+      if (v && v !== this.actor.name) await this.actor.update({ name: v });
+    });
+
     const rollModeDialog = async (title) =>
       new Promise((resolve) => {
         const defaultLuck = 0;

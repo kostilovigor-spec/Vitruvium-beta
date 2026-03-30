@@ -371,6 +371,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
         }).render(true);
       });
 
+    // Immediate save for actor name on change.
+    html.find("input[name='name']").on("change", async (ev) => {
+      const v = String(ev.currentTarget.value ?? this.actor.name);
+      if (v && v !== this.actor.name) await this.actor.update({ name: v });
+    });
+
+    // Immediate save for level on change.
+    html.find("input[name='system.attributes.level']").on("change", async (ev) => {
+      const v = Math.max(1, Math.round(num(ev.currentTarget.value, 1)));
+      await this.actor.update({ "system.attributes.level": v });
+    });
+
     // Keep active tab local to this window.
     html.find(".v-tabs__toggle").on("change", (ev) => {
       const tab = ev.currentTarget.value;

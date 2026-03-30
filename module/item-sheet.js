@@ -148,6 +148,45 @@ export class VitruviumItemSheet extends ItemSheet {
       await saveDescriptionDraft();
     });
 
+    // Immediate save for item name on change.
+    const $name = html.find("input[name='name']");
+    $name.on("change", async () => {
+      const v = String($name.val() ?? this.item.name);
+      if (v && v !== this.item.name) await this.item.update({ name: v });
+    });
+
+    // Immediate save for price and quantity.
+    html.find("input[name='system.price']").on("change", async (ev) => {
+      const v = Math.max(0, num(ev.currentTarget.value, 0));
+      await this.item.update({ "system.price": v });
+    });
+    html.find("input[name='system.quantity']").on("change", async (ev) => {
+      const v = Math.max(1, Math.round(num(ev.currentTarget.value, 1)));
+      await this.item.update({ "system.quantity": v });
+    });
+
+    // Immediate save for type and attackAttr selects.
+    html.find("select[name='system.type']").on("change", async (ev) => {
+      await this.item.update({ "system.type": String(ev.currentTarget.value) });
+    });
+    html.find("select[name='system.attackAttr']").on("change", async (ev) => {
+      await this.item.update({ "system.attackAttr": String(ev.currentTarget.value) });
+    });
+
+    // Immediate save for checkboxes.
+    html.find("input[name='system.equipped']").on("change", async (ev) => {
+      await this.item.update({ "system.equipped": ev.currentTarget.checked });
+    });
+    html.find("input[name='system.isShield']").on("change", async (ev) => {
+      await this.item.update({ "system.isShield": ev.currentTarget.checked });
+    });
+    html.find("input[name='system.canBlock']").on("change", async (ev) => {
+      await this.item.update({ "system.canBlock": ev.currentTarget.checked });
+    });
+    html.find("input[name='system.isHeavyArmor']").on("change", async (ev) => {
+      await this.item.update({ "system.isHeavyArmor": ev.currentTarget.checked });
+    });
+
     // Clamp item bonuses to 0..6 (only for item type)
     if (this.item.type === "item") {
       // Clamp bonuses and actions for item type.

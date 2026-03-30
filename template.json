@@ -49,6 +49,7 @@
       "contestStateDurationRounds": 1,
       "contestCasterAttr": "combat",
       "contestTargetAttr": "combat",
+      "contestApplyMode": "targetContest",
       "description": "",
       "effects": []
     },

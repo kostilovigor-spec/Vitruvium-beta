@@ -233,7 +233,18 @@
             </label>
             </div>
 
-            <div class="v-item__splitrow v-item__splitrow--even">
+            <div class="v-item__splitrow">
+              <label>
+              <span>Способ наложения</span>
+              <select name="system.contestApplyMode" class="v-item__select">
+                <option value="self" {{#if (eq vitruvium.contestApplyMode "self")}}selected{{/if}}>На себя</option>
+                <option value="targetNoCheck" {{#if (eq vitruvium.contestApplyMode "targetNoCheck")}}selected{{/if}}>Цель: без проверки</option>
+                <option value="targetContest" {{#if (eq vitruvium.contestApplyMode "targetContest")}}selected{{/if}}>Цель: соревнование</option>
+              </select>
+            </label>
+            </div>
+
+            <div class="v-item__splitrow v-item__splitrow--even" data-role="contest-attrs">
               <label>
               <span>Состязание: атрибут кастера</span>
               <select name="system.contestCasterAttr" class="v-item__select">

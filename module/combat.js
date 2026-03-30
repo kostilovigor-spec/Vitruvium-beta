@@ -1801,6 +1801,11 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       0,
       Math.round(num(abilityItem?.system?.contestStateDurationRounds, 1))
     );
+    const contestApplyMode = ["self", "targetNoCheck", "targetContest"].includes(
+      abilityItem?.system?.contestApplyMode
+    )
+      ? abilityItem.system.contestApplyMode
+      : "targetContest";
     const contestEnabled = !!contestStateUuid;
     const contestCasterAttr = String(
       abilityItem?.system?.contestCasterAttr ?? "combat"
@@ -1825,16 +1830,71 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       return;
     }
 
+    // For "self" mode, apply state to caster immediately without targets.
+    if (contestEnabled && contestApplyMode === "self") {
+      const out = await replaceStateFromTemplate(
+        attackerActor,
+        contestStateUuid,
+        contestStateDurationRounds
+      );
+      const stateName = out.stateName ?? "Состояние";
+
+      // If there's also damage/heal, continue with normal attack flow below.
+      // Otherwise, just post a chat card and return.
+      if (!hasDamage && !hasHeal) {
+        await playAutomatedAnimation({ actor: attackerActor, item: abilityItem });
+        const esc = (s) =>
+          String(s ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        const img = abilityItem.img ?? "icons/svg/mystery-man.svg";
+        const content = `
+          <div class="vitruvium-chatcard">
+            <div class="vitruvium-chatcard__top">
+              <img class="vitruvium-chatcard__img" src="${esc(img)}" title="${esc(abilityName)}" />
+              <div class="vitruvium-chatcard__head">
+                <h3>${esc(abilityName)}</h3>
+                <p>${esc(attackerActor.name)} накладывает на себя: <b>${esc(stateName)}</b></p>
+              </div>
+            </div>
+          </div>
+        `;
+        await ChatMessage.create({
+          ...chatVisibilityData(),
+          speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
+          content,
+        });
+        return;
+      }
+    }
+
     const selectedTargets = collectSelectedDefenseTargets();
     const defenseTargets = hasDamage ? selectedTargets : [];
-    const contestTargets = contestEnabled ? selectedTargets : [];
+    // For targetNoCheck and targetContest, require targets; for self, no contest targets needed.
+    const needsContestTargets = contestEnabled && contestApplyMode !== "self";
+    const contestTargets = needsContestTargets ? selectedTargets : [];
     const hasDefenseTarget = defenseTargets.length > 0;
     const hasContestTarget = contestTargets.length > 0;
 
-    if (contestEnabled && !hasContestTarget) {
+    if (needsContestTargets && !hasContestTarget) {
       ui.notifications?.warn(
-        "Для состязания выберите цель (таргет) перед использованием способности."
+        "Для наложения состояния выберите цель (таргет) перед использованием способности."
       );
+    }
+
+    // For "targetNoCheck", apply state to all targets immediately without rolls.
+    if (contestEnabled && contestApplyMode === "targetNoCheck" && hasContestTarget) {
+      for (const t of contestTargets) {
+        const defender = await resolveCombatActor({ tokenUuid: t.defenderTokenUuid });
+        if (defender) {
+          await replaceStateFromTemplate(
+            defender,
+            contestStateUuid,
+            contestStateDurationRounds
+          );
+        }
+      }
     }
 
     const attackerToken =
@@ -1886,9 +1946,11 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       });
     }
 
+    // Contest roll only for "targetContest" mode.
     let casterContestRoll = null;
     let casterContestSuccesses = 0;
-    if (contestEnabled) {
+    const doContestRoll = contestEnabled && contestApplyMode === "targetContest";
+    if (doContestRoll) {
       if (needsAttackRoll && atkAttrKey === contestCasterAttr && atkRoll) {
         casterContestRoll = atkRoll;
         casterContestSuccesses = num(atkRoll.successes, 0);
@@ -1949,6 +2011,8 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
 
     await playAutomatedAnimation({ actor: attackerActor, item: abilityItem });
 
+    // Show contest section only for targetContest mode with targets.
+    const showContest = doContestRoll && hasContestTarget;
     const publicContent = abilityAttackCard({
       attackerName: attackerActor.name,
       defenderLabel: defenderName,
@@ -1959,10 +2023,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       healInfo,
       defenseTargets,
       resolvedDefenderUuids: [],
-      contestTargets,
+      contestTargets: showContest ? contestTargets : [],
       resolvedContestDefenderUuids: [],
       showDefense: hasDefenseTarget,
-      showContest: contestEnabled && hasContestTarget,
+      showContest,
       contestCasterAttr,
       contestTargetAttr,
       contestCasterSuccesses: casterContestSuccesses,
@@ -1973,7 +2037,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     if (casterContestRoll && casterContestRoll !== atkRoll && casterContestRoll.rolls) {
       allRolls.push(...casterContestRoll.rolls);
     }
-    const hasInteractiveTargets = hasDefenseTarget || (contestEnabled && hasContestTarget);
+    const hasInteractiveTargets = hasDefenseTarget || showContest;
     await ChatMessage.create({
       ...chatVisibilityData(),
       speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
@@ -1998,7 +2062,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
               weaponDamage: 0,
               atkSuccesses: attackSuccesses,
               attackRoll: attackRollEnabled,
-              contestEnabled,
+              contestEnabled: doContestRoll,
               contestStateUuid,
               contestStateDurationRounds,
               contestCasterAttr,
