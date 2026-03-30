@@ -40,7 +40,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
     data.vitruvium = data.vitruvium ?? {};
     data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
     data.vitruvium.abilities = (this.actor.items ?? []).filter(
-      (i) => i.type === "ability"
+      (i) => i.type === "ability",
     );
     data.vitruvium.states = (this.actor.items ?? [])
       .filter((i) => i.type === "state")
@@ -50,7 +50,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
         const remainingDefault = active ? durationRounds : 0;
         const durationRemaining = toRounds(
           state.system?.durationRemaining,
-          remainingDefault
+          remainingDefault,
         );
         const durationLabel =
           durationRounds > 0
@@ -106,7 +106,7 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
     const inspMax = clamp(
       inspMaxBase + getEffectValue(effectTotals, "inspMax"),
       0,
-      99
+      99,
     );
     const inspValue = clamp(num(insp.value, inspMax), 0, inspMax);
     data.vitruvium.inspiration = { value: inspValue, max: inspMax };
@@ -192,16 +192,20 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
               label: "Бросить",
               callback: (html) =>
                 resolve({
-                  luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+                  luck: clamp(
+                    num(html.find("input[name='luck']").val(), 0),
+                    0,
+                    20,
+                  ),
                   unluck: clamp(
                     num(html.find("input[name='unluck']").val(), 0),
                     0,
-                    20
+                    20,
                   ),
                   extraDice: clamp(
                     num(html.find("input[name='extraDice']").val(), 0),
                     -20,
-                    20
+                    20,
                   ),
                   fullMode: html.find("select[name='fullMode']").val(),
                 }),
@@ -213,23 +217,29 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
         }).render(true);
       });
     // Override attribute +/- to remove 1..6 clamp and auto-HP logic
-    html.find("[data-action='attr-inc']").off("click").on("click", async (ev) => {
-      ev.preventDefault();
-      const key = ev.currentTarget.dataset.attr;
-      const attrs = this.actor.system.attributes ?? {};
-      const current = num(attrs[key], 0);
-      const next = clamp(current + 1, 0, 99);
-      await this.actor.update({ [`system.attributes.${key}`]: next });
-    });
+    html
+      .find("[data-action='attr-inc']")
+      .off("click")
+      .on("click", async (ev) => {
+        ev.preventDefault();
+        const key = ev.currentTarget.dataset.attr;
+        const attrs = this.actor.system.attributes ?? {};
+        const current = num(attrs[key], 0);
+        const next = clamp(current + 1, 0, 99);
+        await this.actor.update({ [`system.attributes.${key}`]: next });
+      });
 
-    html.find("[data-action='attr-dec']").off("click").on("click", async (ev) => {
-      ev.preventDefault();
-      const key = ev.currentTarget.dataset.attr;
-      const attrs = this.actor.system.attributes ?? {};
-      const current = num(attrs[key], 0);
-      const next = clamp(current - 1, 0, 99);
-      await this.actor.update({ [`system.attributes.${key}`]: next });
-    });
+    html
+      .find("[data-action='attr-dec']")
+      .off("click")
+      .on("click", async (ev) => {
+        ev.preventDefault();
+        const key = ev.currentTarget.dataset.attr;
+        const attrs = this.actor.system.attributes ?? {};
+        const current = num(attrs[key], 0);
+        const next = clamp(current - 1, 0, 99);
+        await this.actor.update({ [`system.attributes.${key}`]: next });
+      });
 
     // Override attribute roll to avoid 1..6 clamp
     html
@@ -252,12 +262,14 @@ export class VitruviumNPCSheet extends VitruviumCharacterSheet {
             attrMods.dice +
             num(choice.extraDice, 0),
           1,
-          20
+          20,
         );
         const rollLuck = choice.luck + globalMods.adv + attrMods.adv;
         const rollUnluck = choice.unluck + globalMods.dis + attrMods.dis;
         const rollFullMode =
-          globalMods.fullMode !== "normal" ? globalMods.fullMode : choice.fullMode;
+          globalMods.fullMode !== "normal"
+            ? globalMods.fullMode
+            : choice.fullMode;
 
         await rollSuccessDice({
           pool,

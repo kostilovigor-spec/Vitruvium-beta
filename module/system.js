@@ -13,11 +13,13 @@ import {
 } from "./combat.js";
 import { registerVitruviumTests } from "./tests.js";
 import { registerStateDurationHooks } from "./state-duration.js";
+import { setupFloatingTextHook, showFloatingText } from "./floating-text.js";
 
 Hooks.once("init", () => {
   console.log("Vitruvium | Initializing system");
   patchVitruviumInitiative();
   registerStateDurationHooks();
+  setupFloatingTextHook();
 
   // Register Handlebars helper for incrementing numbers
   Handlebars.registerHelper("inc", (value) => Number(value) + 1);
@@ -127,5 +129,6 @@ Hooks.once("init", () => {
   game.vitruvium.startAbilityAttackFlow = startAbilityAttackFlow;
   game.vitruvium.startWeaponAttackFlow = startWeaponAttackFlow;
   game.vitruvium.replaceStateFromTemplate = replaceStateFromTemplate;
+  game.vitruvium.showFloatingText = showFloatingText;
   registerVitruviumTests();
 });
