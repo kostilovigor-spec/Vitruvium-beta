@@ -210,38 +210,89 @@
           </div>
 
           <div class="v-item__attackattr">
-            <div class="v-item__splitrow">
-              <label>
-              <span>Накладываемое состояние</span>
-              <select name="system.contestStateUuid" class="v-item__select">
-                <option value="">Не накладывать</option>
-                {{#each vitruvium.stateTemplateOptions as |state|}}
-                  <option value="{{state.uuid}}" {{#if (eq state.uuid ../vitruvium.selectedStateUuid)}}selected{{/if}}>{{state.name}}</option>
-                {{/each}}
-              </select>
-            </label>
-              <label class="v-item__stat">
-              <span>Длительность (раунды)</span>
-              <input
-                type="number"
-                name="system.contestStateDurationRounds"
-                value="{{vitruvium.contestStateDurationRounds}}"
-                data-dtype="Number"
-                min="0"
-                step="1"
-              />
-            </label>
+            <div class="v-item__effectshead">
+              <div class="v-h3">Накладываемые состояния</div>
+              <button type="button" class="v-mini" data-action="add-contest-state">+</button>
             </div>
 
-            <div class="v-item__splitrow">
-              <label>
-              <span>Способ наложения</span>
-              <select name="system.contestApplyMode" class="v-item__select">
-                <option value="self" {{#if (eq vitruvium.contestApplyMode "self")}}selected{{/if}}>На себя</option>
-                <option value="targetNoCheck" {{#if (eq vitruvium.contestApplyMode "targetNoCheck")}}selected{{/if}}>Цель: без проверки</option>
-                <option value="targetContest" {{#if (eq vitruvium.contestApplyMode "targetContest")}}selected{{/if}}>Цель: соревнование</option>
-              </select>
-            </label>
+            <div class="v-contest-states__rows">
+              {{#if vitruvium.contestStates.length}}
+                {{#each vitruvium.contestStates as |state idx|}}
+                  <div class="v-contest-states__row" data-idx="{{idx}}">
+                    <div class="v-contest-states__row-header">
+                      <span>Состояние #{{inc idx}}</span>
+                      <button type="button" class="v-mini v-contest-states__remove" title="Удалить">×</button>
+                    </div>
+                    <div class="v-contest-states__fields">
+                      <label>
+                        <span>Состояние</span>
+                        <select name="system.contestStates.{{idx}}.uuid" class="v-item__select">
+                          <option value="">Не накладывать</option>
+                          {{#each ../vitruvium.stateTemplateOptions as |st|}}
+                            <option value="{{st.uuid}}" {{#if (eq st.uuid state.uuid)}}selected{{/if}}>{{st.name}}</option>
+                          {{/each}}
+                        </select>
+                      </label>
+                      <label class="v-contest-states__duration">
+                        <span>Длит. (раунды)</span>
+                        <input
+                          type="number"
+                          name="system.contestStates.{{idx}}.durationRounds"
+                          value="{{state.durationRounds}}"
+                          data-dtype="Number"
+                          min="0"
+                          step="1"
+                        />
+                      </label>
+                      <label>
+                        <span>Способ наложения</span>
+                        <select name="system.contestStates.{{idx}}.applyMode" class="v-item__select">
+                          <option value="self" {{#if (eq state.applyMode "self")}}selected{{/if}}>На себя</option>
+                          <option value="targetNoCheck" {{#if (eq state.applyMode "targetNoCheck")}}selected{{/if}}>Цель: без проверки</option>
+                          <option value="targetContest" {{#if (eq state.applyMode "targetContest")}}selected{{/if}}>Цель: соревнование</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                {{/each}}
+              {{else}}
+                <div class="v-contest-states__row" data-idx="0">
+                  <div class="v-contest-states__row-header">
+                    <span>Состояние #1</span>
+                    <button type="button" class="v-mini v-contest-states__remove" title="Удалить">×</button>
+                  </div>
+                  <div class="v-contest-states__fields">
+                    <label>
+                      <span>Состояние</span>
+                      <select name="system.contestStates.0.uuid" class="v-item__select">
+                        <option value="">Не накладывать</option>
+                        {{#each vitruvium.stateTemplateOptions as |st|}}
+                          <option value="{{st.uuid}}" {{#if (eq st.uuid ../state.uuid)}}selected{{/if}}>{{st.name}}</option>
+                        {{/each}}
+                      </select>
+                    </label>
+                    <label class="v-contest-states__duration">
+                      <span>Длит. (раунды)</span>
+                      <input
+                        type="number"
+                        name="system.contestStates.0.durationRounds"
+                        value="1"
+                        data-dtype="Number"
+                        min="0"
+                        step="1"
+                      />
+                    </label>
+                    <label>
+                      <span>Способ наложения</span>
+                      <select name="system.contestStates.0.applyMode" class="v-item__select">
+                        <option value="self" selected>На себя</option>
+                        <option value="targetNoCheck">Цель: без проверки</option>
+                        <option value="targetContest">Цель: соревнование</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              {{/if}}
             </div>
 
             <div class="v-item__splitrow v-item__splitrow--even" data-role="contest-attrs">

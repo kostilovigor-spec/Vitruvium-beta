@@ -45,11 +45,15 @@
       "attackAttr": "combat",
       "rollDamageBase": 0,
       "rollHealBase": 0,
-      "contestStateUuid": "",
-      "contestStateDurationRounds": 1,
+      "contestStates": [
+        {
+          "uuid": "",
+          "durationRounds": 1,
+          "applyMode": "targetContest"
+        }
+      ],
       "contestCasterAttr": "combat",
       "contestTargetAttr": "combat",
-      "contestApplyMode": "targetContest",
       "description": "",
       "effects": []
     },

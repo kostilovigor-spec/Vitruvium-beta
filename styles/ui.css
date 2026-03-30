@@ -118,8 +118,9 @@
   border-radius: inherit;
   pointer-events: none;
   opacity: 0.35;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) top
-      left/20px 1px no-repeat,
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.25), transparent) top left/20px
+      1px no-repeat,
     linear-gradient(to bottom, rgba(0, 0, 0, 0.25), transparent) top left/1px
       20px no-repeat,
     linear-gradient(to left, rgba(0, 0, 0, 0.25), transparent) top right/20px
@@ -182,10 +183,18 @@
   border-color: rgba(0, 0, 0, 0.28);
 }
 
-.v-tabs__toggle[data-tab="inv"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="inv"],
-.v-tabs__toggle[data-tab="abi"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="abi"],
-.v-tabs__toggle[data-tab="skill"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="skill"],
-.v-tabs__toggle[data-tab="state"]:checked ~ .v-tabs__nav .v-tabs__tab[data-tab="state"] {
+.v-tabs__toggle[data-tab="inv"]:checked
+  ~ .v-tabs__nav
+  .v-tabs__tab[data-tab="inv"],
+.v-tabs__toggle[data-tab="abi"]:checked
+  ~ .v-tabs__nav
+  .v-tabs__tab[data-tab="abi"],
+.v-tabs__toggle[data-tab="skill"]:checked
+  ~ .v-tabs__nav
+  .v-tabs__tab[data-tab="skill"],
+.v-tabs__toggle[data-tab="state"]:checked
+  ~ .v-tabs__nav
+  .v-tabs__tab[data-tab="state"] {
   background: rgba(0, 0, 0, 0.08);
   border-color: rgba(0, 0, 0, 0.3);
 }
@@ -199,10 +208,14 @@
 .v-tabs__toggle[data-tab="abi"]:checked ~ .v-tabs__content .v-tabpanel--abi {
   display: block;
 }
-.v-tabs__toggle[data-tab="skill"]:checked ~ .v-tabs__content .v-tabpanel--skill {
+.v-tabs__toggle[data-tab="skill"]:checked
+  ~ .v-tabs__content
+  .v-tabpanel--skill {
   display: block;
 }
-.v-tabs__toggle[data-tab="state"]:checked ~ .v-tabs__content .v-tabpanel--state {
+.v-tabs__toggle[data-tab="state"]:checked
+  ~ .v-tabs__content
+  .v-tabpanel--state {
   display: block;
 }
 
@@ -325,6 +338,44 @@
 .v-effects__footer {
   display: flex;
   justify-content: flex-start;
+}
+
+/* ---------- Contest States (multiple) ---------- */
+.v-contest-states__rows {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+}
+.v-contest-states__row {
+  border: 1px solid var(--v-border-soft);
+  border-radius: var(--r-md);
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.v-contest-states__row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--v-ink);
+}
+.v-contest-states__fields {
+  display: grid;
+  grid-template-columns: 1fr 110px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.v-contest-states__duration input {
+  width: 100%;
+  text-align: center;
+}
+.v-contest-states__remove {
+  height: 20px;
+  padding: 0 4px;
+  line-height: 1;
 }
 
 /* ---------- Inputs ---------- */
@@ -854,7 +905,6 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-left: 0px;
 }
 
-
 .v-inv__a--danger {
   border-color: rgba(120, 0, 0, 0.35);
 }
@@ -1199,9 +1249,13 @@ input[type="number"]::-webkit-inner-spin-button {
 #v-item-tab-desc:checked ~ .v-itemtabs__nav label[for="v-item-tab-desc"],
 #v-item-tab-effects:checked ~ .v-itemtabs__nav label[for="v-item-tab-effects"],
 #v-ability-tab-desc:checked ~ .v-itemtabs__nav label[for="v-ability-tab-desc"],
-#v-ability-tab-effects:checked ~ .v-itemtabs__nav label[for="v-ability-tab-effects"],
+#v-ability-tab-effects:checked
+  ~ .v-itemtabs__nav
+  label[for="v-ability-tab-effects"],
 #v-skill-tab-desc:checked ~ .v-itemtabs__nav label[for="v-skill-tab-desc"],
-#v-skill-tab-effects:checked ~ .v-itemtabs__nav label[for="v-skill-tab-effects"] {
+#v-skill-tab-effects:checked
+  ~ .v-itemtabs__nav
+  label[for="v-skill-tab-effects"] {
   background: rgba(0, 0, 0, 0.06);
   border-color: rgba(0, 0, 0, 0.25);
 }
@@ -1214,8 +1268,12 @@ input[type="number"]::-webkit-inner-spin-button {
   display: block;
 }
 #v-item-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects,
-#v-ability-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects,
-#v-skill-tab-effects:checked ~ .v-itemtabs__content .v-itemtabs__panel--effects {
+#v-ability-tab-effects:checked
+  ~ .v-itemtabs__content
+  .v-itemtabs__panel--effects,
+#v-skill-tab-effects:checked
+  ~ .v-itemtabs__content
+  .v-itemtabs__panel--effects {
   display: block;
 }
 
@@ -1230,9 +1288,9 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 8px;
   min-width: 140px;
 }
-    /* ABILITY SHEET (ability-sheet.hbs)
-    ========================================================= */ */
-.v-abilitysheet__header {
+/* ABILITY SHEET (ability-sheet.hbs)
+    ========================================================= */
+*/ .v-abilitysheet__header {
   display: flex;
   align-items: center;
   justify-content: space-between;

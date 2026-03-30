@@ -6,7 +6,11 @@ import { VitruviumNPCSheet } from "./npc-sheet.js";
 import { patchVitruviumInitiative } from "./initiative.js";
 import { VitruviumDie } from "./dv-die.js";
 import "./dice-so-nice.js";
-import { startAbilityAttackFlow, startWeaponAttackFlow } from "./combat.js";
+import {
+  startAbilityAttackFlow,
+  startWeaponAttackFlow,
+  replaceStateFromTemplate,
+} from "./combat.js";
 import { registerVitruviumTests } from "./tests.js";
 import { registerStateDurationHooks } from "./state-duration.js";
 
@@ -14,6 +18,9 @@ Hooks.once("init", () => {
   console.log("Vitruvium | Initializing system");
   patchVitruviumInitiative();
   registerStateDurationHooks();
+
+  // Register Handlebars helper for incrementing numbers
+  Handlebars.registerHelper("inc", (value) => Number(value) + 1);
 
   const NS = game.system.id; // у тебя это "Vitruvium"
 
@@ -91,14 +98,14 @@ Hooks.once("init", () => {
     for (const scene of game.scenes) {
       if (!scene.isOwner) continue;
       const linkedTokens = scene.tokens.filter(
-        (token) => token.actorId === actorDoc.id && token.actorLink
+        (token) => token.actorId === actorDoc.id && token.actorLink,
       );
       if (!linkedTokens.length) continue;
       updates.push(
         scene.updateEmbeddedDocuments(
           "Token",
-          linkedTokens.map((token) => ({ _id: token.id, name: newName }))
-        )
+          linkedTokens.map((token) => ({ _id: token.id, name: newName })),
+        ),
       );
     }
     if (updates.length) await Promise.allSettled(updates);
@@ -119,5 +126,6 @@ Hooks.once("init", () => {
   game.vitruvium = game.vitruvium ?? {};
   game.vitruvium.startAbilityAttackFlow = startAbilityAttackFlow;
   game.vitruvium.startWeaponAttackFlow = startWeaponAttackFlow;
+  game.vitruvium.replaceStateFromTemplate = replaceStateFromTemplate;
   registerVitruviumTests();
 });

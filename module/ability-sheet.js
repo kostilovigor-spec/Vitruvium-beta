@@ -30,7 +30,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     }
     sys.contestStateDurationRounds = Math.max(
       0,
-      Math.round(Number(sys.contestStateDurationRounds))
+      Math.round(Number(sys.contestStateDurationRounds)),
     );
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     if (typeof sys.attackRoll !== "boolean") sys.attackRoll = false;
@@ -64,8 +64,8 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const defaultAttr = finalKeys.includes(sys.attackAttr)
       ? sys.attackAttr
       : finalKeys.includes("combat")
-      ? "combat"
-      : finalKeys[0];
+        ? "combat"
+        : finalKeys[0];
     const contestCasterAttr = finalKeys.includes(sys.contestCasterAttr)
       ? sys.contestCasterAttr
       : defaultAttr;
@@ -73,10 +73,40 @@ export class VitruviumAbilitySheet extends ItemSheet {
       ? sys.contestTargetAttr
       : defaultAttr;
     const stateTemplates = await listSystemStateTemplates();
-    const selectedStateUuid = String(sys.contestStateUuid ?? "");
-    const hasSelectedState = stateTemplates.some(
-      (state) => state.uuid === selectedStateUuid
-    );
+    // Normalize contestStates array - support both old and new format
+    let contestStates = Array.isArray(sys.contestStates)
+      ? sys.contestStates
+      : [];
+    // Migrate from old single-state format if contestStates is empty
+    if (contestStates.length === 0 && sys.contestStateUuid) {
+      contestStates = [
+        {
+          uuid: sys.contestStateUuid || "",
+          durationRounds: Number(sys.contestStateDurationRounds) || 1,
+          applyMode: ["self", "targetNoCheck", "targetContest"].includes(
+            sys.contestApplyMode,
+          )
+            ? sys.contestApplyMode
+            : "targetContest",
+        },
+      ];
+    }
+    // Ensure at least one empty state entry
+    if (contestStates.length === 0) {
+      contestStates = [
+        { uuid: "", durationRounds: 1, applyMode: "targetContest" },
+      ];
+    }
+    // Normalize each state entry
+    contestStates = contestStates.map((s) => ({
+      uuid: String(s.uuid ?? ""),
+      durationRounds: Math.max(0, Math.round(Number(s.durationRounds ?? 1))),
+      applyMode: ["self", "targetNoCheck", "targetContest"].includes(
+        s.applyMode,
+      )
+        ? s.applyMode
+        : "targetContest",
+    }));
     data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
       key,
       label: attrLabels[key] ?? key,
@@ -84,16 +114,9 @@ export class VitruviumAbilitySheet extends ItemSheet {
     data.vitruvium.attackAttrDefault = defaultAttr;
     data.vitruvium.contestCasterAttr = contestCasterAttr;
     data.vitruvium.contestTargetAttr = contestTargetAttr;
-    data.vitruvium.contestStateDurationRounds = sys.contestStateDurationRounds;
+    data.vitruvium.contestStates = contestStates;
     data.vitruvium.stateTemplateOptions = stateTemplates;
-    data.vitruvium.selectedStateUuid = hasSelectedState ? selectedStateUuid : "";
     data.vitruvium.hasStateTemplates = stateTemplates.length > 0;
-    const contestApplyMode = ["self", "targetNoCheck", "targetContest"].includes(
-      sys.contestApplyMode
-    )
-      ? sys.contestApplyMode
-      : "targetContest";
-    data.vitruvium.contestApplyMode = contestApplyMode;
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
@@ -121,7 +144,8 @@ export class VitruviumAbilitySheet extends ItemSheet {
       if (effectsRadio.length) effectsRadio.prop("checked", true);
     }
     html.find(".v-itemtabs__toggle").on("change", (ev) => {
-      this._abilityTab = ev.currentTarget.id === "v-ability-tab-effects" ? "effects" : "desc";
+      this._abilityTab =
+        ev.currentTarget.id === "v-ability-tab-effects" ? "effects" : "desc";
     });
 
     // Icon editing should always be available.
@@ -136,9 +160,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
           current: this.item.img,
           callback: async (path) => {
             const descVal = String(
-              html.find("textarea[name='system.description']").val() ?? ""
+              html.find("textarea[name='system.description']").val() ?? "",
             );
-            await this.item.update({ img: path, "system.description": descVal });
+            await this.item.update({
+              img: path,
+              "system.description": descVal,
+            });
           },
         }).browse();
       });
@@ -161,35 +188,31 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $active = html.find("input[name='system.active']");
     const $attackRoll = html.find("input[name='system.attackRoll']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
-    const $contestState = html.find("select[name='system.contestStateUuid']");
-    const $contestStateDurationRounds = html.find(
-      "input[name='system.contestStateDurationRounds']"
-    );
     const $contestCasterAttr = html.find(
-      "select[name='system.contestCasterAttr']"
+      "select[name='system.contestCasterAttr']",
     );
     const $contestTargetAttr = html.find(
-      "select[name='system.contestTargetAttr']"
+      "select[name='system.contestTargetAttr']",
     );
-    const $contestApplyMode = html.find("select[name='system.contestApplyMode']");
 
     // Edit mode toggling.
     const form = html.closest("form");
     const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
-    const btn = html.find("[data-action='toggle-desc']");
 
     const setMode = (isEdit) => {
       form.toggleClass("is-edit", isEdit);
-      btn.toggleClass("is-active", isEdit);
-      btn.attr("title", isEdit ? "Готово" : "Редактировать");
+      const $btn = html.find("[data-action='toggle-desc']");
+      $btn.toggleClass("is-active", isEdit);
+      $btn.attr("title", isEdit ? "Готово" : "Редактировать");
       if (isEdit) edit.trigger("focus");
     };
 
     if (this._editing === undefined) this._editing = false;
     setMode(this._editing);
 
-    const currentDesc = () => String($desc.val() ?? this.item.system?.description ?? "");
+    const currentDesc = () =>
+      String($desc.val() ?? this.item.system?.description ?? "");
     const saveDescriptionDraft = async () => {
       const newDesc = currentDesc();
       if (newDesc !== String(this.item.system?.description ?? "")) {
@@ -204,55 +227,72 @@ export class VitruviumAbilitySheet extends ItemSheet {
       const newLevel = clamp(
         num($level.val(), num(this.item.system?.level, 1)),
         1,
-        6
+        6,
       );
       const newCost = clamp(
         num($cost.val(), num(this.item.system?.cost, 1)),
         0,
-        6
+        6,
       );
       const newActions = clamp(
         num($actions.val(), num(this.item.system?.actions, 1)),
         1,
-        2
+        2,
       );
-      const newType = String($type.val() ?? this.item.system?.type ?? "primary");
+      const newType = String(
+        $type.val() ?? this.item.system?.type ?? "primary",
+      );
       const newDesc = currentDesc();
       const newRollDamageBase = clamp(
         num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
         0,
-        99
+        99,
       );
       const newRollHealBase = clamp(
         num($rollHealBase.val(), num(this.item.system?.rollHealBase, 0)),
         0,
-        99
+        99,
       );
       const newAttackAttr = String(
-        $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat"
+        $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat",
       );
-      const hasStateOptions = $contestState.find("option[value!='']").length > 0;
-      const selectedContestStateUuid = String($contestState.val() ?? "");
-      const newContestStateUuid = hasStateOptions
-        ? selectedContestStateUuid
-        : String(this.item.system?.contestStateUuid ?? "");
-      const newContestStateDurationRounds = Math.max(
-        0,
-        Math.round(
-          num(
-            $contestStateDurationRounds.val(),
-            num(this.item.system?.contestStateDurationRounds, 1)
-          )
-        )
-      );
+      // Collect contestStates from form
+      const contestStates = [];
+      html.find(".v-contest-states__row").each((_, row) => {
+        const $row = $(row);
+        const uuid = String(
+          $row
+            .find("select[name^='system.contestStates'][name$='.uuid']")
+            .val() ?? "",
+        );
+        const durationRounds = Math.max(
+          0,
+          Math.round(num($row.find("input[name$='.durationRounds']").val(), 1)),
+        );
+        const applyMode = String(
+          $row.find("select[name$='.applyMode']").val() ?? "targetContest",
+        );
+        if (uuid) {
+          contestStates.push({ uuid, durationRounds, applyMode });
+        }
+      });
+      // Ensure at least one entry (even empty) for migration compatibility
+      if (contestStates.length === 0) {
+        contestStates.push({
+          uuid: "",
+          durationRounds: 1,
+          applyMode: "targetContest",
+        });
+      }
       const newContestCasterAttr = String(
-        $contestCasterAttr.val() ?? this.item.system?.contestCasterAttr ?? "combat"
+        $contestCasterAttr.val() ??
+          this.item.system?.contestCasterAttr ??
+          "combat",
       );
       const newContestTargetAttr = String(
-        $contestTargetAttr.val() ?? this.item.system?.contestTargetAttr ?? "combat"
-      );
-      const newContestApplyMode = String(
-        $contestApplyMode.val() ?? this.item.system?.contestApplyMode ?? "targetContest"
+        $contestTargetAttr.val() ??
+          this.item.system?.contestTargetAttr ??
+          "combat",
       );
 
       await this.item.update({
@@ -264,18 +304,17 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.rollDamageBase": newRollDamageBase,
         "system.rollHealBase": newRollHealBase,
         "system.attackAttr": newAttackAttr,
-        "system.contestStateUuid": newContestStateUuid,
-        "system.contestStateDurationRounds": newContestStateDurationRounds,
+        "system.contestStates": contestStates,
         "system.contestCasterAttr": newContestCasterAttr,
         "system.contestTargetAttr": newContestTargetAttr,
-        "system.contestApplyMode": newContestApplyMode,
         "system.description": newDesc,
       });
     };
 
-    // Toggle edit mode.
-    btn.on("click", async (ev) => {
+    // Toggle edit mode - use event delegation to avoid issues with re-render.
+    html.on("click", "[data-action='toggle-desc']", async (ev) => {
       ev.preventDefault();
+      console.log("Vitruvium | Toggle edit clicked", this._editing);
       this._editing = !this._editing;
       setMode(this._editing);
       if (!this._editing) {
@@ -303,19 +342,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
       });
     });
-    $contestState.on("change", async (ev) => {
-      await this.item.update({
-        "system.contestStateUuid": String(ev.currentTarget.value ?? ""),
-      });
-    });
-    $contestStateDurationRounds.on("change", async (ev) => {
-      await this.item.update({
-        "system.contestStateDurationRounds": Math.max(
-          0,
-          Math.round(num(ev.currentTarget.value, 1))
-        ),
-      });
-    });
     $contestCasterAttr.on("change", async (ev) => {
       await this.item.update({
         "system.contestCasterAttr": String(ev.currentTarget.value ?? "combat"),
@@ -327,19 +353,159 @@ export class VitruviumAbilitySheet extends ItemSheet {
       });
     });
 
-    // Contest apply mode selector.
-    const $contestAttrBlock = html.find("[data-role='contest-attrs']");
-    const updateContestVisibility = (mode) => {
-      $contestAttrBlock.toggle(mode === "targetContest");
-    };
-    updateContestVisibility(
-      String($contestApplyMode.val() || this.item.system?.contestApplyMode || "targetContest")
-    );
-    $contestApplyMode.on("change", async (ev) => {
-      const mode = String(ev.currentTarget.value ?? "targetContest");
-      updateContestVisibility(mode);
-      await this.item.update({ "system.contestApplyMode": mode });
+    // Contest states: Add row button.
+    html.on("click", "[data-action='add-contest-state']", (ev) => {
+      ev.preventDefault();
+      const $container = html.find(".v-contest-states__rows");
+      const idx = $container.find(".v-contest-states__row").length;
+      const stateTemplates = data.vitruvium?.stateTemplateOptions ?? [];
+      const options = stateTemplates
+        .map((st) => `<option value="${st.uuid}">${st.name}</option>`)
+        .join("");
+      const rowHtml = `
+        <div class="v-contest-states__row" data-idx="${idx}">
+          <div class="v-contest-states__row-header">
+            <span>Состояние #${idx + 1}</span>
+            <button type="button" class="v-mini v-contest-states__remove" title="Удалить">×</button>
+          </div>
+          <div class="v-contest-states__fields">
+            <label>
+              <span>Состояние</span>
+              <select name="system.contestStates.${idx}.uuid" class="v-item__select">
+                <option value="">Не накладывать</option>
+                ${options}
+              </select>
+            </label>
+            <label class="v-contest-states__duration">
+              <span>Длит. (раунды)</span>
+              <input
+                type="number"
+                name="system.contestStates.${idx}.durationRounds"
+                value="1"
+                data-dtype="Number"
+                min="0"
+                step="1"
+              />
+            </label>
+            <label>
+              <span>Способ наложения</span>
+              <select name="system.contestStates.${idx}.applyMode" class="v-item__select">
+                <option value="self">На себя</option>
+                <option value="targetNoCheck">Цель: без проверки</option>
+                <option value="targetContest" selected>Цель: соревнование</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      `;
+      $container.append(rowHtml);
+      // Save after adding
+      const $rows = html.find(".v-contest-states__row");
+      const contestStates = [];
+      $rows.each((_, row) => {
+        const $r = $(row);
+        const uuid = String($r.find("select[name$='.uuid']").val() ?? "");
+        const durationRounds = Math.max(
+          0,
+          Math.round(num($r.find("input[name$='.durationRounds']").val(), 1)),
+        );
+        const applyMode = String(
+          $r.find("select[name$='.applyMode']").val() ?? "targetContest",
+        );
+        if (uuid) {
+          contestStates.push({ uuid, durationRounds, applyMode });
+        }
+      });
+      if (contestStates.length === 0) {
+        contestStates.push({
+          uuid: "",
+          durationRounds: 1,
+          applyMode: "targetContest",
+        });
+      }
+      this.item.update({ "system.contestStates": contestStates });
     });
+
+    // Contest states: Remove row button.
+    html.on("click", ".v-contest-states__remove", (ev) => {
+      ev.preventDefault();
+      $(ev.currentTarget).closest(".v-contest-states__row").remove();
+      // Re-index rows
+      const $container = html.find(".v-contest-states__rows");
+      $container.find(".v-contest-states__row").each((idx, row) => {
+        $(row).attr("data-idx", idx);
+        $(row)
+          .find("span")
+          .first()
+          .text(`Состояние #${idx + 1}`);
+        $(row)
+          .find("select[name$='.uuid']")
+          .attr("name", `system.contestStates.${idx}.uuid`);
+        $(row)
+          .find("input[name$='.durationRounds']")
+          .attr("name", `system.contestStates.${idx}.durationRounds`);
+        $(row)
+          .find("select[name$='.applyMode']")
+          .attr("name", `system.contestStates.${idx}.applyMode`);
+      });
+      // Save after removing
+      const $rows = html.find(".v-contest-states__row");
+      const contestStates = [];
+      $rows.each((_, row) => {
+        const $r = $(row);
+        const uuid = String($r.find("select[name$='.uuid']").val() ?? "");
+        const durationRounds = Math.max(
+          0,
+          Math.round(num($r.find("input[name$='.durationRounds']").val(), 1)),
+        );
+        const applyMode = String(
+          $r.find("select[name$='.applyMode']").val() ?? "targetContest",
+        );
+        if (uuid) {
+          contestStates.push({ uuid, durationRounds, applyMode });
+        }
+      });
+      if (contestStates.length === 0) {
+        contestStates.push({
+          uuid: "",
+          durationRounds: 1,
+          applyMode: "targetContest",
+        });
+      }
+      this.item.update({ "system.contestStates": contestStates });
+    });
+
+    // Contest states: Save on change for all fields.
+    html.on(
+      "change",
+      ".v-contest-states__row select, .v-contest-states__row input",
+      () => {
+        const $rows = html.find(".v-contest-states__row");
+        const contestStates = [];
+        $rows.each((_, row) => {
+          const $r = $(row);
+          const uuid = String($r.find("select[name$='.uuid']").val() ?? "");
+          const durationRounds = Math.max(
+            0,
+            Math.round(num($r.find("input[name$='.durationRounds']").val(), 1)),
+          );
+          const applyMode = String(
+            $r.find("select[name$='.applyMode']").val() ?? "targetContest",
+          );
+          if (uuid) {
+            contestStates.push({ uuid, durationRounds, applyMode });
+          }
+        });
+        if (contestStates.length === 0) {
+          contestStates.push({
+            uuid: "",
+            durationRounds: 1,
+            applyMode: "targetContest",
+          });
+        }
+        this.item.update({ "system.contestStates": contestStates });
+      },
+    );
 
     // Immediate save on change for all editable fields.
     $name.on("change", async () => {
@@ -355,7 +521,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({ "system.cost": v });
     });
     $actions.on("change", async () => {
-      const v = clamp(num($actions.val(), num(this.item.system?.actions, 1)), 1, 2);
+      const v = clamp(
+        num($actions.val(), num(this.item.system?.actions, 1)),
+        1,
+        2,
+      );
       await this.item.update({ "system.actions": v });
     });
     $rollDamageBase.on("change", async () => {
@@ -423,7 +593,9 @@ export class VitruviumAbilitySheet extends ItemSheet {
     });
 
     // Persist effect edits.
-    html.on("change", ".v-effects__key, .v-effects__val", () => {
+    html.on("change", ".v-effects__key, .v-effects__val", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
       updateEffects();
     });
   }
