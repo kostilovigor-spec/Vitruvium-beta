@@ -1154,18 +1154,9 @@ export async function replaceStateFromTemplate(
     .filter((it) => it.type === "state" && it.name === templateDoc.name)
     .map((it) => it.id);
 
-  // Удаляем старые Active Effects, связанные с этими состояниями
+  // Delete old states with the same name.
+  // The deleteItem hook in state-duration.js will automatically clean up their icons.
   if (oldStateIds.length) {
-    const oldEffects =
-      defenderActor.effects?.filter((ef) =>
-        oldStateIds.some((id) => ef.origin?.includes(id)),
-      ) || [];
-    if (oldEffects.length > 0) {
-      await defenderActor.deleteEmbeddedDocuments(
-        "ActiveEffect",
-        oldEffects.map((ef) => ef.id),
-      );
-    }
     await defenderActor.deleteEmbeddedDocuments("Item", oldStateIds);
   }
 
@@ -1187,24 +1178,7 @@ export async function replaceStateFromTemplate(
     },
   ]);
 
-  // Создаём Active Effect с иконкой состояния для отображения на токене
-  if (createdState?.[0]) {
-    const stateItem = createdState[0];
-    await defenderActor.createEmbeddedDocuments("ActiveEffect", [
-      {
-        name: templateDoc.name,
-        label: templateDoc.name,
-        icon: templateDoc.img ?? "icons/svg/aura.svg",
-        origin: stateItem.uuid,
-        duration: {
-          rounds: duration,
-        },
-        // Эффект не меняет характеристики, просто отображает иконку
-        changes: [],
-        disabled: false,
-      },
-    ]);
-  }
+  // Note: The createItem hook in state-duration.js will automatically create the icon.
 
   // Показываем всплывающий текст с названием состояния
   if (defenderTokenUuid && canvas) {
@@ -1697,6 +1671,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             getEffectiveAttribute(defender.system?.attributes, "condition", effectTotals) +
               attrMods.dice +
               blockDiceEff +
+              globalMods.dice +
               num(choice.extraDice, 0),
             1,
             20,
@@ -1757,6 +1732,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             getEffectiveAttribute(defender.system?.attributes, "movement", effectTotals) +
               attrMods.dice +
               dodgeDiceEff +
+              globalMods.dice +
               num(choice.extraDice, 0),
             1,
             20,
@@ -2002,6 +1978,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           const poolVal = clamp(
             num(defender.system?.attributes?.[choice.attrKey], 1) +
               attrMods.dice +
+              globalMods.dice +
               num(choice.extraDice, 0),
             1,
             20,
@@ -2300,6 +2277,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       const atkPool = clamp(
         num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1) +
           attackMods.dice +
+          globalMods.dice +
           num(atkChoice.extraDice, 0),
         1,
         20,
@@ -2333,7 +2311,8 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         );
         const contestPool = clamp(
           num(attackerActor.system?.attributes?.[contestCasterAttr], 1) +
-            contestAttrMods.dice,
+            contestAttrMods.dice +
+            globalMods.dice,
           1,
           20,
         );
@@ -2458,6 +2437,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     const atkPool = clamp(
       getEffectiveAttribute(attackerActor.system?.attributes, atkChoice.attrKey, effectTotals) +
         attackMods.dice +
+        globalMods.dice +
         num(atkChoice.extraDice, 0),
       1,
       20,

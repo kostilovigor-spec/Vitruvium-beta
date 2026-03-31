@@ -23,6 +23,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       // Keep auto-submit but handle HP manually to avoid losing input.
       submitOnChange: true,
       submitOnClose: true,
+      dragDrop: [{ dragSelector: ".v-inv__row", dropSelector: null }],
     });
   }
 
@@ -280,6 +281,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
   }
 
   async _updateObject(_event, formData) {
+    // Remove tab selection from formData to keep it strictly local to this window
+    // and avoid syncing it to other players via Actor updates.
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+
     for (const key of ["bronze", "silver", "gold"]) {
       const path = `system.attributes.coins.${key}`;
       if (!(path in formData)) continue;
@@ -476,7 +483,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const choice = await rollModeDialog(`Проверка: ${label}`);
       if (!choice) return;
       const pool = clamp(
-        basePool + attrMods.dice + num(choice.extraDice, 0),
+        basePool + attrMods.dice + globalMods.dice + num(choice.extraDice, 0),
         1,
         20,
       );
@@ -607,7 +614,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. кубы");
       if (!choice) return;
-      const pool = clamp(cur + num(choice.extraDice, 0), 1, 20);
+      const pool = clamp(cur + globalMods.dice + num(choice.extraDice, 0), 1, 20);
 
       // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
@@ -635,7 +642,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const choice = await rollModeDialog("Бросок удачи");
       if (!choice) return;
-      const pool = clamp(1 + num(choice.extraDice, 0), 1, 20);
+      const pool = clamp(1 + globalMods.dice + num(choice.extraDice, 0), 1, 20);
 
       // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
@@ -725,7 +732,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       <div class="v-itemcard__top">
         <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
         <div class="v-itemcard__head">
-          <div class="v-itemcard__title">${esc(item.name)}${qtyText}</div>
+          <div class="v-itemcard__title">@UUID[${item.uuid}]{${esc(item.name)}}${qtyText}</div>
           <div class="v-itemcard__sub">${esc(this.actor.name)} · ${typeLabel}</div>
         </div>
       </div>

@@ -18,6 +18,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       height: 640,
       submitOnChange: false,
       submitOnClose: true,
+      dragDrop: [{ dragSelector: ".v-inv__row", dropSelector: null }],
     });
   }
 
@@ -140,6 +141,12 @@ export class VitruviumNPCSheet extends ActorSheet {
   }
 
   async _updateObject(_event, formData) {
+    // Remove tab selection from formData to keep it strictly local to this window
+    // and avoid syncing it to other players via Actor updates.
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+
     // Обработка пустых значений для HP
     for (const key of ["hp.value", "hp.max"]) {
       const path = `system.attributes.${key}`;
@@ -294,6 +301,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       const pool = clamp(
         getEffectiveAttribute(attrs, key, effectTotals) +
           attrMods.dice +
+          globalMods.dice +
           num(choice.extraDice, 0),
         1,
         20,
@@ -378,7 +386,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. бросок");
       if (!choice) return;
-      const pool = clamp(cur + num(choice.extraDice, 0), 1, 20);
+      const pool = clamp(cur + globalMods.dice + num(choice.extraDice, 0), 1, 20);
       const effectTotals = collectEffectTotals(this.actor);
       const globalMods = getGlobalRollModifiers(effectTotals);
       const rollLuck = choice.luck + globalMods.adv;
@@ -468,7 +476,7 @@ export class VitruviumNPCSheet extends ActorSheet {
           <div class="v-itemcard__top">
             <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
             <div class="v-itemcard__head">
-              <div class="v-itemcard__title">${esc(item.name)}${Number.isFinite(qty) ? ` ×${qty}` : ""}</div>
+              <div class="v-itemcard__title">@UUID[${item.uuid}]{${esc(item.name)}}${Number.isFinite(qty) ? ` ×${qty}` : ""}</div>
               <div class="v-itemcard__sub">${esc(this.actor.name)} · ${typeLabel}</div>
             </div>
           </div>

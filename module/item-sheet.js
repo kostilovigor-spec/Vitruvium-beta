@@ -63,10 +63,21 @@ export class VitruviumItemSheet extends ItemSheet {
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
 
+    // Unique tab IDs per window instance to avoid conflicts when multiple sheets are open.
+    const tabBase = `v-tabs-${this.appId}`;
+    data.vitruvium.tabName = tabBase;
+    data.vitruvium.tabIds = {
+      desc: `${tabBase}-desc`,
+      effects: `${tabBase}-effects`,
+    };
+    data.vitruvium.activeTab = this._itemTab ?? "desc";
+
     return data;
   }
 
   async close(options) {
+    // Force submit when closing to ensure any pending changes (like description) are saved.
+    await this._updateObject({}, this._getSubmitData());
     try {
       if (typeof this._saveDescOnClose === "function") {
         await this._saveDescOnClose();
@@ -75,6 +86,14 @@ export class VitruviumItemSheet extends ItemSheet {
       /* ignore */
     }
     return super.close(options);
+  }
+
+  async _updateObject(_event, formData) {
+    // Remove tab selection from formData to keep it strictly local to this window
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+    return this.item.update(formData);
   }
 
   activateListeners(html) {
@@ -145,6 +164,16 @@ export class VitruviumItemSheet extends ItemSheet {
         await this.item.update({ "system.description": text });
         return;
       }
+    });
+
+    // Tab switching
+    const tabBase = `v-tabs-${this.appId}`;
+    if (this._itemTab === "effects") {
+      const effectsRadio = html.find(`#${tabBase}-effects`);
+      if (effectsRadio.length) effectsRadio.prop("checked", true);
+    }
+    html.find(".v-itemtabs__toggle").on("change", (ev) => {
+      this._itemTab = ev.currentTarget.value === "effects" ? "effects" : "desc";
     });
 
     $desc.on("blur", async () => {

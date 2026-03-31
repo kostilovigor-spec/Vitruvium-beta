@@ -14,6 +14,7 @@ import {
 import { registerVitruviumTests } from "./tests.js";
 import { registerStateDurationHooks } from "./state-duration.js";
 import { setupFloatingTextHook, showFloatingText } from "./floating-text.js";
+import { registerChatDropHook } from "./chat-drop.js";
 
 Hooks.once("init", () => {
   console.log("Vitruvium | Initializing system");
@@ -85,6 +86,7 @@ Hooks.once("init", () => {
   patchVitruviumInitiative();
   registerStateDurationHooks();
   setupFloatingTextHook();
+  registerChatDropHook();
 
   // Register Handlebars helper for incrementing numbers
   Handlebars.registerHelper("inc", (value) => Number(value) + 1);

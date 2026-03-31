@@ -99,16 +99,19 @@
   <section class="v-itemtabs">
     <input
       type="radio"
-      id="v-ability-tab-desc"
-      name="v-ability-tabs"
+      id="{{vitruvium.tabIds.desc}}"
+      name="{{vitruvium.tabName}}"
+      value="desc"
       class="v-itemtabs__toggle"
-      checked
+      {{#if (eq vitruvium.activeTab "desc")}}checked{{/if}}
     />
     <input
       type="radio"
-      id="v-ability-tab-effects"
-      name="v-ability-tabs"
+      id="{{vitruvium.tabIds.effects}}"
+      name="{{vitruvium.tabName}}"
+      value="effects"
       class="v-itemtabs__toggle"
+      {{#if (eq vitruvium.activeTab "effects")}}checked{{/if}}
     />
 
     <div class="v-itemtabs__nav" role="tablist">
@@ -120,8 +123,8 @@
       >
         <i class="fas fa-pen"></i>
       </button>
-      <label class="v-itemtabs__tab" for="v-ability-tab-desc" role="tab">Описание</label>
-      <label class="v-itemtabs__tab" for="v-ability-tab-effects" role="tab">Эффекты</label>
+      <label class="v-itemtabs__tab" for="{{vitruvium.tabIds.desc}}" data-tab="desc" role="tab">Описание</label>
+      <label class="v-itemtabs__tab" for="{{vitruvium.tabIds.effects}}" data-tab="effects" role="tab">Эффекты</label>
     </div>
 
     <div class="v-itemtabs__content">

@@ -122,6 +122,15 @@ export class VitruviumAbilitySheet extends ItemSheet {
     data.vitruvium.descriptionHTML = safe;
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
+    
+    // Unique tab IDs per window instance to avoid conflicts when multiple sheets are open.
+    const tabBase = `v-tabs-${this.appId}`;
+    data.vitruvium.tabName = tabBase;
+    data.vitruvium.tabIds = {
+      desc: `${tabBase}-desc`,
+      effects: `${tabBase}-effects`,
+    };
+    data.vitruvium.activeTab = this._abilityTab ?? "desc";
 
     return data;
   }
@@ -141,13 +150,13 @@ export class VitruviumAbilitySheet extends ItemSheet {
     super.activateListeners(html);
 
     // Restore active tab (Описание / Эффекты) after re-render.
+    const tabBase = `v-tabs-${this.appId}`;
     if (this._abilityTab === "effects") {
-      const effectsRadio = html.find("#v-ability-tab-effects");
+      const effectsRadio = html.find(`#${tabBase}-effects`);
       if (effectsRadio.length) effectsRadio.prop("checked", true);
     }
     html.find(".v-itemtabs__toggle").on("change", (ev) => {
-      this._abilityTab =
-        ev.currentTarget.id === "v-ability-tab-effects" ? "effects" : "desc";
+      this._abilityTab = ev.currentTarget.value === "effects" ? "effects" : "desc";
     });
 
     // Icon editing should always be available.

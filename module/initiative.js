@@ -216,7 +216,9 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
     const effectTotals = collectEffectTotals(a);
     const movementMods = getAttributeRollModifiers(effectTotals, "movement");
     const move = clamp(
-      clamp(num(a.system?.attributes?.movement, 1), 1, 6) + movementMods.dice,
+      clamp(num(a.system?.attributes?.movement, 1), 1, 6) +
+        movementMods.dice +
+        globalMods.dice,
       1,
       20
     );

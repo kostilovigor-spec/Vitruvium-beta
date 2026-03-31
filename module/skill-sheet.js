@@ -43,6 +43,16 @@ export class VitruviumSkillSheet extends ItemSheet {
     data.vitruvium.effectTargets = EFFECT_TARGETS;
     data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
     data.vitruvium.isState = isState;
+
+    // Unique tab IDs per window instance to avoid conflicts when multiple sheets are open.
+    const tabBase = `v-tabs-${this.appId}`;
+    data.vitruvium.tabName = tabBase;
+    data.vitruvium.tabIds = {
+      desc: `${tabBase}-desc`,
+      effects: `${tabBase}-effects`,
+    };
+    data.vitruvium.activeTab = this._activeTab ?? "desc";
+
     return data;
   }
 
@@ -57,8 +67,26 @@ export class VitruviumSkillSheet extends ItemSheet {
     return super.close(options);
   }
 
+  async _updateObject(_event, formData) {
+    // Remove tab selection from formData to keep it strictly local to this window
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+    return this.item.update(formData);
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
+
+    // Tab switching
+    const tabBase = `v-tabs-${this.appId}`;
+    if (this._activeTab === "effects") {
+      const effectsRadio = html.find(`#${tabBase}-effects`);
+      if (effectsRadio.length) effectsRadio.prop("checked", true);
+    }
+    html.find(".v-itemtabs__toggle").on("change", (ev) => {
+      this._activeTab = ev.currentTarget.value === "effects" ? "effects" : "desc";
+    });
 
     const form = html.closest("form");
     const view = html.find("[data-role='desc-view']");

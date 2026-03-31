@@ -105,6 +105,11 @@ export const EFFECT_TARGETS = [
     group: "general_modifiers",
   },
   {
+    key: "rollDice",
+    label: "Все броски: доп. кубы",
+    group: "general_modifiers",
+  },
+  {
     key: "rollFullAdv",
     label: "Все броски: удачливый (полный переброс)",
     group: "general_modifiers",
@@ -267,7 +272,12 @@ export const getGlobalRollModifiers = (totals) => {
   let fullMode = "normal";
   if (fullAdv > fullDis) fullMode = "adv";
   else if (fullDis > fullAdv) fullMode = "dis";
-  return { adv: luck.adv, dis: luck.dis, fullMode };
+  return {
+    adv: luck.adv,
+    dis: luck.dis,
+    fullMode,
+    dice: getEffectValue(totals, "rollDice"),
+  };
 };
 
 export const getAttributeRollModifiers = (totals, attrKey) => {

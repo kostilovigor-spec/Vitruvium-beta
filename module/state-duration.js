@@ -16,6 +16,44 @@ const isPrimaryGM = () => {
 
 const observedCombatRounds = new Map();
 
+/**
+ * Creates an ActiveEffect on the actor representing the state icon.
+ * @param {Item} item - The state item document.
+ */
+async function createStateEffect(item) {
+  if (!item.actor) return;
+  const duration = toRounds(item.system?.durationRounds, 0);
+  await item.actor.createEmbeddedDocuments("ActiveEffect", [
+    {
+      name: item.name,
+      label: item.name,
+      icon: item.img || "icons/svg/aura.svg",
+      origin: item.uuid,
+      duration: {
+        rounds: duration,
+      },
+      changes: [],
+      disabled: false,
+    },
+  ]);
+}
+
+/**
+ * Deletes any ActiveEffects on the actor that originated from this item.
+ * @param {Item} item - The state item document.
+ */
+async function deleteStateEffects(item) {
+  if (!item.actor) return;
+  const effectsToRemove =
+    item.actor.effects?.filter((ef) => ef.origin && ef.origin.includes(item.uuid)) || [];
+  if (effectsToRemove.length > 0) {
+    await item.actor.deleteEmbeddedDocuments(
+      "ActiveEffect",
+      effectsToRemove.map((ef) => ef.id),
+    );
+  }
+}
+
 const normalizeStateSource = (itemDoc, change = {}) => {
   if (itemDoc?.type !== "state") return;
   if (!change || typeof change !== "object") return;
@@ -152,43 +190,64 @@ export const registerStateDurationHooks = () => {
     normalizeStateSource(itemDoc, change);
   });
 
-  // Удаляем Active Effect при удалении или истечении состояния
-  Hooks.on("updateItem", async (item, change) => {
+  Hooks.on("createItem", async (item, options, userId) => {
+    if (game.user.id !== userId) return;
+    if (item.type !== "state") return;
+    const isActive = item.system?.active !== false;
+    const durationRemaining = toRounds(item.system?.durationRemaining, 0);
+    if (isActive && durationRemaining > 0) {
+      await createStateEffect(item);
+    }
+  });
+
+  Hooks.on("updateItem", async (item, change, options, userId) => {
+    if (game.user.id !== userId) return;
     if (item.type !== "state") return;
 
-    const durationRemaining = item.system?.durationRemaining ?? 0;
-    const wasActive = item.system?.active !== false;
-    const isNowInactive =
-      change.system?.active === false || durationRemaining <= 0;
+    const hasActiveChanged =
+      hasOwn(change, "system.active") || hasOwn(change?.system ?? {}, "active");
+    const hasDurationRemainingChanged =
+      hasOwn(change, "system.durationRemaining") ||
+      hasOwn(change?.system ?? {}, "durationRemaining");
+    const hasImgChanged = hasOwn(change, "img");
+    const hasNameChanged = hasOwn(change, "name");
 
-    if (isNowInactive && wasActive) {
-      // Находим и удаляем Active Effect, связанный с этим состоянием
-      const effectsToRemove =
-        item.actor?.effects?.filter((ef) => ef.origin?.includes(item.uuid)) ||
-        [];
+    const isActive = item.system?.active !== false;
+    const durationRemaining = toRounds(item.system?.durationRemaining, 0);
 
-      if (effectsToRemove.length > 0) {
-        await item.actor.deleteEmbeddedDocuments(
-          "ActiveEffect",
-          effectsToRemove.map((ef) => ef.id),
+    // If active status changed or duration expired, sync the icon.
+    if (
+      hasActiveChanged ||
+      (hasDurationRemainingChanged && durationRemaining <= 0)
+    ) {
+      if (isActive && durationRemaining > 0) {
+        // Only create if it doesn't already exist (idempotency)
+        const exists = item.actor?.effects?.some(
+          (ef) => ef.origin && ef.origin.includes(item.uuid),
         );
+        if (!exists) await createStateEffect(item);
+      } else {
+        await deleteStateEffects(item);
+      }
+    } else if (isActive && (hasImgChanged || hasNameChanged)) {
+      // Sync icon graphics or label if it changed while active.
+      const effect = item.actor?.effects?.find(
+        (ef) => ef.origin && ef.origin.includes(item.uuid),
+      );
+      if (effect) {
+        await effect.update({
+          name: item.name,
+          label: item.name,
+          icon: item.img,
+        });
       }
     }
   });
 
-  Hooks.on("deleteItem", async (item) => {
+  Hooks.on("deleteItem", async (item, options, userId) => {
+    if (game.user.id !== userId) return;
     if (item.type !== "state") return;
-
-    // Удаляем Active Effect, связанный с этим состоянием
-    const effectsToRemove =
-      item.actor?.effects?.filter((ef) => ef.origin?.includes(item.uuid)) || [];
-
-    if (effectsToRemove.length > 0) {
-      await item.actor.deleteEmbeddedDocuments(
-        "ActiveEffect",
-        effectsToRemove.map((ef) => ef.id),
-      );
-    }
+    await deleteStateEffects(item);
   });
 
   Hooks.once("ready", () => {
