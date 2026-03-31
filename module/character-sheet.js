@@ -614,11 +614,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. кубы");
       if (!choice) return;
-      const pool = clamp(cur + globalMods.dice + num(choice.extraDice, 0), 1, 20);
 
       // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
       const globalMods = getGlobalRollModifiers(effectTotals);
+
+      const pool = clamp(cur + globalMods.dice + num(choice.extraDice, 0), 1, 20);
       const rollLuck = choice.luck + globalMods.adv;
       const rollUnluck = choice.unluck + globalMods.dis;
       const rollFullMode =
@@ -636,31 +637,20 @@ export class VitruviumCharacterSheet extends ActorSheet {
       });
     });
 
-    // Luck roll (1 die).
+    // Luck roll (1 die, ignore modifiers).
     html.find("[data-action='luck-roll']").on("click", async (ev) => {
       ev.preventDefault();
 
       const choice = await rollModeDialog("Бросок удачи");
       if (!choice) return;
-      const pool = clamp(1 + globalMods.dice + num(choice.extraDice, 0), 1, 20);
-
-      // Aggregate effects from items/abilities/states.
-      const effectTotals = collectEffectTotals(this.actor);
-      const globalMods = getGlobalRollModifiers(effectTotals);
-      const rollLuck = choice.luck + globalMods.adv;
-      const rollUnluck = choice.unluck + globalMods.dis;
-      const rollFullMode =
-        globalMods.fullMode !== "normal"
-          ? globalMods.fullMode
-          : choice.fullMode;
 
       await rollSuccessDice({
-        pool,
+        pool: 1,
         actorName: this.actor.name,
         checkName: "Бросок удачи",
-        luck: rollLuck,
-        unluck: rollUnluck,
-        fullMode: rollFullMode,
+        luck: choice.luck,
+        unluck: choice.unluck,
+        fullMode: choice.fullMode,
       });
     });
 
