@@ -158,6 +158,10 @@ const ROLL_ATTRIBUTE_KEYS = [
 
 const clampValue = (n, min, max) => Math.min(Math.max(n, min), max);
 const numValue = (v, d) => {
+  if (v !== null && typeof v === "object" && "value" in v) {
+    const x = Number(v.value);
+    return Number.isNaN(x) ? d : x;
+  }
   const x = Number(v);
   return Number.isNaN(x) ? d : x;
 };

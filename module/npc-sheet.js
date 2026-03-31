@@ -3,6 +3,7 @@ import {
   getEffectValue,
   getAttributeRollModifiers,
   getGlobalRollModifiers,
+  getEffectiveAttribute,
 } from "./effects.js";
 import { rollSuccessDice } from "./rolls.js";
 import { chatVisibilityData } from "./chat-visibility.js";
@@ -34,12 +35,7 @@ export class VitruviumNPCSheet extends ActorSheet {
     };
     const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
 
-    const getAttr = (k) => {
-      const attr = attrs[k];
-      const base = num(attr?.value ?? 0, 0);
-      const total = base + getEffectValue(effectTotals, k);
-      return Number.isFinite(total) ? total : base;
-    };
+    const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
 
     data.vitruvium = data.vitruvium ?? {};
     data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
@@ -296,7 +292,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       const choice = await rollModeDialog(`Проверка: ${label}`);
       if (!choice) return;
       const pool = clamp(
-        Math.max(1, base + getEffectValue(effectTotals, key)) +
+        getEffectiveAttribute(attrs, key, effectTotals) +
           attrMods.dice +
           num(choice.extraDice, 0),
         1,

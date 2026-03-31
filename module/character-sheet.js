@@ -932,7 +932,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const selfStates = contestStates.filter((s) => s.applyMode === "self");
       const nonSelfStates = contestStates.filter((s) => s.applyMode !== "self");
       const useAsAttack =
-        (attackRollEnabled && (damageBase > 0 || healBase > 0)) ||
+        (damageBase > 0 || healBase > 0) ||
         (hasContestStates && nonSelfStates.length > 0);
 
       // Inspiration: base max + effects.
