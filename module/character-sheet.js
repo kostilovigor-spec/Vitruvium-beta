@@ -899,7 +899,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
           0,
           Math.round(num(sys.contestStateDurationRounds, 1)),
         );
-        const oldMode = ["self", "targetNoCheck", "targetContest"].includes(
+        const oldMode = [
+          "self",
+          "targetNoCheck",
+          "targetContest",
+          "CRIT_ATTACK",
+        ].includes(
           sys.contestApplyMode,
         )
           ? sys.contestApplyMode
@@ -918,7 +923,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
             0,
             Math.round(Number(s.durationRounds ?? 1)),
           ),
-          applyMode: ["self", "targetNoCheck", "targetContest"].includes(
+          applyMode: [
+            "self",
+            "targetNoCheck",
+            "targetContest",
+            "CRIT_ATTACK",
+          ].includes(
             s.applyMode,
           )
             ? s.applyMode

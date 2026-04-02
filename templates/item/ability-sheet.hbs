@@ -253,6 +253,7 @@
                           <option value="self" {{#if (eq state.applyMode "self")}}selected{{/if}}>На себя</option>
                           <option value="targetNoCheck" {{#if (eq state.applyMode "targetNoCheck")}}selected{{/if}}>Цель: без проверки</option>
                           <option value="targetContest" {{#if (eq state.applyMode "targetContest")}}selected{{/if}}>Цель: соревнование</option>
+                          <option value="CRIT_ATTACK" {{#if (eq state.applyMode "CRIT_ATTACK")}}selected{{/if}}>Цель: при крите атаки</option>
                         </select>
                       </label>
                       <label>
@@ -307,6 +308,7 @@
                         <option value="self" selected>На себя</option>
                         <option value="targetNoCheck">Цель: без проверки</option>
                         <option value="targetContest">Цель: соревнование</option>
+                        <option value="CRIT_ATTACK">Цель: при крите атаки</option>
                       </select>
                     </label>
                     <label>

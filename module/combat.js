@@ -340,7 +340,14 @@ function listAttributeKeys(actor) {
     "thinking",
     "communication",
   ];
-  return allowed.filter((k) => typeof attrs[k] === "number");
+  return allowed.filter((k) => {
+    const raw = attrs[k];
+    if (typeof raw === "number") return Number.isFinite(raw);
+    if (raw && typeof raw === "object" && "value" in raw) {
+      return Number.isFinite(Number(raw.value));
+    }
+    return false;
+  });
 }
 
 function getWeaponDamage(actor, weaponItem = null) {
@@ -1828,6 +1835,28 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           crit = dmgOut.crit ?? false;
         }
 
+        // Apply states configured for CRIT_ATTACK mode.
+        // Reuses the already computed "crit" result from normal attack resolution.
+        const critAttackStates = Array.isArray(flags.critAttackStates)
+          ? flags.critAttackStates
+          : [];
+        if (
+          crit &&
+          flags.attackKind === "ability" &&
+          flags.attackRoll === true &&
+          critAttackStates.length > 0
+        ) {
+          for (const state of critAttackStates) {
+            if (!state?.uuid) continue;
+            await replaceStateFromTemplate(
+              defender,
+              state.uuid,
+              state.durationRounds,
+              defenderTokenUuid,
+            );
+          }
+        }
+
         // Single public defense card — contains result + GM apply-damage button
         await ChatMessage.create({
           ...chatVisibilityData(),
@@ -1883,187 +1912,225 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         _resolvedAttackDefenseKeys.delete(lockKey);
       }
     });
+  });
 
-    // State contest button
-    html.querySelectorAll("[data-action='vitruvium-contest']").forEach((el) => {
-      el.addEventListener("click", async (ev) => {
-        ev.preventDefault();
-        const btn = ev.currentTarget;
-        const row = btn.closest("[data-contest-defender-token-uuid]");
-        const markResolvedInUI = () => {
-          btn.disabled = true;
-          if (row) {
-            const statusEl = row.querySelector("[data-role='contest-status']");
-            if (statusEl) statusEl.textContent = "Сопротивление уже выбрано";
-          }
-        };
+  // State contest button
+  html.querySelectorAll("[data-action='vitruvium-contest']").forEach((el) => {
+    el.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      const btn = ev.currentTarget;
+      const row = btn.closest("[data-contest-defender-token-uuid]");
+      const markResolvedInUI = () => {
+        btn.disabled = true;
+        if (row) {
+          const statusEl = row.querySelector("[data-role='contest-status']");
+          if (statusEl) statusEl.textContent = "Сопротивление уже выбрано";
+        }
+      };
 
-        const fresh = game.messages.get(message.id) ?? message;
-        const flags = fresh.flags?.vitruvium ?? {};
-        if (flags.kind !== "attack") return;
-        // Support both old contestStateUuid and new contestStates format
-        const contestStates = Array.isArray(flags.contestStates)
-          ? flags.contestStates
-          : [];
-        const hasContestStates =
-          contestStates.length > 0 ||
-          (flags.contestEnabled && flags.contestStateUuid);
-        if (!hasContestStates) return;
-        const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
-        const speakerActor = speakerActorId
-          ? game.actors?.get(speakerActorId)
-          : null;
+      const fresh = game.messages.get(message.id) ?? message;
+      const flags = fresh.flags?.vitruvium ?? {};
+      if (flags.kind !== "attack") return;
+      // Support both old contestStateUuid and new contestStates format
+      const contestStates = Array.isArray(flags.contestStates)
+        ? flags.contestStates
+        : [];
+      const hasContestStates =
+        contestStates.length > 0 ||
+        (flags.contestEnabled && flags.contestStateUuid);
+      if (!hasContestStates) return;
+      const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
+      const speakerActor = speakerActorId
+        ? game.actors?.get(speakerActorId)
+        : null;
 
-        const defenderTokenUuid = String(
-          btn.getAttribute("data-defender-token-uuid") ??
-            flags.defenderTokenUuid ??
-            "",
-        ).trim();
-        if (!defenderTokenUuid) return;
+      const defenderTokenUuid = String(
+        btn.getAttribute("data-defender-token-uuid") ??
+          flags.defenderTokenUuid ??
+          "",
+      ).trim();
+      if (!defenderTokenUuid) return;
 
-        const resolvedContestDefenderUuids =
-          getResolvedContestDefenderUuids(flags);
-        if (resolvedContestDefenderUuids.includes(defenderTokenUuid)) {
-          ui.notifications?.info("Сопротивление уже выбрано.");
-          markResolvedInUI();
+      const resolvedContestDefenderUuids =
+        getResolvedContestDefenderUuids(flags);
+      if (resolvedContestDefenderUuids.includes(defenderTokenUuid)) {
+        ui.notifications?.info("Сопротивление уже выбрано.");
+        markResolvedInUI();
+        return;
+      }
+
+      const lockKey = attackResolveLockKey(
+        message.id,
+        defenderTokenUuid,
+        "contest",
+      );
+      if (_resolvedAttackDefenseKeys.has(lockKey)) {
+        ui.notifications?.info("Сопротивление уже обрабатывается.");
+        return;
+      }
+
+      _resolvedAttackDefenseKeys.add(lockKey);
+      try {
+        const defender = await resolveCombatActor({
+          tokenUuid: defenderTokenUuid,
+        });
+        const attacker = await resolveCombatActor({
+          tokenUuid: flags.attackerTokenUuid,
+          actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
+        });
+        if (!defender || !attacker) {
+          ui.notifications?.warn(
+            "Не удалось определить участников. Создайте применение заново.",
+          );
           return;
         }
 
-        const lockKey = attackResolveLockKey(
-          message.id,
+        console.debug("Vitruvium | contest click", {
+          messageId: message.id,
+          attackerActorId: attacker.id,
+          defenderActorId: defender.id,
           defenderTokenUuid,
-          "contest",
-        );
-        if (_resolvedAttackDefenseKeys.has(lockKey)) {
-          ui.notifications?.info("Сопротивление уже обрабатывается.");
+          contestCasterAttr: flags.contestCasterAttr,
+          contestTargetAttr: flags.contestTargetAttr,
+          contestStatesCount: contestStates.length,
+        });
+
+        if (!userCanDefend(defender)) {
+          ui.notifications?.warn(
+            "Только владелец цели или ГМ может нажать «Сопротивление».",
+          );
           return;
         }
 
-        _resolvedAttackDefenseKeys.add(lockKey);
-        try {
-          const defender = await resolveCombatActor({
-            tokenUuid: defenderTokenUuid,
-          });
-          const attacker = await resolveCombatActor({
-            tokenUuid: flags.attackerTokenUuid,
-            actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
-          });
-          if (!defender || !attacker) {
-            ui.notifications?.warn(
-              "Не удалось определить участников. Создайте применение заново.",
-            );
-            return;
-          }
+        const choice = await contestDialog({
+          actor: defender,
+          defaultAttrKey: flags.contestTargetAttr,
+          title: "Сопротивление состоянию",
+        });
+        if (!choice) return;
 
-          if (!userCanDefend(defender)) {
-            ui.notifications?.warn(
-              "Только владелец цели или ГМ может нажать «Сопротивление».",
-            );
-            return;
-          }
+        const effectTotals = collectEffectTotals(defender);
+        const globalMods = getGlobalRollModifiers(effectTotals);
+        const attrMods = getAttributeRollModifiers(
+          effectTotals,
+          choice.attrKey,
+        );
+        const baseAttr = getEffectiveAttribute(
+          defender.system?.attributes,
+          choice.attrKey,
+          effectTotals,
+        );
+        const poolVal = clamp(
+          baseAttr +
+            attrMods.dice +
+            globalMods.dice +
+            num(choice.extraDice, 0),
+          1,
+          20,
+        );
+        const totalLuck = num(choice.luck, 0) + globalMods.adv + attrMods.adv;
+        const totalUnluck =
+          num(choice.unluck, 0) + globalMods.dis + attrMods.dis;
+        const finalFullMode =
+          globalMods.fullMode !== "normal"
+            ? globalMods.fullMode
+            : choice.fullMode;
 
-          const choice = await contestDialog({
-            actor: defender,
-            defaultAttrKey: flags.contestTargetAttr,
-            title: "Сопротивление состоянию",
-          });
-          if (!choice) return;
+        console.debug("Vitruvium | contest defender roll input", {
+          defender: defender.name,
+          attrKey: choice.attrKey,
+          baseAttr,
+          attrDice: attrMods.dice,
+          globalDice: globalMods.dice,
+          extraDice: num(choice.extraDice, 0),
+          poolVal,
+          totalLuck,
+          totalUnluck,
+          finalFullMode,
+        });
 
-          const effectTotals = collectEffectTotals(defender);
-          const globalMods = getGlobalRollModifiers(effectTotals);
-          const attrMods = getAttributeRollModifiers(
-            effectTotals,
-            choice.attrKey,
-          );
-          const poolVal = clamp(
-            num(defender.system?.attributes?.[choice.attrKey], 1) +
-              attrMods.dice +
-              globalMods.dice +
-              num(choice.extraDice, 0),
-            1,
-            20,
-          );
-          const totalLuck = num(choice.luck, 0) + globalMods.adv + attrMods.adv;
-          const totalUnluck =
-            num(choice.unluck, 0) + globalMods.dis + attrMods.dis;
-          const finalFullMode =
-            globalMods.fullMode !== "normal"
-              ? globalMods.fullMode
-              : choice.fullMode;
-          const defRoll = await rollPool(poolVal, {
-            luck: totalLuck,
-            unluck: totalUnluck,
-            fullMode: finalFullMode,
-          });
+        const defRoll = await rollPool(poolVal, {
+          luck: totalLuck,
+          unluck: totalUnluck,
+          fullMode: finalFullMode,
+        });
 
-          // Single combined contest card: roll result + outcome
-          const casterSuccessesContest = num(flags.casterContestSuccesses, 0);
-          const targetSuccessesContest = defRoll.successes;
-          let appliedContest = targetSuccessesContest < casterSuccessesContest;
-          let stateNameContest = null;
+        // Single combined contest card: roll result + outcome
+        const casterSuccessesContest = num(flags.casterContestSuccesses, 0);
+        const targetSuccessesContest = defRoll.successes;
+        let appliedContest = targetSuccessesContest < casterSuccessesContest;
+        let stateNameContest = null;
 
-          if (appliedContest) {
-            // Use contestStates array if available, otherwise fall back to old format
-            const statesToApply =
-              contestStates.length > 0
-                ? contestStates.filter((s) => s.applyMode === "targetContest")
-                : [
-                    {
-                      uuid: flags.contestStateUuid,
-                      durationRounds: flags.contestStateDurationRounds,
-                    },
-                  ];
+        if (appliedContest) {
+          // Use contestStates array if available, otherwise fall back to old format
+          const statesToApply =
+            contestStates.length > 0
+              ? contestStates.filter((s) => s.applyMode === "targetContest")
+              : [
+                  {
+                    uuid: flags.contestStateUuid,
+                    durationRounds: flags.contestStateDurationRounds,
+                  },
+                ];
 
-            for (const state of statesToApply) {
-              if (state.uuid) {
-                const out = await replaceStateFromTemplate(
-                  defender,
-                  state.uuid,
-                  state.durationRounds,
-                  defenderTokenUuid,
-                );
-                appliedContest = !!out.applied;
-                stateNameContest = out.stateName;
-              }
+          for (const state of statesToApply) {
+            if (state.uuid) {
+              const out = await replaceStateFromTemplate(
+                defender,
+                state.uuid,
+                state.durationRounds,
+                defenderTokenUuid,
+              );
+              appliedContest = !!out.applied;
+              stateNameContest = out.stateName;
             }
           }
-
-          const contestCard = resolveContestCardHTML({
-            attackerName: attacker.name,
-            defenderName: defender.name,
-            abilityName: flags.weaponName ?? "Способность",
-            stateName: stateNameContest ?? "Состояние",
-            casterSuccesses: casterSuccessesContest,
-            targetSuccesses: targetSuccessesContest,
-            applied: appliedContest,
-            casterAttr: flags.contestCasterAttr,
-            defenderAttr: choice.attrKey,
-            defRoll,
-          });
-
-          await ChatMessage.create({
-            ...chatVisibilityData(),
-            speaker: ChatMessage.getSpeaker({ actor: defender }),
-            content: contestCard,
-            rolls: defRoll.rolls,
-          });
-
-          const nextResolvedContestDefenderUuids = [
-            ...new Set([...resolvedContestDefenderUuids, defenderTokenUuid]),
-          ];
-          await fresh.update({
-            "flags.vitruvium.resolvedContestDefenderUuids":
-              nextResolvedContestDefenderUuids,
-          });
-
-          markResolvedInUI();
-        } catch (e) {
-          console.error("Vitruvium | contest flow error", e);
-          ui.notifications?.error(`Ошибка сопротивления: ${e?.message ?? e}`);
-        } finally {
-          _resolvedAttackDefenseKeys.delete(lockKey);
         }
-      });
+
+        console.debug("Vitruvium | contest outcome", {
+          attacker: attacker.name,
+          defender: defender.name,
+          casterSuccessesContest,
+          targetSuccessesContest,
+          appliedContest,
+          appliedState: stateNameContest,
+        });
+
+        const contestCard = resolveContestCardHTML({
+          attackerName: attacker.name,
+          defenderName: defender.name,
+          abilityName: flags.weaponName ?? "Способность",
+          stateName: stateNameContest ?? "Состояние",
+          casterSuccesses: casterSuccessesContest,
+          targetSuccesses: targetSuccessesContest,
+          applied: appliedContest,
+          casterAttr: flags.contestCasterAttr,
+          defenderAttr: choice.attrKey,
+          defRoll,
+        });
+
+        await ChatMessage.create({
+          ...chatVisibilityData(),
+          speaker: ChatMessage.getSpeaker({ actor: defender }),
+          content: contestCard,
+          rolls: defRoll.rolls,
+        });
+
+        const nextResolvedContestDefenderUuids = [
+          ...new Set([...resolvedContestDefenderUuids, defenderTokenUuid]),
+        ];
+        await fresh.update({
+          "flags.vitruvium.resolvedContestDefenderUuids":
+            nextResolvedContestDefenderUuids,
+        });
+
+        markResolvedInUI();
+      } catch (e) {
+        console.error("Vitruvium | contest flow error", e);
+        ui.notifications?.error(`Ошибка сопротивления: ${e?.message ?? e}`);
+      } finally {
+        _resolvedAttackDefenseKeys.delete(lockKey);
+      }
     });
   });
 });
@@ -2093,7 +2160,12 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         0,
         Math.round(num(abilityItem?.system?.contestStateDurationRounds, 1)),
       );
-      const oldMode = ["self", "targetNoCheck", "targetContest"].includes(
+      const oldMode = [
+        "self",
+        "targetNoCheck",
+        "targetContest",
+        "CRIT_ATTACK",
+      ].includes(
         abilityItem?.system?.contestApplyMode,
       )
         ? abilityItem.system.contestApplyMode
@@ -2110,7 +2182,12 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       .map((s) => ({
         uuid: String(s.uuid ?? "").trim(),
         durationRounds: Math.max(0, Math.round(Number(s.durationRounds ?? 1))),
-        applyMode: ["self", "targetNoCheck", "targetContest"].includes(
+        applyMode: [
+          "self",
+          "targetNoCheck",
+          "targetContest",
+          "CRIT_ATTACK",
+        ].includes(
           s.applyMode,
         )
           ? s.applyMode
@@ -2236,6 +2313,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const targetContestStates = nonSelfStates.filter(
       (s) => s.applyMode === "targetContest",
     );
+    // Crit attack states (apply automatically only when attack result is critical)
+    const targetCritAttackStates = nonSelfStates.filter(
+      (s) => s.applyMode === "CRIT_ATTACK",
+    );
     const doContestRoll = targetContestStates.length > 0 && hasContestTarget;
     // Use caster/target attr from the first targetContest state
     const contestCasterAttr =
@@ -2274,8 +2355,13 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       const attackMods = getAttackRollModifiers(effectTotals, {
         attrKey: atkChoice.attrKey,
       });
+      const atkBaseAttr = getEffectiveAttribute(
+        attackerActor.system?.attributes,
+        atkChoice.attrKey,
+        effectTotals,
+      );
       const atkPool = clamp(
-        num(attackerActor.system?.attributes?.[atkChoice.attrKey], 1) +
+        atkBaseAttr +
           attackMods.dice +
           globalMods.dice +
           num(atkChoice.extraDice, 0),
@@ -2309,13 +2395,26 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           effectTotals,
           contestCasterAttr,
         );
+        const contestBaseAttr = getEffectiveAttribute(
+          attackerActor.system?.attributes,
+          contestCasterAttr,
+          effectTotals,
+        );
         const contestPool = clamp(
-          num(attackerActor.system?.attributes?.[contestCasterAttr], 1) +
+          contestBaseAttr +
             contestAttrMods.dice +
             globalMods.dice,
           1,
           20,
         );
+        console.debug("Vitruvium | contest caster roll input", {
+          attacker: attackerActor?.name,
+          attrKey: contestCasterAttr,
+          baseAttr: contestBaseAttr,
+          attrDice: contestAttrMods.dice,
+          globalDice: globalMods.dice,
+          contestPool,
+        });
         casterContestRoll = await rollPool(contestPool, {
           luck: globalMods.adv + contestAttrMods.adv,
           unluck: globalMods.dis + contestAttrMods.dis,
@@ -2404,6 +2503,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
               attackRoll: attackRollEnabled,
               contestEnabled: doContestRoll,
               contestStates: targetContestStates,
+              critAttackStates: targetCritAttackStates,
               contestCasterAttr,
               contestTargetAttr,
               casterContestSuccesses,

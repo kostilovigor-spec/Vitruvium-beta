@@ -77,7 +77,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
         {
           uuid: sys.contestStateUuid || "",
           durationRounds: Number(sys.contestStateDurationRounds) || 1,
-          applyMode: ["self", "targetNoCheck", "targetContest"].includes(
+          applyMode: [
+            "self",
+            "targetNoCheck",
+            "targetContest",
+            "CRIT_ATTACK",
+          ].includes(
             sys.contestApplyMode,
           )
             ? sys.contestApplyMode
@@ -103,7 +108,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
     contestStates = contestStates.map((s) => ({
       uuid: String(s.uuid ?? ""),
       durationRounds: Math.max(0, Math.round(Number(s.durationRounds ?? 1))),
-      applyMode: ["self", "targetNoCheck", "targetContest"].includes(
+      applyMode: [
+        "self",
+        "targetNoCheck",
+        "targetContest",
+        "CRIT_ATTACK",
+      ].includes(
         s.applyMode,
       )
         ? s.applyMode
@@ -401,6 +411,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
                 <option value="self">На себя</option>
                 <option value="targetNoCheck">Цель: без проверки</option>
                 <option value="targetContest" selected>Цель: соревнование</option>
+                <option value="CRIT_ATTACK">Цель: при крите атаки</option>
               </select>
             </label>
             <label>
