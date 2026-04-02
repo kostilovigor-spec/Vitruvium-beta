@@ -1,11 +1,13 @@
 const hasOwn = (obj, key) =>
   Object.prototype.hasOwnProperty.call(obj ?? {}, key);
 
-const toRounds = (value, fallback = 0) => {
+const toTurns = (value, fallback = 0) => {
   const n = Number(value);
   const safe = Number.isFinite(n) ? n : fallback;
   return Math.max(0, Math.round(safe));
 };
+
+const FLAG_SCOPE = "mySystem";
 
 const isPrimaryGM = () => {
   if (!game.user?.isGM) return false;
@@ -14,24 +16,178 @@ const isPrimaryGM = () => {
   return activeGm.id === game.user.id;
 };
 
-const observedCombatRounds = new Map();
+const observedCombatTurns = new Map();
+
+const getCombatSnapshot = (combat) => {
+  const combatant = combat?.combatant ?? null;
+  return {
+    turn: Number.isFinite(Number(combat?.turn)) ? Number(combat.turn) : null,
+    round: Number.isFinite(Number(combat?.round)) ? Number(combat.round) : null,
+    combatantId: String(combatant?.id ?? "").trim() || null,
+    actorId: String(combatant?.actor?.id ?? "").trim() || null,
+  };
+};
+
+const readTurnState = (item) => {
+  const flags = item?.flags?.[FLAG_SCOPE] ?? {};
+  const sys = item?.system ?? {};
+  const active = sys.active !== false;
+
+  const legacyDuration = toTurns(sys.durationRounds, 0);
+  const legacyRemaining = toTurns(
+    sys.durationRemaining,
+    active ? legacyDuration : 0,
+  );
+  const turnDuration = toTurns(flags.turnDuration, legacyDuration);
+  const hasFlagRemaining =
+    flags.remainingTurns !== undefined &&
+    flags.remainingTurns !== null &&
+    `${flags.remainingTurns}`.trim() !== "";
+  const remainingTurns = hasFlagRemaining
+    ? toTurns(flags.remainingTurns, 0)
+    : active
+      ? legacyRemaining || turnDuration
+      : 0;
+  const ownerActorId = String(flags.ownerActorId ?? item?.actor?.id ?? "").trim();
+  const appliedRound = Number.isFinite(Number(flags.appliedRound))
+    ? Number(flags.appliedRound)
+    : null;
+  const appliedTurn = Number.isFinite(Number(flags.appliedTurn))
+    ? Number(flags.appliedTurn)
+    : null;
+  const appliedActorId = String(flags.appliedActorId ?? "").trim();
+
+  return {
+    active,
+    turnDuration,
+    remainingTurns,
+    ownerActorId,
+    appliedRound,
+    appliedTurn,
+    appliedActorId,
+  };
+};
+
+const extractPatchTurnState = (itemDoc, change = {}) => {
+  if (itemDoc?.type !== "state") return null;
+  if (!change || typeof change !== "object") return null;
+
+  const hasFlatActive = hasOwn(change, "system.active");
+  const hasFlatDuration = hasOwn(change, "system.durationRounds");
+  const hasFlatRemaining = hasOwn(change, "system.durationRemaining");
+  const hasFlatTurnDuration = hasOwn(change, `flags.${FLAG_SCOPE}.turnDuration`);
+  const hasFlatRemainingTurns = hasOwn(
+    change,
+    `flags.${FLAG_SCOPE}.remainingTurns`,
+  );
+  const hasFlatOwnerActorId = hasOwn(
+    change,
+    `flags.${FLAG_SCOPE}.ownerActorId`,
+  );
+
+  if (
+    hasFlatActive ||
+    hasFlatDuration ||
+    hasFlatRemaining ||
+    hasFlatTurnDuration ||
+    hasFlatRemainingTurns ||
+    hasFlatOwnerActorId
+  ) {
+    change.system = change.system ?? {};
+    change.flags = change.flags ?? {};
+    change.flags[FLAG_SCOPE] = change.flags[FLAG_SCOPE] ?? {};
+
+    if (hasFlatActive) {
+      change.system.active = change["system.active"];
+      delete change["system.active"];
+    }
+    if (hasFlatDuration) {
+      change.system.durationRounds = change["system.durationRounds"];
+      delete change["system.durationRounds"];
+    }
+    if (hasFlatRemaining) {
+      change.system.durationRemaining = change["system.durationRemaining"];
+      delete change["system.durationRemaining"];
+    }
+    if (hasFlatTurnDuration) {
+      change.flags[FLAG_SCOPE].turnDuration =
+        change[`flags.${FLAG_SCOPE}.turnDuration`];
+      delete change[`flags.${FLAG_SCOPE}.turnDuration`];
+    }
+    if (hasFlatRemainingTurns) {
+      change.flags[FLAG_SCOPE].remainingTurns =
+        change[`flags.${FLAG_SCOPE}.remainingTurns`];
+      delete change[`flags.${FLAG_SCOPE}.remainingTurns`];
+    }
+    if (hasFlatOwnerActorId) {
+      change.flags[FLAG_SCOPE].ownerActorId =
+        change[`flags.${FLAG_SCOPE}.ownerActorId`];
+      delete change[`flags.${FLAG_SCOPE}.ownerActorId`];
+    }
+  }
+
+  const nextSystem = change.system ?? {};
+  const nextFlags = (change.flags ?? {})[FLAG_SCOPE] ?? {};
+  const current = readTurnState(itemDoc);
+
+  const hasActive = hasOwn(nextSystem, "active");
+  const hasSystemDuration = hasOwn(nextSystem, "durationRounds");
+  const hasSystemRemaining = hasOwn(nextSystem, "durationRemaining");
+  const hasTurnDuration = hasOwn(nextFlags, "turnDuration");
+  const hasRemainingTurns = hasOwn(nextFlags, "remainingTurns");
+  const hasOwnerActorId = hasOwn(nextFlags, "ownerActorId");
+
+  const active = hasActive ? nextSystem.active !== false : current.active;
+  const turnDuration = hasTurnDuration
+    ? toTurns(nextFlags.turnDuration, current.turnDuration)
+    : hasSystemDuration
+      ? toTurns(nextSystem.durationRounds, current.turnDuration)
+      : current.turnDuration;
+
+  let remainingTurns;
+  if (hasRemainingTurns) {
+    remainingTurns = toTurns(nextFlags.remainingTurns, current.remainingTurns);
+  } else if (hasSystemRemaining) {
+    remainingTurns = toTurns(nextSystem.durationRemaining, current.remainingTurns);
+  } else if (hasActive && active !== current.active) {
+    remainingTurns = active ? turnDuration : 0;
+  } else if (hasTurnDuration || hasSystemDuration) {
+    remainingTurns = active ? turnDuration : 0;
+  } else {
+    remainingTurns = current.remainingTurns;
+  }
+
+  const ownerActorId = String(
+    hasOwnerActorId ? nextFlags.ownerActorId : current.ownerActorId,
+  ).trim();
+
+  return { active, turnDuration, remainingTurns, ownerActorId };
+};
 
 /**
  * Creates an ActiveEffect on the actor representing the state icon.
+ * Duration is controlled by item flags and turn updates, not ActiveEffect rounds.
  * @param {Item} item - The state item document.
  */
 async function createStateEffect(item) {
   if (!item.actor) return;
-  const duration = toRounds(item.system?.durationRounds, 0);
+  const timing = readTurnState(item);
+  const iconPath = item.img || "icons/svg/aura.svg";
+  const statusId = `vitruvium-state-${item.id}`;
   await item.actor.createEmbeddedDocuments("ActiveEffect", [
     {
       name: item.name,
       label: item.name,
-      icon: item.img || "icons/svg/aura.svg",
+      // Keep both keys for compatibility across Foundry versions/modules.
+      icon: iconPath,
+      img: iconPath,
       origin: item.uuid,
+      // We do not use Foundry round ticking anymore, but keep a turn duration
+      // so the effect is treated as temporary and shown on tokens.
       duration: {
-        rounds: duration,
+        turns: Math.max(1, timing.remainingTurns || timing.turnDuration || 1),
       },
+      statuses: [statusId],
       changes: [],
       disabled: false,
     },
@@ -45,7 +201,8 @@ async function createStateEffect(item) {
 async function deleteStateEffects(item) {
   if (!item.actor) return;
   const effectsToRemove =
-    item.actor.effects?.filter((ef) => ef.origin && ef.origin.includes(item.uuid)) || [];
+    item.actor.effects?.filter((ef) => ef.origin && ef.origin.includes(item.uuid)) ||
+    [];
   if (effectsToRemove.length > 0) {
     await item.actor.deleteEmbeddedDocuments(
       "ActiveEffect",
@@ -54,107 +211,51 @@ async function deleteStateEffects(item) {
   }
 }
 
-const normalizeStateSource = (itemDoc, change = {}) => {
-  if (itemDoc?.type !== "state") return;
-  if (!change || typeof change !== "object") return;
+const tickActorOwnedStates = async (
+  actor,
+  ownerActorId,
+  { endedRound = null, endedTurn = null } = {},
+) => {
+  if (!actor?.id || !ownerActorId) return;
 
-  const hasFlatActive = hasOwn(change, "system.active");
-  const hasFlatDuration = hasOwn(change, "system.durationRounds");
-  const hasFlatRemaining = hasOwn(change, "system.durationRemaining");
+  const updates = [];
+  const toDelete = [];
 
-  if (hasFlatActive || hasFlatDuration || hasFlatRemaining) {
-    change.system = change.system ?? {};
-    if (hasFlatActive) {
-      change.system.active = change["system.active"];
-      delete change["system.active"];
+  for (const item of actor.items ?? []) {
+    if (item.type !== "state") continue;
+    const timing = readTurnState(item);
+    if (!timing.active) continue;
+    if (timing.ownerActorId !== ownerActorId) continue;
+    if (timing.turnDuration <= 0) continue;
+    const skipFirstOwnerTurnTick =
+      timing.appliedActorId === ownerActorId &&
+      timing.appliedRound === endedRound &&
+      timing.appliedTurn === endedTurn;
+    if (skipFirstOwnerTurnTick) continue;
+
+    const nextRemaining = Math.max(0, timing.remainingTurns - 1);
+    if (nextRemaining <= 0) {
+      toDelete.push(item.id);
+      continue;
     }
-    if (hasFlatDuration) {
-      change.system.durationRounds = change["system.durationRounds"];
-      delete change["system.durationRounds"];
-    }
-    if (hasFlatRemaining) {
-      change.system.durationRemaining = change["system.durationRemaining"];
-      delete change["system.durationRemaining"];
-    }
+
+    updates.push({
+      _id: item.id,
+      "flags.mySystem.remainingTurns": nextRemaining,
+      "flags.mySystem.turnDuration": timing.turnDuration,
+      "flags.mySystem.ownerActorId": timing.ownerActorId,
+      "system.durationRounds": timing.turnDuration,
+      "system.durationRemaining": nextRemaining,
+      "system.active": true,
+    });
   }
 
-  if (!change.system || typeof change.system !== "object") return;
-  const next = change.system;
-
-  const currentActive = itemDoc.system?.active !== false;
-  const currentDuration = toRounds(itemDoc.system?.durationRounds, 0);
-  const currentRemaining = toRounds(
-    itemDoc.system?.durationRemaining,
-    currentActive ? currentDuration : 0,
-  );
-
-  const hasActive = hasOwn(next, "active");
-  const hasDuration = hasOwn(next, "durationRounds");
-  const hasRemaining = hasOwn(next, "durationRemaining");
-
-  const nextActive = hasActive ? next.active !== false : currentActive;
-  const nextDuration = hasDuration
-    ? toRounds(next.durationRounds, currentDuration)
-    : currentDuration;
-  const activeChanged = hasActive && nextActive !== currentActive;
-  const durationChanged = hasDuration && nextDuration !== currentDuration;
-
-  if (hasActive) next.active = nextActive;
-  if (hasDuration) next.durationRounds = nextDuration;
-
-  if (activeChanged) {
-    next.durationRemaining = nextActive ? nextDuration : 0;
-    return;
+  if (updates.length > 0) {
+    await actor.updateEmbeddedDocuments("Item", updates);
   }
-
-  if (durationChanged) {
-    next.durationRemaining = nextActive ? nextDuration : 0;
-    return;
+  if (toDelete.length > 0) {
+    await actor.deleteEmbeddedDocuments("Item", toDelete);
   }
-
-  if (hasRemaining) {
-    next.durationRemaining = toRounds(next.durationRemaining, currentRemaining);
-  }
-};
-
-const applyRoundTickToCombat = async (combat, ticks) => {
-  if (!combat || ticks <= 0) return;
-
-  const actors = new Map();
-  for (const combatant of combat.combatants ?? []) {
-    const actor = combatant?.actor;
-    if (!actor?.id) continue;
-    if (!actors.has(actor.id)) actors.set(actor.id, actor);
-  }
-
-  const jobs = [];
-  for (const actor of actors.values()) {
-    const updates = [];
-    for (const item of actor.items ?? []) {
-      if (item.type !== "state") continue;
-      if (item.system?.active === false) continue;
-
-      const durationRounds = toRounds(item.system?.durationRounds, 0);
-      if (durationRounds <= 0) continue;
-
-      const startRemaining = toRounds(
-        item.system?.durationRemaining,
-        durationRounds,
-      );
-      const nextRemaining = Math.max(0, startRemaining - ticks);
-      const patch = {
-        _id: item.id,
-        "system.durationRemaining": nextRemaining,
-      };
-      if (nextRemaining <= 0) patch["system.active"] = false;
-      updates.push(patch);
-    }
-    if (updates.length) {
-      jobs.push(actor.updateEmbeddedDocuments("Item", updates));
-    }
-  }
-
-  if (jobs.length) await Promise.allSettled(jobs);
 };
 
 let stateDurationHooksRegistered = false;
@@ -165,37 +266,72 @@ export const registerStateDurationHooks = () => {
 
   Hooks.on("preCreateItem", (itemDoc, data) => {
     if (itemDoc?.type !== "state") return;
-    const incoming = data?.system ?? {};
-    const sourcePatch = {};
+    const incomingSystem = data?.system ?? {};
+    const incomingFlags = (data?.flags ?? {})[FLAG_SCOPE] ?? {};
 
     const active =
-      typeof incoming.active === "boolean" ? incoming.active : true;
-    const durationRounds = toRounds(incoming.durationRounds, 0);
-    const durationRemaining = active ? durationRounds : 0;
+      typeof incomingSystem.active === "boolean" ? incomingSystem.active : true;
 
-    if (typeof incoming.active !== "boolean") {
-      sourcePatch["system.active"] = active;
-    }
-    if (!hasOwn(incoming, "durationRounds")) {
-      sourcePatch["system.durationRounds"] = durationRounds;
-    }
-    if (!hasOwn(incoming, "durationRemaining")) {
-      sourcePatch["system.durationRemaining"] = durationRemaining;
-    }
+    const turnDuration = toTurns(
+      incomingFlags.turnDuration,
+      toTurns(incomingSystem.durationRounds, 0),
+    );
+    const remainingTurns = active
+      ? toTurns(incomingFlags.remainingTurns, turnDuration)
+      : 0;
+    const ownerActorId = String(
+      incomingFlags.ownerActorId ?? itemDoc?.parent?.id ?? "",
+    ).trim();
+    const activeCombat = game.combat?.started ? game.combat : null;
+    const appliedRound = Number.isFinite(Number(incomingFlags.appliedRound))
+      ? Number(incomingFlags.appliedRound)
+      : Number.isFinite(Number(activeCombat?.round))
+        ? Number(activeCombat.round)
+        : null;
+    const appliedTurn = Number.isFinite(Number(incomingFlags.appliedTurn))
+      ? Number(incomingFlags.appliedTurn)
+      : Number.isFinite(Number(activeCombat?.turn))
+        ? Number(activeCombat.turn)
+        : null;
+    const appliedActorId = String(
+      incomingFlags.appliedActorId ?? ownerActorId,
+    ).trim();
 
-    if (Object.keys(sourcePatch).length) itemDoc.updateSource(sourcePatch);
+    itemDoc.updateSource({
+      "system.active": active,
+      "system.durationRounds": turnDuration,
+      "system.durationRemaining": remainingTurns,
+      "flags.mySystem.turnDuration": turnDuration,
+      "flags.mySystem.remainingTurns": remainingTurns,
+      "flags.mySystem.ownerActorId": ownerActorId,
+      "flags.mySystem.appliedRound": appliedRound,
+      "flags.mySystem.appliedTurn": appliedTurn,
+      "flags.mySystem.appliedActorId": appliedActorId,
+    });
   });
 
   Hooks.on("preUpdateItem", (itemDoc, change) => {
-    normalizeStateSource(itemDoc, change);
+    const next = extractPatchTurnState(itemDoc, change);
+    if (!next) return;
+
+    change.system = change.system ?? {};
+    change.flags = change.flags ?? {};
+    change.flags[FLAG_SCOPE] = change.flags[FLAG_SCOPE] ?? {};
+
+    change.system.active = next.active;
+    change.system.durationRounds = next.turnDuration;
+    change.system.durationRemaining = next.remainingTurns;
+    change.flags[FLAG_SCOPE].turnDuration = next.turnDuration;
+    change.flags[FLAG_SCOPE].remainingTurns = next.remainingTurns;
+    change.flags[FLAG_SCOPE].ownerActorId =
+      next.ownerActorId || itemDoc?.actor?.id || "";
   });
 
   Hooks.on("createItem", async (item, options, userId) => {
     if (game.user.id !== userId) return;
     if (item.type !== "state") return;
-    const isActive = item.system?.active !== false;
-    const durationRemaining = toRounds(item.system?.durationRemaining, 0);
-    if (isActive && durationRemaining > 0) {
+    const timing = readTurnState(item);
+    if (timing.active && timing.remainingTurns > 0) {
       await createStateEffect(item);
     }
   });
@@ -206,22 +342,17 @@ export const registerStateDurationHooks = () => {
 
     const hasActiveChanged =
       hasOwn(change, "system.active") || hasOwn(change?.system ?? {}, "active");
-    const hasDurationRemainingChanged =
+    const hasDurationChanged =
       hasOwn(change, "system.durationRemaining") ||
-      hasOwn(change?.system ?? {}, "durationRemaining");
+      hasOwn(change?.system ?? {}, "durationRemaining") ||
+      hasOwn(change, `flags.${FLAG_SCOPE}.remainingTurns`) ||
+      hasOwn(change?.flags?.[FLAG_SCOPE] ?? {}, "remainingTurns");
     const hasImgChanged = hasOwn(change, "img");
     const hasNameChanged = hasOwn(change, "name");
 
-    const isActive = item.system?.active !== false;
-    const durationRemaining = toRounds(item.system?.durationRemaining, 0);
-
-    // If active status changed or duration expired, sync the icon.
-    if (
-      hasActiveChanged ||
-      (hasDurationRemainingChanged && durationRemaining <= 0)
-    ) {
-      if (isActive && durationRemaining > 0) {
-        // Only create if it doesn't already exist (idempotency)
+    const timing = readTurnState(item);
+    if (hasActiveChanged || (hasDurationChanged && timing.remainingTurns <= 0)) {
+      if (timing.active && timing.remainingTurns > 0) {
         const exists = item.actor?.effects?.some(
           (ef) => ef.origin && ef.origin.includes(item.uuid),
         );
@@ -229,16 +360,28 @@ export const registerStateDurationHooks = () => {
       } else {
         await deleteStateEffects(item);
       }
-    } else if (isActive && (hasImgChanged || hasNameChanged)) {
-      // Sync icon graphics or label if it changed while active.
+    } else if (timing.active && (hasImgChanged || hasNameChanged)) {
+      const effect = item.actor?.effects?.find(
+        (ef) => ef.origin && ef.origin.includes(item.uuid),
+      );
+      if (effect) {
+        const iconPath = item.img || "icons/svg/aura.svg";
+        await effect.update({
+          name: item.name,
+          label: item.name,
+          icon: iconPath,
+          img: iconPath,
+        });
+      }
+    } else if (timing.active && hasDurationChanged) {
       const effect = item.actor?.effects?.find(
         (ef) => ef.origin && ef.origin.includes(item.uuid),
       );
       if (effect) {
         await effect.update({
-          name: item.name,
-          label: item.name,
-          icon: item.img,
+          duration: {
+            turns: Math.max(1, timing.remainingTurns || timing.turnDuration || 1),
+          },
         });
       }
     }
@@ -252,34 +395,46 @@ export const registerStateDurationHooks = () => {
 
   Hooks.once("ready", () => {
     for (const combat of game.combats ?? []) {
-      observedCombatRounds.set(combat.id, toRounds(combat.round, 0));
+      observedCombatTurns.set(combat.id, getCombatSnapshot(combat));
     }
   });
 
   Hooks.on("createCombat", (combat) => {
-    observedCombatRounds.set(combat.id, toRounds(combat.round, 0));
+    observedCombatTurns.set(combat.id, getCombatSnapshot(combat));
   });
 
   Hooks.on("deleteCombat", (combat) => {
-    observedCombatRounds.delete(combat.id);
+    observedCombatTurns.delete(combat.id);
   });
 
   Hooks.on("updateCombat", async (combat, change) => {
     if (!isPrimaryGM()) return;
-    if (!hasOwn(change, "round")) return;
+    if (!combat) return;
 
-    const newRound = toRounds(combat.round ?? change.round, 0);
-    const prevRound = observedCombatRounds.get(combat.id);
-    observedCombatRounds.set(combat.id, newRound);
+    const hadTurnChange = hasOwn(change, "turn") || hasOwn(change, "round");
+    if (!hadTurnChange) return;
 
-    if (!Number.isFinite(prevRound)) return;
-    if (newRound <= prevRound) return;
+    const prev = observedCombatTurns.get(combat.id) ?? null;
+    const next = getCombatSnapshot(combat);
+    observedCombatTurns.set(combat.id, next);
 
-    // Start ticking from round 2 so round 1 does not immediately consume duration.
-    const baseline = Math.max(prevRound, 1);
-    const ticks = Math.max(0, newRound - baseline);
-    if (ticks <= 0) return;
+    // Do not consume durations when combat is not running.
+    if (combat.started === false) return;
 
-    await applyRoundTickToCombat(combat, ticks);
+    if (!prev?.combatantId) return;
+    if (prev.combatantId === next.combatantId) return;
+
+    const endedActorId = String(prev.actorId ?? "").trim();
+    if (!endedActorId) return;
+
+    const endedCombatant = combat.combatants?.get(prev.combatantId) ?? null;
+    const actor =
+      endedCombatant?.actor ?? game.actors?.get(endedActorId) ?? null;
+    if (!actor) return;
+
+    await tickActorOwnedStates(actor, endedActorId, {
+      endedRound: prev.round,
+      endedTurn: prev.turn,
+    });
   });
 };

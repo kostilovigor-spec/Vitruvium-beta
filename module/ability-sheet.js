@@ -395,7 +395,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
               </select>
             </label>
             <label class="v-contest-states__duration">
-              <span>Длит. (раунды)</span>
+              <span>Длит. (ходы)</span>
               <input
                 type="number"
                 name="system.contestStates.${idx}.durationRounds"

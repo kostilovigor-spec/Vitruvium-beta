@@ -47,15 +47,18 @@ export class VitruviumNPCSheet extends ActorSheet {
       .filter((i) => i.type === "state")
       .map((state) => {
         const active = state.system?.active !== false;
-        const durationRounds = toRounds(state.system?.durationRounds, 0);
-        const remainingDefault = active ? durationRounds : 0;
+        const turnDuration = toRounds(
+          state.flags?.mySystem?.turnDuration,
+          toRounds(state.system?.durationRounds, 0),
+        );
+        const remainingDefault = active ? turnDuration : 0;
         const durationRemaining = toRounds(
-          state.system?.durationRemaining,
-          remainingDefault,
+          state.flags?.mySystem?.remainingTurns,
+          toRounds(state.system?.durationRemaining, remainingDefault),
         );
         const durationLabel =
-          durationRounds > 0
-            ? `${durationRemaining}/${durationRounds} р.`
+          turnDuration > 0
+            ? `${durationRemaining}/${turnDuration} х.`
             : "без длительности";
         return {
           _id: state.id,
@@ -565,7 +568,19 @@ export class VitruviumNPCSheet extends ActorSheet {
       const id = ev.currentTarget.dataset.itemId;
       const item = this.actor.items.get(id);
       if (!item) return;
-      await item.update({ "system.active": !item.system?.active });
+      const next = !item.system?.active;
+      const turnDuration = toRounds(
+        item.flags?.mySystem?.turnDuration,
+        toRounds(item.system?.durationRounds, 0),
+      );
+      await item.update({
+        "system.active": next,
+        "system.durationRounds": turnDuration,
+        "system.durationRemaining": next ? turnDuration : 0,
+        "flags.mySystem.turnDuration": turnDuration,
+        "flags.mySystem.remainingTurns": next ? turnDuration : 0,
+        "flags.mySystem.ownerActorId": item.actor?.id ?? "",
+      });
     });
 
     // Edit item

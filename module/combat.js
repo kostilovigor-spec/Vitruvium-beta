@@ -1168,13 +1168,20 @@ export async function replaceStateFromTemplate(
   }
 
   const sourceSystem = foundry.utils.deepClone(templateDoc.system ?? {});
-  const duration =
+  const durationTurns =
     durationOverrideRounds === null || durationOverrideRounds === undefined
       ? Math.max(0, Math.round(num(sourceSystem.durationRounds, 0)))
       : Math.max(0, Math.round(num(durationOverrideRounds, 0)));
+  const activeCombat = game.combat?.started ? game.combat : null;
+  const appliedRound = Number.isFinite(Number(activeCombat?.round))
+    ? Number(activeCombat.round)
+    : null;
+  const appliedTurn = Number.isFinite(Number(activeCombat?.turn))
+    ? Number(activeCombat.turn)
+    : null;
   sourceSystem.active = true;
-  sourceSystem.durationRounds = duration;
-  sourceSystem.durationRemaining = duration;
+  sourceSystem.durationRounds = durationTurns;
+  sourceSystem.durationRemaining = durationTurns;
 
   const createdState = await defenderActor.createEmbeddedDocuments("Item", [
     {
@@ -1182,6 +1189,16 @@ export async function replaceStateFromTemplate(
       type: "state",
       img: templateDoc.img ?? "icons/svg/aura.svg",
       system: sourceSystem,
+      flags: {
+        mySystem: {
+          turnDuration: durationTurns,
+          remainingTurns: durationTurns,
+          ownerActorId: defenderActor.id,
+          appliedRound,
+          appliedTurn,
+          appliedActorId: defenderActor.id,
+        },
+      },
     },
   ]);
 

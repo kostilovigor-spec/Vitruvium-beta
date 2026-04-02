@@ -80,8 +80,8 @@
           {{#if vitruvium.isState}}
             <div class="v-item__flags">
               <div class="v-item__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
-              <div class="v-item__flag">Длительность: {{system.durationRounds}} раунд.</div>
-              <div class="v-item__flag">Осталось: {{system.durationRemaining}} раунд.</div>
+              <div class="v-item__flag">Длительность: {{system.durationRounds}} ход.</div>
+              <div class="v-item__flag">Осталось: {{system.durationRemaining}} ход.</div>
             </div>
 
             <div class="v-item__toggles">
@@ -91,7 +91,7 @@
               </label>
 
               <label class="v-item__stat">
-                <span>Длительность (раунды)</span>
+                <span>Длительность (ходы)</span>
                 <input
                   type="number"
                   name="system.durationRounds"

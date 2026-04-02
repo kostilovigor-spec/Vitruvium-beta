@@ -133,15 +133,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
       .filter((i) => i.type === "state")
       .map((state) => {
         const active = state.system?.active !== false;
-        const durationRounds = toRounds(state.system?.durationRounds, 0);
-        const remainingDefault = active ? durationRounds : 0;
-        const durationRemaining = toRounds(
-          state.system?.durationRemaining,
-          remainingDefault,
+        const turnDuration = toRounds(
+          state.flags?.mySystem?.turnDuration,
+          toRounds(state.system?.durationRounds, 0),
+        );
+        const remainingDefault = active ? turnDuration : 0;
+        const remainingTurns = toRounds(
+          state.flags?.mySystem?.remainingTurns,
+          toRounds(state.system?.durationRemaining, remainingDefault),
         );
         const durationLabel =
-          durationRounds > 0
-            ? `${durationRemaining}/${durationRounds} р.`
+          turnDuration > 0
+            ? `${remainingTurns}/${turnDuration} х.`
             : "без длительности";
         return {
           _id: state.id,
@@ -149,8 +152,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
           img: state.img,
           system: state.system ?? {},
           active,
-          durationRounds,
-          durationRemaining,
+          durationRounds: turnDuration,
+          durationRemaining: remainingTurns,
           durationLabel,
         };
       });
@@ -820,10 +823,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
       if (!item || item.type !== "state") return;
       const currentlyActive = item.system?.active !== false;
       const next = !currentlyActive;
-      const durationRounds = toRounds(item.system?.durationRounds, 0);
+      const turnDuration = toRounds(
+        item.flags?.mySystem?.turnDuration,
+        toRounds(item.system?.durationRounds, 0),
+      );
       await item.update({
         "system.active": next,
-        "system.durationRemaining": next ? durationRounds : 0,
+        "system.durationRounds": turnDuration,
+        "system.durationRemaining": next ? turnDuration : 0,
+        "flags.mySystem.turnDuration": turnDuration,
+        "flags.mySystem.remainingTurns": next ? turnDuration : 0,
+        "flags.mySystem.ownerActorId": item.actor?.id ?? "",
       });
     });
     // Open item sheet.

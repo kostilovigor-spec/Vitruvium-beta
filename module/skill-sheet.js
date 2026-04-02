@@ -23,18 +23,23 @@ export class VitruviumSkillSheet extends ItemSheet {
       return Math.max(0, Math.round(safe));
     };
     const stateActive = isState ? sys.active !== false : false;
-    const durationRounds = isState ? toRounds(sys.durationRounds, 0) : 0;
-    const durationRemaining = isState
+    const turnDuration = isState
       ? toRounds(
-          sys.durationRemaining,
-          stateActive ? durationRounds : 0
+          this.item?.flags?.mySystem?.turnDuration,
+          toRounds(sys.durationRounds, 0),
+        )
+      : 0;
+    const remainingTurns = isState
+      ? toRounds(
+          this.item?.flags?.mySystem?.remainingTurns,
+          toRounds(sys.durationRemaining, stateActive ? turnDuration : 0),
         )
       : 0;
     data.system = sys;
     if (isState) {
       data.system.active = stateActive;
-      data.system.durationRounds = durationRounds;
-      data.system.durationRemaining = durationRemaining;
+      data.system.durationRounds = turnDuration;
+      data.system.durationRemaining = remainingTurns;
     }
     const desc = String(sys.description ?? "");
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
@@ -161,11 +166,32 @@ export class VitruviumSkillSheet extends ItemSheet {
 
     // Immediate save for state-specific fields.
     html.find("input[name='system.active']").on("change", async (ev) => {
-      await this.item.update({ "system.active": ev.currentTarget.checked });
+      const next = ev.currentTarget.checked;
+      const turnDuration = Math.max(
+        0,
+        Math.round(
+          Number(this.item.flags?.mySystem?.turnDuration ?? this.item.system?.durationRounds) || 0,
+        ),
+      );
+      await this.item.update({
+        "system.active": next,
+        "system.durationRounds": turnDuration,
+        "system.durationRemaining": next ? turnDuration : 0,
+        "flags.mySystem.turnDuration": turnDuration,
+        "flags.mySystem.remainingTurns": next ? turnDuration : 0,
+        "flags.mySystem.ownerActorId": this.item.actor?.id ?? "",
+      });
     });
     html.find("input[name='system.durationRounds']").on("change", async (ev) => {
       const v = Math.max(0, Math.round(Number(ev.currentTarget.value) || 0));
-      await this.item.update({ "system.durationRounds": v });
+      const isActive = this.item.system?.active !== false;
+      await this.item.update({
+        "system.durationRounds": v,
+        "system.durationRemaining": isActive ? v : 0,
+        "flags.mySystem.turnDuration": v,
+        "flags.mySystem.remainingTurns": isActive ? v : 0,
+        "flags.mySystem.ownerActorId": this.item.actor?.id ?? "",
+      });
     });
 
     const renderEffectRow = (effect = {}) => {
