@@ -427,7 +427,10 @@ function hasBlockWeaponEquipped(actor) {
 }
 
 function getArmorTotal(actor, { includeShield = true } = {}) {
-  const base = num(actor.system?.attributes?.armor, 0);
+  const base = num(
+    actor.system?.attributes?.armor?.value ?? actor.system?.attributes?.armor,
+    0,
+  );
   let bonus = 0;
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
@@ -1544,7 +1547,7 @@ Hooks.once("ready", () => {
               defender,
               state.uuid,
               state.durationRounds,
-              defenderTokenUuid,
+              f.defenderTokenUuid,
             );
             applied = !!out.applied;
             stateName = out.stateName;
@@ -1580,65 +1583,66 @@ Hooks.once("ready", () => {
 /* ---------- Chat bindings ---------- */
 
 Hooks.on("renderChatMessageHTML", (message, html) => {
-  const f = readCombatFlags(message);
-  if (!f) return;
+  try {
+    const f = readCombatFlags(message);
+    if (!f) return;
 
-  // Apply healing or damage button (GM-only)
-  function bindApplyButtons(container) {
-    container.querySelectorAll("[data-action='vitruvium-apply-damage'], [data-action='vitruvium-apply-healing']")
-      .forEach((el) => {
-        const newEl = el.cloneNode(true);
-        el.parentNode.replaceChild(newEl, el);
-        
-        newEl.addEventListener("click", async (ev) => {
-          ev.preventDefault();
-          if (!game.user.isGM) return;
-          const btn = ev.currentTarget;
-          const isHealing = btn.getAttribute("data-action") === "vitruvium-apply-healing";
-          const containerDiv = btn.closest("div");
-          const tokenUuid = String(
-            btn.getAttribute("data-defender-token-uuid") ??
-              f.defenderTokenUuid ??
-              "",
-          );
-          const dmg = num(btn.getAttribute("data-damage") ?? f.damage, 0);
-          const multSelector = containerDiv.querySelector("[data-role='dmg-multiplier']");
-          const multiplier = num(multSelector?.value ?? 1, 1);
-          const finalVal = Math.floor(dmg * multiplier);
+    // Apply healing or damage button (GM-only)
+    function bindApplyButtons(container) {
+      container.querySelectorAll("[data-action='vitruvium-apply-damage'], [data-action='vitruvium-apply-healing']")
+        .forEach((el) => {
+          const newEl = el.cloneNode(true);
+          el.parentNode.replaceChild(newEl, el);
           
-          let targetActor = null;
-          if (tokenUuid) {
-            targetActor = await actorFromTokenUuid(tokenUuid);
-          } else {
-            const t = canvas.tokens.controlled[0];
-            targetActor = t?.actor;
-          }
-          
-          if (!targetActor) {
-            ui.notifications?.warn("Выберите токен для применения.");
-            return;
-          }
+          newEl.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            if (!game.user.isGM) return;
+            const btn = ev.currentTarget;
+            const isHealing = btn.getAttribute("data-action") === "vitruvium-apply-healing";
+            const containerDiv = btn.closest("div");
+            const tokenUuid = String(
+              btn.getAttribute("data-defender-token-uuid") ??
+                f.defenderTokenUuid ??
+                "",
+            );
+            const dmg = num(btn.getAttribute("data-damage") ?? f.damage, 0);
+            const multSelector = containerDiv?.querySelector("[data-role='dmg-multiplier']");
+            const multiplier = num(multSelector?.value ?? 1, 1);
+            const finalVal = Math.floor(dmg * multiplier);
+            
+            let targetActor = null;
+            if (tokenUuid) {
+              targetActor = await actorFromTokenUuid(tokenUuid);
+            } else {
+              const t = canvas.tokens.controlled[0];
+              targetActor = t?.actor;
+            }
+            
+            if (!targetActor) {
+              ui.notifications?.warn("Выберите токен для применения.");
+              return;
+            }
 
-          const curHp = num(targetActor.system?.attributes?.hp?.value, 0);
-          const maxHp = num(targetActor.system?.attributes?.hp?.max, 100);
-          
-          if (isHealing) {
-            await targetActor.update({
-              "system.attributes.hp.value": Math.min(maxHp, curHp + finalVal),
-            });
-            btn.textContent = `Лечение применено (+${finalVal}) ✓`;
-          } else {
-            await targetActor.update({
-              "system.attributes.hp.value": Math.max(0, curHp - finalVal),
-            });
-            btn.textContent = `Урон применён (-${finalVal}) ✓`;
-          }
-          
-          btn.disabled = true;
-          if (multSelector) multSelector.disabled = true;
+            const curHp = num(targetActor.system?.attributes?.hp?.value, 0);
+            const maxHp = num(targetActor.system?.attributes?.hp?.max, 100);
+            
+            if (isHealing) {
+              await targetActor.update({
+                "system.attributes.hp.value": Math.min(maxHp, curHp + finalVal),
+              });
+              btn.textContent = `Лечение применено (+${finalVal}) ✓`;
+            } else {
+              await targetActor.update({
+                "system.attributes.hp.value": Math.max(0, curHp - finalVal),
+              });
+              btn.textContent = `Урон применён (-${finalVal}) ✓`;
+            }
+            
+            btn.disabled = true;
+            if (multSelector) multSelector.disabled = true;
+          });
         });
-      });
-  }
+    }
 
   // Apply healing or damage button (GM-only)
   if (
@@ -2290,6 +2294,9 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
       }
     });
   });
+  } catch (e) {
+    console.error("Vitruvium | renderChatMessageHTML error", e);
+  }
 });
 /* ---------- Public API ---------- */
 

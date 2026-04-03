@@ -265,7 +265,16 @@ export class VitruviumCharacterSheet extends ActorSheet {
       gold: Math.max(0, Math.round(num(coins.gold, 0))),
     };
 
-    // Armor total from equipped items only.
+    // Effective armor: base attribute + equipped items + active effects.
+    const baseArmor = clamp(
+      num(
+        this.actor.system?.attributes?.armor?.value ??
+          this.actor.system?.attributes?.armor,
+        0,
+      ),
+      0,
+      999,
+    );
     let bonusArmor = 0;
     const clamp6 = (n) => Math.min(Math.max(Number(n ?? 0), 0), 6);
     for (const it of this.actor.items) {
@@ -274,7 +283,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
       if (!sysItem.equipped) continue;
       bonusArmor += clamp6(sysItem.armorBonus);
     }
-    data.vitruvium.armorTotal = bonusArmor;
+    data.vitruvium.armorTotal =
+      baseArmor + bonusArmor + getEffectValue(effectTotals, "armorValue");
 
     // Speed = base + movement + effects.
     const mv = getAttr("movement");

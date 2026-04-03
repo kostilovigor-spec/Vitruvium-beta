@@ -129,7 +129,11 @@ export function setupFloatingTextHook() {
 
     // Получаем сохранённое старое значение
     const savedData = _oldHpValues.get(actor.id);
-    const oldHp = savedData?.oldHp ?? 0;
+    // Если preUpdate не сработал на этом клиенте, локально не считаем разницу,
+    // иначе знак урона/лечения может быть неверным (например oldHp=0).
+    // Корректный diff придёт через socket-событие от клиента, который сделал update.
+    if (!savedData) return;
+    const oldHp = savedData.oldHp;
     const newHp = Number(hpChange);
     const diff = newHp - oldHp;
 
