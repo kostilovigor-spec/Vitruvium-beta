@@ -101,6 +101,15 @@
                   step="1"
                 />
               </label>
+
+              <label class="v-check">
+                <input
+                  type="checkbox"
+                  name="flags.mySystem.expireOnTurnStart"
+                  {{#if vitruvium.expireOnTurnStart}}checked{{/if}}
+                >
+                <span>Заканчивается в начале хода</span>
+              </label>
             </div>
           {{/if}}
         </div>

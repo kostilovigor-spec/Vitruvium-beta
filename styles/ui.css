@@ -320,16 +320,16 @@
 }
 .v-effects__row {
   display: grid;
-  grid-template-columns: 220px 150px 90px 28px;
+  grid-template-columns: 200px 140px 90px 28px;
   gap: 8px;
   align-items: center;
   justify-content: start;
 }
 .v-effects__key {
-  width: 220px;
+  width: 200px;
 }
 .v-effects__timing {
-  width: 150px;
+  width: 140px;
 }
 .v-effects__val {
   width: 90px;

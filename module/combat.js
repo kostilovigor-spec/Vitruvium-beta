@@ -1167,6 +1167,9 @@ export async function replaceStateFromTemplate(
   }
 
   const sourceSystem = foundry.utils.deepClone(templateDoc.system ?? {});
+  const sourceMyFlags = foundry.utils.deepClone(
+    templateDoc.flags?.mySystem ?? {},
+  );
   const durationTurns =
     durationOverrideRounds === null || durationOverrideRounds === undefined
       ? Math.max(0, Math.round(num(sourceSystem.durationRounds, 0)))
@@ -1190,6 +1193,7 @@ export async function replaceStateFromTemplate(
       system: sourceSystem,
       flags: {
         mySystem: {
+          ...sourceMyFlags,
           turnDuration: durationTurns,
           remainingTurns: durationTurns,
           ownerActorId: defenderActor.id,

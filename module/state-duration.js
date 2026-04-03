@@ -235,6 +235,26 @@ const collectOverTimeEntries = (stateItem, triggerTiming) => {
   });
 };
 
+const shouldExpireStateOnTurnStart = (stateItem) => {
+  if (!stateItem || stateItem.type !== "state") return false;
+  if (stateItem.system?.active === false) return false;
+  return stateItem.flags?.[FLAG_SCOPE]?.expireOnTurnStart === true;
+};
+
+const expireStatesOnTurnStartForActor = async (actor) => {
+  if (!actor?.id) return;
+  const toDelete = [];
+  for (const item of actor.items ?? []) {
+    if (item.type !== "state") continue;
+    if (shouldExpireStateOnTurnStart(item)) {
+      toDelete.push(item.id);
+    }
+  }
+  if (toDelete.length > 0) {
+    await actor.deleteEmbeddedDocuments("Item", toDelete);
+  }
+};
+
 const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
   if (!actor?.id) return;
   if (!OVERTIME_TIMINGS.has(triggerTiming)) return;
@@ -507,7 +527,8 @@ export const registerStateDurationHooks = () => {
     const startedActor =
       startedCombatant?.actor ?? game.actors?.get(startedActorId) ?? null;
     if (!startedActor) return;
-    // START OF TURN: apply DoT/HoT and do not reduce duration.
+    // START OF TURN: first remove states that expire at turn start, then apply DoT/HoT.
+    await expireStatesOnTurnStartForActor(startedActor);
     await applyOverTimeEffectsForActor(startedActor, "start");
   });
 };

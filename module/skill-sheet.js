@@ -65,6 +65,8 @@ export class VitruviumSkillSheet extends ItemSheet {
     data.vitruvium.overTimeEffectTypes = OVERTIME_EFFECT_TYPES;
     data.vitruvium.overTimeTriggerTimings = OVERTIME_TRIGGER_TIMINGS;
     data.vitruvium.isState = isState;
+    data.vitruvium.expireOnTurnStart =
+      this.item?.flags?.mySystem?.expireOnTurnStart === true;
 
     // Unique tab IDs per window instance to avoid conflicts when multiple sheets are open.
     const tabBase = `v-tabs-${this.appId}`;
@@ -146,7 +148,7 @@ export class VitruviumSkillSheet extends ItemSheet {
     const setMode = (isEdit) => {
       form.toggleClass("is-edit", isEdit);
       btn.toggleClass("is-active", isEdit);
-      btn.attr("title", isEdit ? "Р“РѕС‚РѕРІРѕ" : "Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ");
+      btn.attr("title", isEdit ? "Готово" : "Редактировать");
       if (isEdit) edit.trigger("focus");
     };
 
@@ -210,6 +212,13 @@ export class VitruviumSkillSheet extends ItemSheet {
         "flags.mySystem.ownerActorId": this.item.actor?.id ?? "",
       });
     });
+    html
+      .find("input[name='flags.mySystem.expireOnTurnStart']")
+      .on("change", async (ev) => {
+        await this.item.update({
+          "flags.mySystem.expireOnTurnStart": ev.currentTarget.checked,
+        });
+      });
 
     const overTimeKeySet = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
     const overTimeTimingSet = new Set(
