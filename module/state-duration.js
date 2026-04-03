@@ -1,3 +1,5 @@
+import { normalizeEffects } from "./effects.js";
+
 const hasOwn = (obj, key) =>
   Object.prototype.hasOwnProperty.call(obj ?? {}, key);
 
@@ -8,6 +10,8 @@ const toTurns = (value, fallback = 0) => {
 };
 
 const FLAG_SCOPE = "mySystem";
+const OVERTIME_TYPES = new Set(["dot", "hot"]);
+const OVERTIME_TIMINGS = new Set(["start", "end"]);
 
 const isPrimaryGM = () => {
   if (!game.user?.isGM) return false;
@@ -17,6 +21,11 @@ const isPrimaryGM = () => {
 };
 
 const observedCombatTurns = new Map();
+
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
 
 const getCombatSnapshot = (combat) => {
   const combatant = combat?.combatant ?? null;
@@ -210,6 +219,51 @@ async function deleteStateEffects(item) {
     );
   }
 }
+
+const collectOverTimeEntries = (stateItem, triggerTiming) => {
+  if (!stateItem || stateItem.type !== "state") return [];
+  if (stateItem.system?.active === false) return [];
+  const effects = normalizeEffects(stateItem.system?.effects, { keepZero: false });
+  return effects.filter((eff) => {
+    const type = String(eff?.type ?? "").trim();
+    const timing = String(eff?.triggerTiming ?? "").trim();
+    if (!OVERTIME_TYPES.has(type)) return false;
+    if (!OVERTIME_TIMINGS.has(timing)) return false;
+    if (timing !== triggerTiming) return false;
+    const value = toNumber(eff?.value, 0);
+    return Number.isFinite(value) && value > 0;
+  });
+};
+
+const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
+  if (!actor?.id) return;
+  if (!OVERTIME_TIMINGS.has(triggerTiming)) return;
+
+  let hpValue = toNumber(actor.system?.attributes?.hp?.value, 0);
+  const hpMax = Math.max(0, toNumber(actor.system?.attributes?.hp?.max, 100));
+  let changed = false;
+
+  for (const item of actor.items ?? []) {
+    if (item.type !== "state") continue;
+    const entries = collectOverTimeEntries(item, triggerTiming);
+    if (!entries.length) continue;
+    for (const eff of entries) {
+      const value = Math.max(0, Math.round(Math.abs(toNumber(eff.value, 0))));
+      if (!value) continue;
+      if (eff.type === "dot") {
+        hpValue = Math.max(0, hpValue - value);
+        changed = true;
+      } else if (eff.type === "hot") {
+        hpValue = Math.min(hpMax, hpValue + value);
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    await actor.update({ "system.attributes.hp.value": hpValue });
+  }
+};
 
 const tickActorOwnedStates = async (
   actor,
@@ -421,20 +475,39 @@ export const registerStateDurationHooks = () => {
     // Do not consume durations when combat is not running.
     if (combat.started === false) return;
 
-    if (!prev?.combatantId) return;
-    if (prev.combatantId === next.combatantId) return;
+    const turnBoundaryChanged =
+      !!prev &&
+      (prev.combatantId !== next.combatantId ||
+        prev.turn !== next.turn ||
+        prev.round !== next.round);
 
-    const endedActorId = String(prev.actorId ?? "").trim();
-    if (!endedActorId) return;
+    if (turnBoundaryChanged) {
+      const endedActorId = String(prev.actorId ?? "").trim();
+      if (endedActorId) {
+        const endedCombatant = combat.combatants?.get(prev.combatantId) ?? null;
+        const actor =
+          endedCombatant?.actor ?? game.actors?.get(endedActorId) ?? null;
+        if (actor) {
+          // END OF TURN: apply DoT/HoT first.
+          await applyOverTimeEffectsForActor(actor, "end");
+          // Then reduce state duration with existing logic.
+          await tickActorOwnedStates(actor, endedActorId, {
+            endedRound: prev.round,
+            endedTurn: prev.turn,
+          });
+        }
+      }
+    }
 
-    const endedCombatant = combat.combatants?.get(prev.combatantId) ?? null;
-    const actor =
-      endedCombatant?.actor ?? game.actors?.get(endedActorId) ?? null;
-    if (!actor) return;
-
-    await tickActorOwnedStates(actor, endedActorId, {
-      endedRound: prev.round,
-      endedTurn: prev.turn,
-    });
+    const startedActorId = String(next.actorId ?? "").trim();
+    if (!startedActorId) return;
+    const startedCombatant = next.combatantId
+      ? combat.combatants?.get(next.combatantId) ?? null
+      : null;
+    const startedActor =
+      startedCombatant?.actor ?? game.actors?.get(startedActorId) ?? null;
+    if (!startedActor) return;
+    // START OF TURN: apply DoT/HoT and do not reduce duration.
+    await applyOverTimeEffectsForActor(startedActor, "start");
   });
 };

@@ -1,4 +1,9 @@
-﻿import { EFFECT_TARGETS, normalizeEffects } from "./effects.js";
+﻿import {
+  EFFECT_TARGETS,
+  OVERTIME_EFFECT_TYPES,
+  OVERTIME_TRIGGER_TIMINGS,
+  normalizeEffects,
+} from "./effects.js";
 
 // Item sheet: inventory items and equipment.
 export class VitruviumItemSheet extends ItemSheet {
@@ -60,8 +65,20 @@ export class VitruviumItemSheet extends ItemSheet {
     }));
     data.vitruvium.attackAttrDefault = defaultAttr;
     data.vitruvium.descriptionHTML = safe;
+    const overTimeKeys = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
     data.vitruvium.effectTargets = EFFECT_TARGETS;
-    data.vitruvium.effects = normalizeEffects(sys.effects, { keepZero: true });
+    data.vitruvium.effects = normalizeEffects(sys.effects, {
+      keepZero: true,
+    }).map((eff) => ({
+      ...eff,
+      effectKey: overTimeKeys.has(String(eff.type ?? "").trim())
+        ? String(eff.type ?? "").trim()
+        : String(eff.key ?? ""),
+      isOverTime: overTimeKeys.has(String(eff.type ?? "").trim()),
+      triggerTiming: String(eff.triggerTiming ?? "end"),
+    }));
+    data.vitruvium.overTimeEffectTypes = OVERTIME_EFFECT_TYPES;
+    data.vitruvium.overTimeTriggerTimings = OVERTIME_TRIGGER_TIMINGS;
 
     // Unique tab IDs per window instance to avoid conflicts when multiple sheets are open.
     const tabBase = `v-tabs-${this.appId}`;
@@ -243,9 +260,37 @@ export class VitruviumItemSheet extends ItemSheet {
     }
 
     // Effects table: row renderer.
+    const overTimeKeySet = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
+    const overTimeTimingSet = new Set(
+      OVERTIME_TRIGGER_TIMINGS.map((t) => t.key),
+    );
+    const syncOverTimeRow = ($row) => {
+      const key = String($row.find(".v-effects__key").val() ?? "");
+      const isTimed = overTimeKeySet.has(key);
+      const $timing = $row.find(".v-effects__timing");
+      const $value = $row.find(".v-effects__val");
+      $timing.toggle(isTimed);
+      if (isTimed) {
+        const cur = num($value.val(), 0);
+        $value.val(Math.max(0, Math.round(Math.abs(cur))));
+      }
+    };
     const renderEffectRow = (effect = {}) => {
-      const key = EFFECT_TARGETS.find((t) => t.key === effect.key)?.key;
-      const value = Number.isFinite(effect.value) ? effect.value : 0;
+      const typeKey = String(effect.type ?? "").trim();
+      const isOverTime = overTimeKeySet.has(typeKey);
+      const key = isOverTime
+        ? typeKey
+        : EFFECT_TARGETS.find((t) => t.key === effect.key)?.key ??
+          EFFECT_TARGETS[0]?.key;
+      const rawValue = Number.isFinite(effect.value) ? Number(effect.value) : 0;
+      const value = isOverTime
+        ? Math.max(0, Math.round(Math.abs(rawValue)))
+        : rawValue;
+      const triggerTiming = overTimeTimingSet.has(
+        String(effect.triggerTiming ?? "").trim(),
+      )
+        ? String(effect.triggerTiming).trim()
+        : "end";
 
       // Группируем эффекты по категориям
       const groupedOptions = {};
@@ -273,10 +318,21 @@ export class VitruviumItemSheet extends ItemSheet {
           options += `</optgroup>`;
         }
       }
+      for (const opt of OVERTIME_EFFECT_TYPES) {
+        const selected = opt.key === key ? " selected" : "";
+        options += `<option value="${opt.key}"${selected}>${opt.label}</option>`;
+      }
+      const timingOptions = OVERTIME_TRIGGER_TIMINGS.map((opt) => {
+        const selected = opt.key === triggerTiming ? " selected" : "";
+        return `<option value="${opt.key}"${selected}>${opt.label}</option>`;
+      }).join("");
 
       return `
         <div class="v-effects__row">
           <select class="v-effects__key">${options}</select>
+          <select class="v-effects__timing" ${
+            isOverTime ? "" : "style='display:none;'"
+          }>${timingOptions}</select>
           <input type="number" class="v-effects__val" value="${value}" step="1" />
           <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
         </div>
@@ -290,6 +346,18 @@ export class VitruviumItemSheet extends ItemSheet {
         const $row = $(row);
         const key = String($row.find(".v-effects__key").val() ?? "");
         const value = num($row.find(".v-effects__val").val(), 0);
+        if (overTimeKeySet.has(key)) {
+          const triggerRaw = String(
+            $row.find(".v-effects__timing").val() ?? "end",
+          ).trim();
+          const triggerTiming = overTimeTimingSet.has(triggerRaw)
+            ? triggerRaw
+            : "end";
+          const timedValue = Math.max(0, Math.round(Math.abs(value)));
+          if (!Number.isFinite(timedValue) || timedValue <= 0) return;
+          next.push({ type: key, triggerTiming, value: timedValue });
+          return;
+        }
         if (!EFFECT_TARGETS.find((t) => t.key === key)) return;
         if (!Number.isFinite(value) || value === 0) return;
         next.push({ key, value });
@@ -297,10 +365,23 @@ export class VitruviumItemSheet extends ItemSheet {
       await this.item.update({ "system.effects": next });
     };
 
+    const existingEffects = normalizeEffects(this.item.system?.effects, {
+      keepZero: true,
+    });
+    html
+      .find(".v-effects__rows")
+      .html(
+        existingEffects.length
+          ? existingEffects.map((eff) => renderEffectRow(eff)).join("")
+          : renderEffectRow(),
+      );
+
     // Add effect row.
     html.on("click", "[data-action='add-effect']", (ev) => {
       ev.preventDefault();
-      html.find(".v-effects__rows").append(renderEffectRow());
+      const $rows = html.find(".v-effects__rows");
+      $rows.append(renderEffectRow());
+      syncOverTimeRow($rows.find(".v-effects__row").last());
     });
 
     // Remove effect row.
@@ -308,13 +389,30 @@ export class VitruviumItemSheet extends ItemSheet {
       ev.preventDefault();
       $(ev.currentTarget).closest(".v-effects__row").remove();
       if (!html.find(".v-effects__row").length) {
-        html.find(".v-effects__rows").append(renderEffectRow());
+        const $rows = html.find(".v-effects__rows");
+        $rows.append(renderEffectRow());
+        syncOverTimeRow($rows.find(".v-effects__row").last());
       }
       updateEffects();
     });
 
-    html.on("change", ".v-effects__key, .v-effects__val", () => {
+    html.on("change", ".v-effects__key, .v-effects__val, .v-effects__timing", (ev) => {
+      if ($(ev.currentTarget).hasClass("v-effects__key")) {
+        syncOverTimeRow($(ev.currentTarget).closest(".v-effects__row"));
+      }
+      if ($(ev.currentTarget).hasClass("v-effects__val")) {
+        const $row = $(ev.currentTarget).closest(".v-effects__row");
+        const key = String($row.find(".v-effects__key").val() ?? "");
+        if (overTimeKeySet.has(key)) {
+          const cur = num($(ev.currentTarget).val(), 0);
+          $(ev.currentTarget).val(Math.max(0, Math.round(Math.abs(cur))));
+        }
+      }
       updateEffects();
+    });
+    html.find(".v-effects__row").each((_, row) => {
+      syncOverTimeRow($(row));
     });
   }
 }
+

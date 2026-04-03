@@ -126,6 +126,16 @@ export const EFFECT_TARGETS = [
   { key: "speed", label: "Скорость", group: "characteristics" },
 ];
 
+export const OVERTIME_EFFECT_TYPES = [
+  { key: "dot", label: "Damage over Time" },
+  { key: "hot", label: "Heal over Time" },
+];
+
+export const OVERTIME_TRIGGER_TIMINGS = [
+  { key: "start", label: "Start of Turn" },
+  { key: "end", label: "End of Turn" },
+];
+
 const LEGACY_EFFECT_KEY_MAP = {
   rollAdv: { key: "rollLuck", mul: 1 },
   rollDis: { key: "rollLuck", mul: -1 },
@@ -152,6 +162,10 @@ const LEGACY_EFFECT_KEY_MAP = {
 };
 
 const EFFECT_KEYS = new Set(EFFECT_TARGETS.map((t) => t.key));
+const OVERTIME_TYPE_KEYS = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
+const OVERTIME_TIMING_KEYS = new Set(
+  OVERTIME_TRIGGER_TIMINGS.map((t) => t.key),
+);
 const ROLL_ATTRIBUTE_KEYS = [
   "condition",
   "attention",
@@ -186,9 +200,24 @@ const splitLuck = (value) => {
 export const normalizeEffects = (raw, { keepZero = false } = {}) => {
   if (!Array.isArray(raw)) return [];
   const byKey = new Map();
+  const overTime = [];
 
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
+
+    const overType = String(entry.type ?? "").trim();
+    if (OVERTIME_TYPE_KEYS.has(overType)) {
+      const timingRaw = String(entry.triggerTiming ?? "").trim();
+      const triggerTiming = OVERTIME_TIMING_KEYS.has(timingRaw)
+        ? timingRaw
+        : "end";
+      const value = Math.abs(numValue(entry.value, 0));
+      if (!Number.isFinite(value)) continue;
+      if (!keepZero && value === 0) continue;
+      overTime.push({ type: overType, triggerTiming, value });
+      continue;
+    }
+
     let key = String(entry.key ?? "").trim();
     let value = numValue(entry.value, 0);
     if (!Number.isFinite(value)) continue;
@@ -210,7 +239,7 @@ export const normalizeEffects = (raw, { keepZero = false } = {}) => {
     if (!keepZero && value === 0) continue;
     out.push({ key: target.key, value });
   }
-  return out;
+  return [...out, ...overTime];
 };
 
 export const collectEffectTotals = (actor) => {
@@ -234,7 +263,10 @@ export const collectEffectTotals = (actor) => {
     }
 
     const effects = normalizeEffects(item.system?.effects);
-    for (const eff of effects) add(eff.key, eff.value);
+    for (const eff of effects) {
+      if (!eff?.key) continue;
+      add(eff.key, eff.value);
+    }
   }
 
   return totals;
@@ -310,10 +342,20 @@ export const getAttackRollModifiers = (totals, { attrKey = null } = {}) => {
 };
 
 const renderEffectRow = (effect = {}) => {
-  const key = EFFECT_TARGETS.has(effect.key)
-    ? effect.key
-    : EFFECT_TARGETS[0].key;
-  const value = Number.isFinite(effect.value) ? effect.value : 0;
+  const typeKey = String(effect.type ?? "").trim();
+  const isOverTime = OVERTIME_TYPE_KEYS.has(typeKey);
+  const key = isOverTime
+    ? typeKey
+    : EFFECT_TARGETS.find((t) => t.key === effect.key)?.key ??
+      EFFECT_TARGETS[0].key;
+  const rawValue = Number.isFinite(effect.value) ? Number(effect.value) : 0;
+  const value = isOverTime
+    ? Math.max(0, Math.round(Math.abs(rawValue)))
+    : rawValue;
+  const triggerTimingRaw = String(effect.triggerTiming ?? "").trim();
+  const triggerTiming = OVERTIME_TIMING_KEYS.has(triggerTimingRaw)
+    ? triggerTimingRaw
+    : "end";
 
   // Группируем эффекты по категориям
   const groupedOptions = {};
@@ -338,9 +380,24 @@ const renderEffectRow = (effect = {}) => {
     }
   }
 
+  options += `<optgroup label="over_time">`;
+  for (const opt of OVERTIME_EFFECT_TYPES) {
+    const selected = opt.key === key ? " selected" : "";
+    options += `<option value="${opt.key}"${selected}>${opt.label}</option>`;
+  }
+  options += `</optgroup>`;
+
+  const timingOptions = OVERTIME_TRIGGER_TIMINGS.map((opt) => {
+    const selected = opt.key === triggerTiming ? " selected" : "";
+    return `<option value="${opt.key}"${selected}>${opt.label}</option>`;
+  }).join("");
+
   return `
     <div class="v-effects__row">
       <select class="v-effects__key">${options}</select>
+      <select class="v-effects__timing" ${
+        isOverTime ? "" : "style='display:none;'"
+      }>${timingOptions}</select>
       <input type="number" class="v-effects__val" value="${value}" step="1" />
       <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
     </div>
@@ -381,6 +438,21 @@ export const openEffectsDialog = async (item) => {
               const $row = $(row);
               const key = String($row.find(".v-effects__key").val() ?? "");
               const value = numValue($row.find(".v-effects__val").val(), 0);
+              if (OVERTIME_TYPE_KEYS.has(key)) {
+                const triggerTimingRaw = String(
+                  $row.find(".v-effects__timing").val() ?? "end",
+                ).trim();
+                const triggerTiming = OVERTIME_TIMING_KEYS.has(triggerTimingRaw)
+                  ? triggerTimingRaw
+                  : "end";
+                const timedVal = Math.max(
+                  0,
+                  Math.round(Math.abs(numValue(value, 0))),
+                );
+                if (!Number.isFinite(timedVal) || timedVal <= 0) return;
+                next.push({ type: key, triggerTiming, value: timedVal });
+                return;
+              }
               if (!EFFECT_KEYS.has(key)) return;
               if (!Number.isFinite(value) || value === 0) return;
               next.push({ key, value });
@@ -403,9 +475,24 @@ export const openEffectsDialog = async (item) => {
 
   Hooks.once("renderDialog", (app, html) => {
     if (app !== dialog) return;
+    const syncTimedRows = (root) => {
+      root.find(".v-effects__row").each((_, row) => {
+        const $row = $(row);
+        const key = String($row.find(".v-effects__key").val() ?? "");
+        const isTimed = OVERTIME_TYPE_KEYS.has(key);
+        const $timing = $row.find(".v-effects__timing");
+        const $value = $row.find(".v-effects__val");
+        $timing.toggle(isTimed);
+        if (isTimed) {
+          const cur = numValue($value.val(), 0);
+          $value.val(Math.max(0, Math.round(Math.abs(cur))));
+        }
+      });
+    };
     html.on("click", ".v-effects__add", (ev) => {
       ev.preventDefault();
       html.find(".v-effects__rows").append(renderEffectRow());
+      syncTimedRows(html);
     });
     html.on("click", ".v-effects__remove", (ev) => {
       ev.preventDefault();
@@ -413,7 +500,19 @@ export const openEffectsDialog = async (item) => {
       if (!html.find(".v-effects__row").length) {
         html.find(".v-effects__rows").append(renderEffectRow());
       }
+      syncTimedRows(html);
     });
+    html.on("change", ".v-effects__key", () => {
+      syncTimedRows(html);
+    });
+    html.on("change", ".v-effects__val", (ev) => {
+      const $row = $(ev.currentTarget).closest(".v-effects__row");
+      const key = String($row.find(".v-effects__key").val() ?? "");
+      if (!OVERTIME_TYPE_KEYS.has(key)) return;
+      const val = numValue($(ev.currentTarget).val(), 0);
+      $(ev.currentTarget).val(Math.max(0, Math.round(Math.abs(val))));
+    });
+    syncTimedRows(html);
   });
 
   dialog.render(true);

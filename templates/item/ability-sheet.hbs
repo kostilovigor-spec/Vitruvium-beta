@@ -192,7 +192,15 @@
                 <div class="v-effects__row">
                   <select class="v-effects__key">
                     {{#each ../vitruvium.effectTargets as |opt|}}
-                      <option value="{{opt.key}}" {{#if (eq opt.key eff.key)}}selected{{/if}}>{{opt.label}}</option>
+                      <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
+                    {{/each}}
+                    {{#each ../vitruvium.overTimeEffectTypes as |opt|}}
+                      <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
+                    {{/each}}
+                  </select>
+                  <select class="v-effects__timing" {{#unless eff.isOverTime}}style="display:none;"{{/unless}}>
+                    {{#each ../vitruvium.overTimeTriggerTimings as |timing|}}
+                      <option value="{{timing.key}}" {{#if (eq timing.key eff.triggerTiming)}}selected{{/if}}>{{timing.label}}</option>
                     {{/each}}
                   </select>
                   <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
@@ -204,6 +212,14 @@
                 <select class="v-effects__key">
                   {{#each vitruvium.effectTargets as |opt|}}
                     <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
+                  {{/each}}
+                  {{#each vitruvium.overTimeEffectTypes as |opt|}}
+                    <option value="{{opt.key}}">{{opt.label}}</option>
+                  {{/each}}
+                </select>
+                <select class="v-effects__timing" style="display:none;">
+                  {{#each vitruvium.overTimeTriggerTimings as |timing|}}
+                    <option value="{{timing.key}}" {{#if @first}}selected{{/if}}>{{timing.label}}</option>
                   {{/each}}
                 </select>
                 <input type="number" class="v-effects__val" value="0" step="1" />

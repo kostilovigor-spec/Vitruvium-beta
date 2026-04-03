@@ -11,7 +11,6 @@ import {
 } from "./effects.js";
 import { getStateTemplateByUuid } from "./state-library.js";
 import { chatVisibilityData } from "./chat-visibility.js";
-import { showFloatingText } from "./floating-text.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card with "Применить урон".
@@ -1204,14 +1203,6 @@ export async function replaceStateFromTemplate(
 
   // Note: The createItem hook in state-duration.js will automatically create the icon.
 
-  // Показываем всплывающий текст с названием состояния
-  if (defenderTokenUuid && canvas) {
-    const tokenDoc = await fromUuid(defenderTokenUuid);
-    if (tokenDoc?.object) {
-      showFloatingText(tokenDoc.object, 0, templateDoc.name);
-    }
-  }
-
   return { applied: true, stateName: templateDoc.name };
 }
 
@@ -2241,10 +2232,6 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       );
       if (out.applied) {
         appliedSelfStates.push(out.stateName ?? "Состояние");
-        // Показываем всплывающий текст, если есть токен
-        if (attackerToken && canvas) {
-          showFloatingText(attackerToken, 0, out.stateName ?? "Состояние");
-        }
       }
     }
 
