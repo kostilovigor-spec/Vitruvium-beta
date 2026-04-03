@@ -318,7 +318,6 @@ export const registerVitruviumTests = () => {
       }
       ui.notifications?.error(title);
     } else {
-      console.log(title);
       ui.notifications?.info(title);
     }
 

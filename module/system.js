@@ -17,7 +17,7 @@ import { setupFloatingTextHook, showFloatingText } from "./floating-text.js";
 import { registerChatDropHook } from "./chat-drop.js";
 
 Hooks.once("init", () => {
-  console.log("Vitruvium | Initializing system");
+
 
   // Migration: convert old NPC attribute format to new format
   Hooks.on("ready", async () => {
@@ -77,9 +77,7 @@ Hooks.once("init", () => {
     }
 
     if (updates.length > 0) {
-      console.log(`Vitruvium | Migrating ${updates.length} NPC actors`);
       await Promise.all(updates);
-      console.log("Vitruvium | Migration complete");
     }
   });
 

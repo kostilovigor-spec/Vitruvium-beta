@@ -2144,15 +2144,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           return;
         }
 
-        console.debug("Vitruvium | contest click", {
-          messageId: message.id,
-          attackerActorId: attacker.id,
-          defenderActorId: defender.id,
-          defenderTokenUuid,
-          contestCasterAttr: flags.contestCasterAttr,
-          contestTargetAttr: flags.contestTargetAttr,
-          contestStatesCount: contestStates.length,
-        });
+
 
         if (!userCanDefend(defender)) {
           ui.notifications?.warn(
@@ -2195,18 +2187,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             ? globalMods.fullMode
             : choice.fullMode;
 
-        console.debug("Vitruvium | contest defender roll input", {
-          defender: defender.name,
-          attrKey: choice.attrKey,
-          baseAttr,
-          attrDice: attrMods.dice,
-          globalDice: globalMods.dice,
-          extraDice: num(choice.extraDice, 0),
-          poolVal,
-          totalLuck,
-          totalUnluck,
-          finalFullMode,
-        });
+
 
         const defRoll = await rollPool(poolVal, {
           luck: totalLuck,
@@ -2246,14 +2227,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           }
         }
 
-        console.debug("Vitruvium | contest outcome", {
-          attacker: attacker.name,
-          defender: defender.name,
-          casterSuccessesContest,
-          targetSuccessesContest,
-          appliedContest,
-          appliedState: stateNameContest,
-        });
+
 
         const contestCard = resolveContestCardHTML({
           attackerName: attacker.name,
@@ -2567,14 +2541,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           1,
           20,
         );
-        console.debug("Vitruvium | contest caster roll input", {
-          attacker: attackerActor?.name,
-          attrKey: contestCasterAttr,
-          baseAttr: contestBaseAttr,
-          attrDice: contestAttrMods.dice,
-          globalDice: globalMods.dice,
-          contestPool,
-        });
+
         casterContestRoll = await rollPool(contestPool, {
           luck: globalMods.adv + contestAttrMods.adv,
           unluck: globalMods.dis + contestAttrMods.dis,

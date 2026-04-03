@@ -346,7 +346,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     // Toggle edit mode - use event delegation to avoid issues with re-render.
     html.on("click", "[data-action='toggle-desc']", async (ev) => {
       ev.preventDefault();
-      console.log("Vitruvium | Toggle edit clicked", this._editing);
+
       this._editing = !this._editing;
       setMode(this._editing);
       if (!this._editing) {
