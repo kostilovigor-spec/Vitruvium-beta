@@ -224,6 +224,13 @@ export const registerVitruviumTests = () => {
       assertEqual(one.value, 1, "legacy should fold into signed key");
     });
 
+    await run("effects.normalizeEffects.legacyEffectKeyField", async () => {
+      const out = normalizeEffects([{ effectKey: "speed", value: 2 }]);
+      const one = out.find((e) => e.key === "speed");
+      assert(one, "speed should exist from effectKey");
+      assertEqual(one.value, 2, "effectKey value should be used");
+    });
+
     await run("effects.getLuckModifiers.signedNegativeIsDis", async () => {
       const out = getLuckModifiers(
         { dodgeLuck: -2 },
@@ -280,6 +287,22 @@ export const registerVitruviumTests = () => {
       };
       const totals = collectEffectTotals(actor);
       assertEqual(totals.speed, 3, "inactive states should not contribute");
+    });
+
+    await run("effects.collectEffectTotals.skillAlwaysActive", async () => {
+      const actor = {
+        items: [
+          {
+            type: "skill",
+            system: {
+              active: false,
+              effects: [{ key: "combatRollDice", value: 1 }],
+            },
+          },
+        ],
+      };
+      const totals = collectEffectTotals(actor);
+      assertEqual(totals.combatRollDice, 1, "skill effects should always apply");
     });
 
     const passed = results.filter((r) => r.ok).length;

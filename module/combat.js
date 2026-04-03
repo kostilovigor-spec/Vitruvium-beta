@@ -120,6 +120,35 @@ function esc(s) {
     .replace(/'/g, "&#039;");
 }
 
+const FLAG_SCOPE_PRIMARY = "Vitruvium";
+const FLAG_SCOPE_LEGACY = "vitruvium";
+const SOCKET_EVENT_GM_APPLY = "vitruvium-gm-apply-message";
+const SOCKET_NAMESPACE_PRIMARY = () => `system.${game.system.id}`;
+const SOCKET_NAMESPACE_LEGACY = "system.vitruvium";
+
+function readCombatFlags(doc) {
+  return (
+    doc?.flags?.[FLAG_SCOPE_PRIMARY] ??
+    doc?.flags?.[FLAG_SCOPE_LEGACY] ??
+    null
+  );
+}
+
+function buildCombatFlags(payload) {
+  return {
+    [FLAG_SCOPE_PRIMARY]: payload,
+    [FLAG_SCOPE_LEGACY]: payload,
+  };
+}
+
+function emitSocketToGm(payload) {
+  const nsPrimary = SOCKET_NAMESPACE_PRIMARY();
+  game.socket?.emit?.(nsPrimary, payload);
+  if (nsPrimary !== SOCKET_NAMESPACE_LEGACY) {
+    game.socket?.emit?.(SOCKET_NAMESPACE_LEGACY, payload);
+  }
+}
+
 function normalizeDefenseTarget(target) {
   const defenderTokenUuid = String(target?.defenderTokenUuid ?? "").trim();
   if (!defenderTokenUuid) return null;
@@ -765,19 +794,7 @@ function renderDefenseTargets({
       const norm = normalizeDefenseTarget(target);
       if (!norm) return "";
       const isResolved = resolved.has(norm.defenderTokenUuid);
-      const resData = resolvedResults.find(r => r.uuid === norm.defenderTokenUuid);
-      
-      let statusHtml = isResolved ? resolvedHint : hint;
-      if (game.user.isGM) {
-        const dmg = isResolved && resData ? resData.damage : predictedDamage;
-        const crit = isResolved && resData ? resData.crit : false;
-        statusHtml = renderGmApplyButtons({
-          defenderTokenUuid: norm.defenderTokenUuid,
-          damage: dmg,
-          crit: crit,
-          isHealing: false
-        }).replace(/Применить урон/g, `Применить урон (${dmg})`);
-      }
+      const statusHtml = isResolved ? resolvedHint : hint;
 
       return `
       <div data-defender-token-uuid="${esc(
@@ -861,6 +878,115 @@ function renderGmApplyButtons({ defenderTokenUuid, damage, isHealing = false, cr
   `;
 }
 
+async function cleanupPredictedGmApplyMessages({
+  attackMessageId = "",
+  defenderTokenUuid = "",
+  isHealing = false,
+}) {
+  if (!game.user?.isGM) return;
+  const aid = String(attackMessageId ?? "").trim();
+  const duid = String(defenderTokenUuid ?? "").trim();
+  if (!aid || !duid) return;
+  for (const msg of game.messages ?? []) {
+    const mf = readCombatFlags(msg);
+    if (!mf) continue;
+    if (mf.applyPhase !== "predicted") continue;
+    if (String(mf.attackMessageId ?? "") !== aid) continue;
+    if (String(mf.defenderTokenUuid ?? "") !== duid) continue;
+    if (!!mf.isHealing !== !!isHealing) continue;
+    try {
+      await msg.delete();
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+}
+
+async function createGmApplyMessage({
+  title = "Бросок ведущему",
+  subtitle = "",
+  rows = [],
+  attackMessageId = null,
+  applyPhase = "manual",
+}) {
+  const cleanRows = (Array.isArray(rows) ? rows : []).filter(
+    (r) =>
+      r &&
+      Number.isFinite(Number(r.damage ?? 0)) &&
+      Number(r.damage ?? 0) >= 0,
+  );
+  if (!cleanRows.length) return;
+
+  if (!game.user?.isGM) {
+    const requestId =
+      foundry?.utils?.randomID?.() ??
+      `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    emitSocketToGm({
+      type: SOCKET_EVENT_GM_APPLY,
+      requestId,
+      payload: { title, subtitle, rows: cleanRows, attackMessageId, applyPhase },
+    });
+    return;
+  }
+
+  for (const row of cleanRows) {
+    const defenderTokenUuid = String(row.defenderTokenUuid ?? "").trim();
+    const isHealing = !!row.isHealing;
+    const kind = isHealing ? "applyHealing" : "applyDamage";
+    const dmg = Math.max(0, Math.floor(num(row.damage, 0)));
+    const prefix = row.label ? `<div class="v-sub"><b>${esc(row.label)}</b></div>` : "";
+
+    if (attackMessageId && applyPhase === "resolved") {
+      for (const msg of game.messages ?? []) {
+        const mf = readCombatFlags(msg);
+        if (!mf) continue;
+        if (mf.applyPhase !== "predicted") continue;
+        if (String(mf.attackMessageId ?? "") !== String(attackMessageId)) continue;
+        if (String(mf.defenderTokenUuid ?? "") !== defenderTokenUuid) continue;
+        if (!!mf.isHealing !== isHealing) continue;
+        try {
+          await msg.delete();
+        } catch (_e) {
+          /* ignore */
+        }
+      }
+    }
+
+    const content = `
+      <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
+        <div class="v-head">
+          <div class="v-title">${esc(title)}</div>
+          ${subtitle ? `<div class="v-sub">${esc(subtitle)}</div>` : ""}
+        </div>
+        <div class="v-actions" style="display:grid;gap:10px;">
+          <div class="v-actions" style="display:grid;gap:6px;">
+            ${prefix}
+            ${renderGmApplyButtons({
+              defenderTokenUuid,
+              damage: dmg,
+              isHealing,
+              crit: !!row.crit,
+            })}
+          </div>
+        </div>
+      </div>
+    `;
+
+    await ChatMessage.create({
+      ...chatVisibilityData({ gmOnly: true }),
+      content,
+      flags: buildCombatFlags({
+        kind,
+        defenderTokenUuid,
+        damage: dmg,
+        isHealing,
+        attackMessageId: attackMessageId ? String(attackMessageId) : "",
+        applyPhase,
+      }),
+    });
+  }
+}
+
 function abilityAttackCard({
   attackerName,
   defenderLabel,
@@ -937,27 +1063,6 @@ function abilityAttackCard({
     headerBits.push(withSuccesses);
   }
   
-  let gmActions = "";
-  const targets = (defenseTargets.length > 0) ? defenseTargets : [{ defenderTokenUuid: "" }];
-  for (const t of targets) {
-    const targetPrefix = (targets.length > 1 && t.defenderName) ? `${t.defenderName}: ` : "";
-    if (hasDamage && !isAttack) {
-      gmActions += renderGmApplyButtons({ 
-        defenderTokenUuid: t.defenderTokenUuid, 
-        damage: damageInfo.total,
-        isHealing: false 
-      }).replace(/Применить урон/g, `${targetPrefix}Применить урон`);
-    }
-
-    if (hasHeal) {
-      gmActions += renderGmApplyButtons({ 
-        defenderTokenUuid: t.defenderTokenUuid, 
-        damage: healInfo.total,
-        isHealing: true 
-      }).replace(/Применить лечение/g, `${targetPrefix}Применить лечение`);
-    }
-  }
-
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--ability">
     <div class="v-head">
@@ -989,7 +1094,6 @@ function abilityAttackCard({
           })
         : ""
     }
-    ${gmActions}
   </div>`;
 }
 
@@ -1337,6 +1441,28 @@ Hooks.once("ready", () => {
   if (game.user.isGM) {
     document.body.classList.add("is-gm");
   }
+
+  if (!globalThis.__vitruviumGmApplySocketBound) {
+    globalThis.__vitruviumGmApplySocketBound = true;
+    const processedApplyReqIds = new Set();
+    const onGmApplySocket = async (data) => {
+      if (!game.user?.isGM) return;
+      if (!data || data.type !== SOCKET_EVENT_GM_APPLY) return;
+      const reqId = String(data.requestId ?? "").trim();
+      if (reqId) {
+        if (processedApplyReqIds.has(reqId)) return;
+        processedApplyReqIds.add(reqId);
+      }
+      const payload = data.payload ?? {};
+      await createGmApplyMessage(payload);
+    };
+    const nsPrimary = SOCKET_NAMESPACE_PRIMARY();
+    game.socket?.on?.(nsPrimary, onGmApplySocket);
+    if (nsPrimary !== SOCKET_NAMESPACE_LEGACY) {
+      game.socket?.on?.(SOCKET_NAMESPACE_LEGACY, onGmApplySocket);
+    }
+  }
+
   const id = "vitruvium-chatcard-style-inline";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
@@ -1371,7 +1497,7 @@ Hooks.once("ready", () => {
   Hooks.on("createChatMessage", async (msg) => {
     try {
       if (!game.user.isGM) return;
-      const f = msg.flags?.vitruvium ?? null;
+      const f = readCombatFlags(msg);
       if (!f || f.kind !== "resolveRequest") return;
       if (String(f.requestKind ?? "") !== "contestState") {
         // Regular attack resolve is now handled inline in the defense flow — just delete the stale request
@@ -1454,7 +1580,7 @@ Hooks.once("ready", () => {
 /* ---------- Chat bindings ---------- */
 
 Hooks.on("renderChatMessageHTML", (message, html) => {
-  const f = message.flags?.vitruvium ?? null;
+  const f = readCombatFlags(message);
   if (!f) return;
 
   // Apply healing or damage button (GM-only)
@@ -1539,29 +1665,18 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
       if (!defenderTokenUuid) return;
       const isResolved =
         f.resolved || resolvedDefenderUuids.has(defenderTokenUuid);
-      if (!isResolved) return;
-      btn.disabled = true;
       const row = btn.closest("[data-defender-token-uuid]");
+      if (isResolved) btn.disabled = true;
       if (row) {
         const statusEl = row.querySelector("[data-role='defense-status']");
-        if (statusEl && game.user.isGM) {
-          const resData = resolvedResults.find((r) => r.uuid === defenderTokenUuid);
-          if (resData) {
-            statusEl.innerHTML = renderGmApplyButtons({
-              defenderTokenUuid,
-              damage: resData.damage,
-              crit: resData.crit,
-              isHealing: false,
-            }).replace(/Применить урон/g, `Применить урон (${resData.damage})`);
-            bindApplyButtons(statusEl);
-          }
-
-        } else if (statusEl) {
-          statusEl.textContent = "Защита уже выбрана";
+        if (statusEl) {
+          statusEl.textContent = isResolved ? "Защита уже выбрана" : "";
         }
       } else {
-        const subEl = html.querySelector(".v-actions .v-sub");
-        if (subEl) subEl.textContent = "Защита уже выбрана";
+        if (isResolved) {
+          const subEl = html.querySelector(".v-actions .v-sub");
+          if (subEl) subEl.textContent = "Защита уже выбрана";
+        }
       }
     });
 
@@ -1592,7 +1707,9 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         btn.disabled = true;
         if (row) {
           const statusEl = row.querySelector("[data-role='defense-status']");
-          if (statusEl) statusEl.textContent = "Защита уже выбрана";
+          if (statusEl) {
+            statusEl.textContent = "Защита уже выбрана";
+          }
         } else {
           const subEl = html.querySelector(".v-actions .v-sub");
           if (subEl) subEl.textContent = "Защита уже выбрана";
@@ -1600,7 +1717,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
       };
 
       const fresh = game.messages.get(message.id) ?? message;
-      const flags = fresh.flags?.vitruvium ?? {};
+      const flags = readCombatFlags(fresh) ?? {};
       if (flags.kind !== "attack") return;
       const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
       const speakerActor = speakerActorId
@@ -1884,16 +2001,38 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             compact,
           }),
           rolls: defRoll.rolls,
-          flags: {
-            vitruvium: {
-              kind: "defense",
-              defenderTokenUuid,
-              damage,
-              hit,
-              crit,
-            },
-          },
+          flags: buildCombatFlags({
+            kind: "defense",
+            defenderTokenUuid,
+            damage,
+            hit,
+            crit,
+          }),
         });
+
+        await cleanupPredictedGmApplyMessages({
+          attackMessageId: fresh.id,
+          defenderTokenUuid,
+          isHealing: false,
+        });
+
+        if (damage > 0) {
+          await createGmApplyMessage({
+            title: "Бросок ведущему",
+            subtitle: `${attacker.name} -> ${defender.name} · итог после защиты`,
+            attackMessageId: fresh.id,
+            applyPhase: "resolved",
+            rows: [
+              {
+                defenderTokenUuid,
+                label: defender.name,
+                damage,
+                isHealing: false,
+                crit,
+              },
+            ],
+          });
+        }
 
         const resolvedResults = Array.isArray(flags.resolvedResults) ? flags.resolvedResults : [];
         const nextResolvedResults = [
@@ -1914,6 +2053,10 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           "flags.vitruvium.resolvedDefenderUuids": nextResolvedDefenderUuids,
           "flags.vitruvium.resolved": allResolved,
           "flags.vitruvium.resolvedBy": game.user.id,
+          "flags.Vitruvium.resolvedResults": nextResolvedResults,
+          "flags.Vitruvium.resolvedDefenderUuids": nextResolvedDefenderUuids,
+          "flags.Vitruvium.resolved": allResolved,
+          "flags.Vitruvium.resolvedBy": game.user.id,
         });
 
         markResolvedInUI();
@@ -1941,7 +2084,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
       };
 
       const fresh = game.messages.get(message.id) ?? message;
-      const flags = fresh.flags?.vitruvium ?? {};
+      const flags = readCombatFlags(fresh) ?? {};
       if (flags.kind !== "attack") return;
       // Support both old contestStateUuid and new contestStates format
       const contestStates = Array.isArray(flags.contestStates)
@@ -2133,6 +2276,8 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         ];
         await fresh.update({
           "flags.vitruvium.resolvedContestDefenderUuids":
+            nextResolvedContestDefenderUuids,
+          "flags.Vitruvium.resolvedContestDefenderUuids":
             nextResolvedContestDefenderUuids,
         });
 
@@ -2484,41 +2629,72 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     ) {
       allRolls.push(...casterContestRoll.rolls);
     }
-    const hasInteractiveTargets = hasDefenseTarget || showContest;
-    await ChatMessage.create({
+    const attackMsg = await ChatMessage.create({
       ...chatVisibilityData(),
       speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
       content: publicContent,
       rolls: allRolls,
-      flags: hasInteractiveTargets
-        ? {
-            vitruvium: {
-              kind: "attack",
-              attackKind: "ability",
-              abilityDamageBase: damageBase,
-              abilityDamageValue: damageValue,
-              atkAttrKey: atkAttrKey,
-              attackerTokenUuid,
-              attackerActorUuid,
-              defenderTokenUuid,
-              defenderName,
-              defenderTargets: selectedTargets,
-              resolvedDefenderUuids: [],
-              resolvedContestDefenderUuids: [],
-              weaponName: abilityName,
-              weaponDamage: 0,
-              atkSuccesses: attackSuccesses,
-              attackRoll: attackRollEnabled,
-              contestEnabled: doContestRoll,
-              contestStates: targetContestStates,
-              critAttackStates: targetCritAttackStates,
-              contestCasterAttr,
-              contestTargetAttr,
-              casterContestSuccesses,
-            },
-          }
-        : {},
+      flags: buildCombatFlags({
+        kind: "attack",
+        attackKind: "ability",
+        abilityDamageBase: damageBase,
+        abilityDamageValue: damageValue,
+        atkAttrKey: atkAttrKey,
+        attackerTokenUuid,
+        attackerActorUuid,
+        defenderTokenUuid,
+        defenderName,
+        defenderTargets: selectedTargets,
+        resolvedDefenderUuids: [],
+        resolvedContestDefenderUuids: [],
+        weaponName: abilityName,
+        weaponDamage: 0,
+        atkSuccesses: attackSuccesses,
+        attackRoll: attackRollEnabled,
+        contestEnabled: doContestRoll,
+        contestStates: targetContestStates,
+        critAttackStates: targetCritAttackStates,
+        contestCasterAttr,
+        contestTargetAttr,
+        casterContestSuccesses,
+      }),
     });
+
+    const gmTargets =
+      selectedTargets.length > 0
+        ? selectedTargets
+        : [{ defenderTokenUuid: defenderTokenUuid ?? "", defenderName }];
+
+    if (hasDamage) {
+      await createGmApplyMessage({
+        title: "Бросок ведущему",
+        subtitle: `${attackerActor.name} · ${abilityName} · урон`,
+        attackMessageId: attackMsg?.id ?? "",
+        applyPhase: "predicted",
+        rows: gmTargets.map((t) => ({
+          defenderTokenUuid: t.defenderTokenUuid,
+          label: gmTargets.length > 1 ? t.defenderName : "",
+          damage: damageShown,
+          isHealing: false,
+          crit: false,
+        })),
+      });
+    }
+    if (hasHeal) {
+      await createGmApplyMessage({
+        title: "Бросок ведущему",
+        subtitle: `${attackerActor.name} · ${abilityName} · лечение`,
+        attackMessageId: attackMsg?.id ?? "",
+        applyPhase: "predicted",
+        rows: gmTargets.map((t) => ({
+          defenderTokenUuid: t.defenderTokenUuid,
+          label: gmTargets.length > 1 ? t.defenderName : "",
+          damage: healShown,
+          isHealing: true,
+          crit: false,
+        })),
+      });
+    }
   } catch (e) {
     console.error("Vitruvium | startAbilityAttackFlow error", e);
     ui.notifications?.error(`Ошибка способности: ${e?.message ?? e}`);
@@ -2631,31 +2807,43 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
       resolvedResults: [],
     });
 
-    await ChatMessage.create({
+    const attackMsg = await ChatMessage.create({
       ...chatVisibilityData(),
       speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
       content: publicContent,
       rolls: atkRoll.rolls,
-      flags: {
-        vitruvium: {
-          kind: "attack",
-          attackKind: "weapon",
-          attackerTokenUuid,
-          attackerActorUuid,
-          defenderTokenUuid,
-          defenderName,
-          defenderTargets: defenseTargets,
-          resolvedDefenderUuids: [],
-          weaponName,
-          weaponDamage,
-          atkAttrKey: atkChoice.attrKey,
-          atkLuck: atkRoll.luck,
-          atkUnluck: atkRoll.unluck,
-          atkFullMode: atkRoll.fullMode,
-          atkSuccesses: atkRoll.successes,
-          atkPool: atkRoll.pool,
-        },
-      },
+      flags: buildCombatFlags({
+        kind: "attack",
+        attackKind: "weapon",
+        attackerTokenUuid,
+        attackerActorUuid,
+        defenderTokenUuid,
+        defenderName,
+        defenderTargets: defenseTargets,
+        resolvedDefenderUuids: [],
+        weaponName,
+        weaponDamage,
+        atkAttrKey: atkChoice.attrKey,
+        atkLuck: atkRoll.luck,
+        atkUnluck: atkRoll.unluck,
+        atkFullMode: atkRoll.fullMode,
+        atkSuccesses: atkRoll.successes,
+        atkPool: atkRoll.pool,
+      }),
+    });
+
+    await createGmApplyMessage({
+      title: "Бросок ведущему",
+      subtitle: `${attackerActor.name} · ${weaponName} · прогноз урона`,
+      attackMessageId: attackMsg?.id ?? "",
+      applyPhase: "predicted",
+      rows: defenseTargets.map((t) => ({
+        defenderTokenUuid: t.defenderTokenUuid,
+        label: defenseTargets.length > 1 ? t.defenderName : "",
+        damage: predictedDmgValue,
+        isHealing: false,
+        crit: false,
+      })),
     });
   } catch (e) {
     console.error("Vitruvium | startWeaponAttackFlow error", e);

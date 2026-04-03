@@ -195,6 +195,11 @@ function isPC(combatant) {
 }
 
 export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
+  const rollIds = Array.isArray(ids)
+    ? ids
+    : ids !== null && ids !== undefined
+      ? [ids]
+      : [];
   const updates = [];
   const chatLines = [];
 
@@ -208,21 +213,25 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
       : modeLabel(luck, unluck);
   const modeTag = modeText === "Обычный" ? "" : ` (${modeText})`;
 
-  for (const id of ids) {
+  for (const id of rollIds) {
     const c = combat.combatants.get(id);
     const a = c?.actor;
     if (!c || !a) continue;
 
     const effectTotals = collectEffectTotals(a);
     const movementMods = getAttributeRollModifiers(effectTotals, "movement");
+    const globalMods = getGlobalRollModifiers(effectTotals);
+    const baseMovement = num(
+      a.system?.attributes?.movement?.value ?? a.system?.attributes?.movement,
+      1
+    );
     const move = clamp(
-      clamp(num(a.system?.attributes?.movement, 1), 1, 6) +
+      clamp(baseMovement, 1, 6) +
         movementMods.dice +
         globalMods.dice,
       1,
       20
     );
-    const globalMods = getGlobalRollModifiers(effectTotals);
     const totalLuck = luck + globalMods.adv + movementMods.adv;
     const totalUnluck = unluck + globalMods.dis + movementMods.dis;
     const finalFullMode =
@@ -326,6 +335,44 @@ async function vitruviumResolvePcNpcTies(combat) {
 }
 
 export function patchVitruviumInitiative() {
+  const SOCKET_EVENT = "vitruvium-roll-initiative";
+  const SOCKET_NAMESPACE_PRIMARY = () => `system.${game.system.id}`;
+  const SOCKET_NAMESPACE_LEGACY = "system.vitruvium";
+  const processedRequestIds = new Set();
+  const handleSocketRequest = async (data) => {
+    try {
+      if (!game.user?.isGM) return;
+      if (!data || data.type !== SOCKET_EVENT) return;
+      const requestId = String(data.requestId ?? "").trim();
+      if (requestId) {
+        if (processedRequestIds.has(requestId)) return;
+        processedRequestIds.add(requestId);
+      }
+      const combatId = String(data.combatId ?? "").trim();
+      if (!combatId) return;
+      const combat = game.combats?.get(combatId);
+      if (!combat) return;
+      const ids = Array.isArray(data.ids) ? data.ids : [];
+      const rollOpts = data.rollOpts ?? {};
+      const updateTurn = data.updateTurn !== false;
+      await vitruviumRollInitiative(combat, ids, rollOpts);
+      if (updateTurn) await combat.update({ turn: 0 });
+    } catch (e) {
+      console.error("Vitruvium | initiative socket error", e);
+    }
+  };
+  if (!globalThis.__vitruviumInitiativeSocketBound) {
+    globalThis.__vitruviumInitiativeSocketBound = true;
+    Hooks.once("ready", () => {
+      if (!game.socket) return;
+      const nsPrimary = SOCKET_NAMESPACE_PRIMARY();
+      game.socket.on(nsPrimary, handleSocketRequest);
+      if (nsPrimary !== SOCKET_NAMESPACE_LEGACY) {
+        game.socket.on(SOCKET_NAMESPACE_LEGACY, handleSocketRequest);
+      }
+    });
+  }
+
   // подменяем стандартную rollInitiative
   const original = Combat.prototype.rollInitiative;
 
@@ -334,7 +381,11 @@ export function patchVitruviumInitiative() {
     { updateTurn = true } = {}
   ) {
     // ids может быть undefined => роллим всех
-    const rollIds = ids?.length ? ids : this.combatants.map((c) => c.id);
+    const rollIds = Array.isArray(ids)
+      ? ids
+      : ids !== null && ids !== undefined
+        ? [ids]
+        : this.combatants.map((c) => c.id);
 
     const choice = await new Promise((resolve) => {
       new Dialog({
@@ -383,6 +434,33 @@ export function patchVitruviumInitiative() {
     });
 
     if (!choice) return this;
+
+    if (!game.user?.isGM) {
+      try {
+        await vitruviumRollInitiative(this, rollIds, choice);
+        if (updateTurn) await this.update({ turn: 0 });
+      } catch (_err) {
+        const requestId =
+          foundry?.utils?.randomID?.() ??
+          `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+        const payload = {
+          type: SOCKET_EVENT,
+          requestId,
+          combatId: this.id,
+          ids: rollIds,
+          rollOpts: choice,
+          updateTurn,
+          userId: game.user?.id,
+        };
+        const nsPrimary = SOCKET_NAMESPACE_PRIMARY();
+        game.socket?.emit?.(nsPrimary, payload);
+        if (nsPrimary !== SOCKET_NAMESPACE_LEGACY) {
+          game.socket?.emit?.(SOCKET_NAMESPACE_LEGACY, payload);
+        }
+      }
+      return this;
+    }
+
     await vitruviumRollInitiative(this, rollIds, choice);
 
     if (updateTurn) await this.update({ turn: 0 });

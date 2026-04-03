@@ -198,14 +198,24 @@ const splitLuck = (value) => {
 };
 
 export const normalizeEffects = (raw, { keepZero = false } = {}) => {
-  if (!Array.isArray(raw)) return [];
+  const entries = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object"
+      ? Object.entries(raw).map(([key, value]) => ({ key, value }))
+      : [];
+  if (!entries.length) return [];
   const byKey = new Map();
   const overTime = [];
 
-  for (const entry of raw) {
+  for (const entry of entries) {
     if (!entry || typeof entry !== "object") continue;
 
-    const overType = String(entry.type ?? "").trim();
+    let key = String(entry.key ?? entry.effectKey ?? entry.target ?? "").trim();
+    let overType = String(entry.type ?? entry.effectType ?? "").trim();
+    if (!overType && OVERTIME_TYPE_KEYS.has(key)) {
+      overType = key;
+      key = "";
+    }
     if (OVERTIME_TYPE_KEYS.has(overType)) {
       const timingRaw = String(entry.triggerTiming ?? "").trim();
       const triggerTiming = OVERTIME_TIMING_KEYS.has(timingRaw)
@@ -218,7 +228,6 @@ export const normalizeEffects = (raw, { keepZero = false } = {}) => {
       continue;
     }
 
-    let key = String(entry.key ?? "").trim();
     let value = numValue(entry.value, 0);
     if (!Number.isFinite(value)) continue;
 
@@ -255,7 +264,7 @@ export const collectEffectTotals = (actor) => {
     if (item.type === "item") {
       if (!item.system?.equipped) continue;
     } else if (item.type === "ability") {
-      if (!item.system?.active) continue;
+      if (item.system?.active === false) continue;
     } else if (item.type === "state") {
       if (item.system?.active === false) continue;
     } else if (item.type !== "skill") {
