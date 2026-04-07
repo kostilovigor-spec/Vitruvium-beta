@@ -15,6 +15,7 @@ import { registerVitruviumTests } from "./tests.js";
 import { registerStateDurationHooks } from "./state-duration.js";
 import { setupFloatingTextHook, showFloatingText } from "./floating-text.js";
 import { registerChatDropHook } from "./chat-drop.js";
+import { ActionProcessor } from "./core/action-processor.js";
 
 Hooks.once("init", () => {
 
@@ -225,6 +226,7 @@ Hooks.once("init", () => {
   });
 
   game.vitruvium = game.vitruvium ?? {};
+  game.vitruvium.processor = new ActionProcessor();
   game.vitruvium.startAbilityAttackFlow = startAbilityAttackFlow;
   game.vitruvium.startWeaponAttackFlow = startWeaponAttackFlow;
   game.vitruvium.replaceStateFromTemplate = replaceStateFromTemplate;

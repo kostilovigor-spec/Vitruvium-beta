@@ -289,6 +289,71 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
 
 /* ---------- Dialogs ---------- */
 
+/**
+ * Универсальный диалог для броска пула dV.
+ */
+export async function genericRollDialog({
+  title = "Бросок",
+  pool = 1,
+  showPool = true,
+  actor = null
+} = {}) {
+  const defaultLuck = 0;
+  const defaultUnluck = 0;
+  const defaultExtraDice = 0;
+  const defaultFullMode = "normal";
+
+  const content = `
+    <div style="display:grid; gap:8px;">
+        ${showPool ? `
+        <label>Пул кубов
+          <input type="number" name="pool" value="${pool}" min="1" max="20" style="width:100%"/>
+        </label>` : ""}
+        <label>Удачливый бросок
+          <select name="fullMode" style="width:100%">
+            <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""}>Обычный</option>
+            <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""}>Удачливый (полный переброс)</option>
+            <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""}>Неудачливый (полный переброс)</option>
+          </select>
+        </label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <label>Преимущество
+            <input type="number" name="luck" value="${defaultLuck}" min="0" max="20" step="1" style="width:100%"/>
+          </label>
+          <label>Помеха
+            <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
+          </label>
+        </div>
+        <label>Доп. кубы (можно отрицательное)
+          <input type="number" name="extraDice" value="${defaultExtraDice}" min="-20" max="20" step="1" style="width:100%"/>
+        </label>
+        <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб.</div>
+    </div>`;
+
+  return new Promise((resolve) => {
+    new Dialog({
+      title,
+      content,
+      buttons: {
+        roll: {
+          label: "Бросить",
+          callback: (html) => resolve({
+            pool: showPool ? clamp(toNumber(html.find("input[name='pool']").val(), pool), 1, 20) : pool,
+            luck: clamp(toNumber(html.find("input[name='luck']").val(), 0), 0, 20),
+            unluck: clamp(toNumber(html.find("input[name='unluck']").val(), 0), 0, 20),
+            extraDice: clamp(toNumber(html.find("input[name='extraDice']").val(), 0), -20, 20),
+            fullMode: html.find("select[name='fullMode']").val(),
+          })
+        },
+        cancel: { label: "Отмена", callback: () => resolve(null) }
+      },
+      default: "roll",
+      close: () => resolve(null)
+    }).render(true);
+  });
+}
+
+
 function attackDialog({ actor, weaponName, defaultAttrKey }) {
   const keys = listAttributeKeys(actor);
   const fallbackKey = keys.includes("combat")

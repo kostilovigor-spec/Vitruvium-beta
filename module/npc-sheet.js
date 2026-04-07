@@ -17,580 +17,191 @@ export class VitruviumNPCSheet extends ActorSheet {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["vitruvium", "sheet", "actor", "npc"],
       template: "systems/Vitruvium/templates/actor/npc-sheet.hbs",
-      width: 640,
-      height: 640,
+      width: 600,
+      height: 520,
+      resizable: true,
       submitOnChange: false,
       submitOnClose: true,
-      dragDrop: [{ dragSelector: ".v-inv__row", dropSelector: null }],
+      dragDrop: [{ dragSelector: ".v-list-item", dropSelector: null }],
     });
   }
 
-  getData() {
-    const data = super.getData();
-
-    const sys = data.system ?? this.actor.system ?? {};
+  async getData(options) {
+    const data = await super.getData(options);
+    const sys = this.actor.system ?? {};
     const attrs = sys.attributes ?? {};
     const effectTotals = collectEffectTotals(this.actor);
 
-
-    const toRounds = (v, d = 0) => Math.max(0, Math.round(toNumber(v, d)));
-
+    // Helpers
     const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
+    const toRnd = (v, d = 0) => Math.max(0, Math.round(toNumber(v, d)));
 
-    data.vitruvium = data.vitruvium ?? {};
-    data.vitruvium.items = this.actor.items.filter((i) => i.type === "item");
-    data.vitruvium.abilities = (this.actor.items ?? []).filter(
-      (i) => i.type === "ability",
-    );
-    data.vitruvium.states = (this.actor.items ?? [])
-      .filter((i) => i.type === "state")
-      .map((state) => {
-        const active = state.system?.active !== false;
-        const turnDuration = toRounds(
-          state.flags?.mySystem?.turnDuration,
-          toRounds(state.system?.durationRounds, 0),
-        );
-        const remainingDefault = active ? turnDuration : 0;
-        const durationRemaining = toRounds(
-          state.flags?.mySystem?.remainingTurns,
-          toRounds(state.system?.durationRemaining, remainingDefault),
-        );
-        const durationLabel =
-          turnDuration > 0
-            ? `${durationRemaining}/${turnDuration} х.`
-            : "без длительности";
-        return {
-          _id: state.id,
-          name: state.name,
-          img: state.img,
-          system: state.system ?? {},
-          active,
-          durationLabel,
-        };
-      });
-
-    const savedTab = String(this._activeTab ?? "inv");
-    data.vitruvium.activeTab =
-      savedTab === "abi" || savedTab === "state" ? savedTab : "inv";
-    const tabBase = `v-tabs-${this.appId ?? this.actor?.id ?? "actor"}`;
-    data.vitruvium.tabName = tabBase;
-    data.vitruvium.tabIds = {
-      inv: `${tabBase}-inv`,
-      abi: `${tabBase}-abi`,
-      state: `${tabBase}-state`,
+    const vitruvium = {
+      isEditing: this._isEditing || false
     };
 
-    const attrLabels = {
-      condition: "Самочувствие",
-      attention: "Внимание",
-      movement: "Движение",
-      combat: "Сражение",
-      thinking: "Мышление",
-      communication: "Общение",
+    // 1. Header Data
+    const hp = attrs.hp ?? { value: 5, max: 5 };
+    const cond = getAttr("condition");
+    const hpMax = clamp(toNumber(hp.max, 5), 0, 999);
+    const hpValue = clamp(hp.value, 0, hpMax);
+
+    vitruvium.header = {
+      hp: { value: hpValue, max: hpMax, pct: Math.min(100, (hpValue / hpMax) * 100) },
+      name: this.actor.name,
+      img: this.actor.img,
+      level: attrs.level ?? 1,
+      effects: this.actor.items.filter(i => i.type === "state" && i.system.active).map(e => ({
+        id: e.id,
+        img: e.img,
+        name: e.name,
+        description: e.system.description
+      }))
     };
-    const allowed = [
-      "condition",
-      "attention",
-      "movement",
-      "combat",
-      "thinking",
-      "communication",
-    ];
-    data.vitruvium.attributes = allowed.map((key) => ({
-      key,
-      label: attrLabels[key] ?? key,
-      value: getAttr(key),
-    }));
 
-    const insp = attrs.inspiration ?? { value: 6, max: 6 };
-    const inspMaxBase = clamp(toNumber(insp.max, 6), 0, 99);
-    const inspMax = clamp(
-      inspMaxBase + getEffectValue(effectTotals, "inspMax"),
-      0,
-      99,
-    );
-    const inspValue = clamp(toNumber(insp.value, inspMax), 0, inspMax);
-    data.vitruvium.inspiration = { value: inspValue, max: inspMax };
+    // 2. Sidebar Data
+    vitruvium.sidebar = {
+      attributes: [
+        { key: "condition", label: "CON", value: cond, icon: "fa-heart" },
+        { key: "attention", label: "ATT", value: getAttr("attention"), icon: "fa-eye" },
+        { key: "movement", label: "MOV", value: getAttr("movement"), icon: "fa-walking" },
+        { key: "combat", label: "CMB", value: getAttr("combat"), icon: "fa-fist-raised" },
+        { key: "thinking", label: "THK", value: getAttr("thinking"), icon: "fa-brain" },
+        { key: "communication", label: "COM", value: getAttr("communication"), icon: "fa-comments" },
+      ],
+      derived: {
+        armor: clamp(toNumber(sys.armor?.value ?? sys.armor, 0), 0, 99),
+        speed: clamp(toNumber(sys.speed?.value ?? sys.speed, 5), 0, 99)
+      }
+    };
 
-    // HP - читаем напрямую из actor, не вычисляем
-    const hp = attrs.hp ?? { value: 0, max: 0 };
-    const hpMax = clamp(toNumber(hp.max, 0), 0, 999);
-    const hpValue = clamp(toNumber(hp.value, 0), 0, 999);
-    data.vitruvium.hp = { value: hpValue, max: hpMax };
+    // 3. Central Zone (Tabs with Grouping)
+    const items = this.actor.items;
+    const groupBy = (arr, key) => arr.reduce((acc, obj) => {
+      const v = foundry.utils.getProperty(obj, key) || "Other";
+      if (!acc[v]) acc[v] = [];
+      acc[v].push(obj);
+      return acc;
+    }, {});
 
-    // Сохраняем для шаблона
-    data.system = data.system || {};
-    data.system.attributes = data.system.attributes || {};
-    data.system.attributes.hp = { value: hpValue, max: hpMax };
+    vitruvium.tabs = {
+      actions: {
+        weapons: items.filter(i => i.type === "item" && i.system.type === "weapon").map(w => ({
+          id: w.id,
+          name: w.name,
+          img: w.img,
+          damage: w.system.attackBonus || 0,
+          equipped: w.system.equipped !== false
+        })),
+        abilities: items.filter(i => i.type === "ability").map(a => ({
+          id: a.id,
+          name: a.name,
+          img: a.img,
+          cost: a.system.cost,
+          active: a.system.active !== false
+        })),
+        quickRolls: vitruvium.sidebar.attributes
+      },
+      inventory: {
+        groups: groupBy(items.filter(i => i.type === "item"), "system.type")
+      },
+      effects: {
+        all: items.filter(i => i.type === "state").map(s => {
+          const active = s.system.active !== false;
+          const turnDur = toRnd(s.flags?.mySystem?.turnDuration, toRnd(s.system.durationRounds, 0));
+          const rem = toRnd(s.flags?.mySystem?.remainingTurns, active ? turnDur : 0);
+          return {
+            id: s.id,
+            name: s.name,
+            img: s.img,
+            active,
+            duration: turnDur > 0 ? `${rem}/${turnDur}` : "∞"
+          };
+        })
+      }
+    };
 
-    const scope = game.system.id;
-    const savedExtra = this.actor.getFlag(scope, "extraDice");
-    data.vitruvium.extraDice = clamp(toNumber(savedExtra, 2), 1, 20);
-
-    // Armor - читаем напрямую
-    const armor = attrs.armor ?? { value: 0 };
-    const armorValue = clamp(toNumber(armor.value, 0), 0, 999);
-    data.vitruvium.armor = { value: armorValue };
-    data.system.attributes.armor = { value: armorValue };
-
-    // Speed - читаем напрямую (не вычисляем из movement)
-    const speed = attrs.speed ?? { value: 0 };
-    const speedValue = clamp(toNumber(speed.value, 0), 0, 999);
-    data.vitruvium.speed = { value: speedValue };
-    data.system.attributes.speed = { value: speedValue };
-
+    vitruvium.activeTab = this._activeTab || "actions";
+    data.vitruvium = vitruvium;
     return data;
-  }
-
-  async _updateObject(_event, formData) {
-    // Remove tab selection from formData to keep it strictly local to this window
-    // and avoid syncing it to other players via Actor updates.
-    for (const key of Object.keys(formData)) {
-      if (key.startsWith("v-tabs-")) delete formData[key];
-    }
-
-    // Обработка пустых значений для HP
-    for (const key of ["hp.value", "hp.max"]) {
-      const path = `system.attributes.${key}`;
-      if (!(path in formData)) continue;
-      const raw = formData[path];
-      if (raw === "" || raw === null || raw === undefined) {
-        formData[path] = 0;
-        continue;
-      }
-      const parsed = Number(raw);
-      formData[path] = Number.isFinite(parsed)
-        ? Math.max(0, Math.round(parsed))
-        : 0;
-    }
-
-    // Обработка пустых значений для armor и speed
-    for (const key of ["armor.value", "speed.value"]) {
-      const path = `system.attributes.${key}`;
-      if (!(path in formData)) continue;
-      const raw = formData[path];
-      if (raw === "" || raw === null || raw === undefined) {
-        formData[path] = 0;
-        continue;
-      }
-      const parsed = Number(raw);
-      formData[path] = Number.isFinite(parsed)
-        ? Math.max(0, Math.round(parsed))
-        : 0;
-    }
-
-    return this.actor.update(formData);
   }
 
   activateListeners(html) {
     super.activateListeners(html);
-
-
-
-
-
-    const scope = game.system.id;
-
-    // Roll mode dialog
-    const rollModeDialog = async (title) =>
-      new Promise((resolve) => {
-        const defaultLuck = 0;
-        const defaultUnluck = 0;
-        const defaultExtraDice = 0;
-        const defaultFullMode = "normal";
-        new Dialog({
-          title,
-          content: `<div style="display:grid; gap:8px;">
-            <label>Удачливый бросок
-              <select name="fullMode" style="width:100%">
-                <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""}>Обычный</option>
-                <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""}>Удачливый (полный переброс)</option>
-                <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""}>Неудачливый (полный переброс)</option>
-              </select>
-            </label>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-              <label>Преимущество
-                <input type="number" name="luck" value="${defaultLuck}" min="0" max="20" step="1" style="width:100%"/>
-              </label>
-              <label>Помеха
-                <input type="number" name="unluck" value="${defaultUnluck}" min="0" max="20" step="1" style="width:100%"/>
-              </label>
-            </div>
-            <label>Доп. кубы (можно отрицательное)
-              <input type="number" name="extraDice" value="${defaultExtraDice}" min="-20" max="20" step="1" style="width:100%"/>
-            </label>
-            <div style="font-size:12px; opacity:.75;">Положительное число увеличивает пул кубов, отрицательное уменьшает.</div>
-            <div style="font-size:12px; opacity:.75;">Каждый счетчик преимущества/помехи перебрасывает один куб. Удачливый/неудачливый бросок игнорирует счетчики.</div>
-          </div>`,
-          buttons: {
-            roll: {
-              label: "Бросить",
-              callback: (html) =>
-                resolve({
-                  luck: clamp(
-                    toNumber(html.find("input[name='luck']").val(), 0),
-                    0,
-                    20,
-                  ),
-                  unluck: clamp(
-                    toNumber(html.find("input[name='unluck']").val(), 0),
-                    0,
-                    20,
-                  ),
-                  extraDice: clamp(
-                    toNumber(html.find("input[name='extraDice']").val(), 0),
-                    -20,
-                    20,
-                  ),
-                  fullMode: html.find("select[name='fullMode']").val(),
-                }),
-            },
-            cancel: { label: "Отмена", callback: () => resolve(null) },
-          },
-          default: "roll",
-          close: () => resolve(null),
-        }).render(true);
-      });
-
-    // Name change
-    html.find("input[name='name']").on("change", async (ev) => {
-      const v = String(ev.currentTarget.value ?? this.actor.name);
-      if (v && v !== this.actor.name) await this.actor.update({ name: v });
+    html.on("click", "[data-action]", (ev) => this._onAction(ev));
+    html.find("input").on("change", (ev) => this._onInputChange(ev));
+    html.find(".v-tab-link").on("click", (ev) => {
+      this._activeTab = ev.currentTarget.dataset.tab;
+      this.render();
     });
+  }
 
-    // Attribute +/-
-    html.find("[data-action='attr-inc']").on("click", async (ev) => {
-      ev.preventDefault();
-      const key = ev.currentTarget.dataset.attr;
-      const attrs = this.actor.system.attributes ?? {};
-      const current = toNumber(attrs[key]?.value ?? 0, 0);
-      const next = clamp(current + 1, 0, 99);
-      await this.actor.update({ [`system.attributes.${key}.value`]: next });
-    });
+  async _onAction(event) {
+    event.preventDefault();
+    const btn = event.currentTarget;
+    const action = btn.dataset.action;
+    const itemId = btn.dataset.itemId;
+    const item = itemId ? this.actor.items.get(itemId) : null;
 
-    html.find("[data-action='attr-dec']").on("click", async (ev) => {
-      ev.preventDefault();
-      const key = ev.currentTarget.dataset.attr;
-      const attrs = this.actor.system.attributes ?? {};
-      const current = toNumber(attrs[key]?.value ?? 0, 0);
-      const next = clamp(current - 1, 0, 99);
-      await this.actor.update({ [`system.attributes.${key}.value`]: next });
-    });
+    switch (action) {
+      case "toggle-edit":
+        this._isEditing = !this._isEditing;
+        this.render();
+        break;
+      case "use":
+      case "attack":
+        if (item?.type === "item") await game.vitruvium.startWeaponAttackFlow(this.actor, item);
+        else if (item?.type === "ability") await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+        else if (item) this._postItemToChat(item);
+        break;
+      case "use-ability":
+        if (item) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+        break;
+      case "roll-attr":
+        await this._rollAttribute(btn.dataset.attr);
+        break;
+      case "toggle-equip":
+        if (item) await item.update({ "system.equipped": !item.system.equipped });
+        break;
+      case "toggle-active":
+        if (item) await item.update({ "system.active": !item.system.active });
+        break;
+      case "item-chat":
+        if (item) this._postItemToChat(item);
+        break;
+      case "delete-item":
+        if (item) await this._deleteItem(item);
+        break;
+      case "edit-item":
+        if (item) item.sheet.render(true);
+        break;
+      case "create-item":
+        await this.actor.createEmbeddedDocuments("Item", [{ name: `New ${btn.dataset.type}`, type: btn.dataset.type || "item" }]);
+        break;
+    }
+  }
 
-    // Attribute roll
-    html.find("[data-action='roll-attribute']").on("click", async (ev) => {
-      ev.preventDefault();
-      const btn = ev.currentTarget;
-      const key = btn.dataset.attr;
-      const label = btn.dataset.label ?? key;
-      const attrs = this.actor.system.attributes ?? {};
-      const effectTotals = collectEffectTotals(this.actor);
-      const globalMods = getGlobalRollModifiers(effectTotals);
-      const attrMods = getAttributeRollModifiers(effectTotals, key);
-      const base = toNumber(attrs[key]?.value ?? 0, 0);
-      const choice = await rollModeDialog(`Проверка: ${label}`);
-      if (!choice) return;
-      const pool = clamp(
-        getEffectiveAttribute(attrs, key, effectTotals) +
-        attrMods.dice +
-        globalMods.dice +
-        toNumber(choice.extraDice, 0),
-        1,
-        20,
-      );
-      const rollLuck = choice.luck + globalMods.adv + attrMods.adv;
-      const rollUnluck = choice.unluck + globalMods.dis + attrMods.dis;
-      const rollFullMode =
-        globalMods.fullMode !== "normal"
-          ? globalMods.fullMode
-          : choice.fullMode;
+  async _onInputChange(ev) {
+    const name = ev.currentTarget.name;
+    let value = ev.currentTarget.value;
+    if (ev.currentTarget.type === "number") value = Number(value);
+    await this.actor.update({ [name]: value });
+  }
 
-      await rollSuccessDice({
-        pool,
-        actorName: this.actor.name,
-        checkName: label,
-        luck: rollLuck,
-        unluck: rollUnluck,
-        fullMode: rollFullMode,
-      });
-    });
+  async _rollAttribute(key) {
+    const attrs = this.actor.system.attributes ?? {};
+    const effectTotals = collectEffectTotals(this.actor);
+    const pool = Math.max(1, getEffectiveAttribute(attrs, key, effectTotals));
+    await rollSuccessDice({ pool, actorName: this.actor.name, checkName: key.toUpperCase() });
+  }
 
-    // Inspiration +/-
-    html.find("[data-action='insp-inc']").on("click", async (ev) => {
-      ev.preventDefault();
-      const insp = this.actor.system.attributes?.inspiration ?? {
-        value: 6,
-        max: 6,
-      };
-      const effectTotals = collectEffectTotals(this.actor);
-      const baseMax = clamp(toNumber(insp.max, 6), 0, 99);
-      const effMax = clamp(
-        baseMax + getEffectValue(effectTotals, "inspMax"),
-        0,
-        99,
-      );
-      const v = clamp(toNumber(insp.value, 6), 0, effMax);
-      const next = clamp(v + 1, 0, effMax);
-      await this.actor.update({
-        "system.attributes.inspiration.max": baseMax,
-        "system.attributes.inspiration.value": next,
-      });
-    });
+  async _deleteItem(item) {
+    const ok = await Dialog.confirm({ title: `Delete ${item.name}?`, content: `<p>Delete <b>${item.name}</b>?</p>` });
+    if (ok) await item.delete();
+  }
 
-    html.find("[data-action='insp-dec']").on("click", async (ev) => {
-      ev.preventDefault();
-      const insp = this.actor.system.attributes?.inspiration ?? {
-        value: 6,
-        max: 6,
-      };
-      const effectTotals = collectEffectTotals(this.actor);
-      const baseMax = clamp(toNumber(insp.max, 6), 0, 99);
-      const effMax = clamp(
-        baseMax + getEffectValue(effectTotals, "inspMax"),
-        0,
-        99,
-      );
-      const v = clamp(toNumber(insp.value, 6), 0, effMax);
-      const next = clamp(v - 1, 0, effMax);
-      await this.actor.update({
-        "system.attributes.inspiration.max": baseMax,
-        "system.attributes.inspiration.value": next,
-      });
-    });
-
-    // Extra dice
-    html.find("[data-action='extra-inc']").on("click", async (ev) => {
-      ev.preventDefault();
-      let cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
-      cur = clamp(cur + 1, 1, 20);
-      await this.actor.setFlag(scope, "extraDice", cur);
-    });
-
-    html.find("[data-action='extra-dec']").on("click", async (ev) => {
-      ev.preventDefault();
-      let cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
-      cur = clamp(cur - 1, 1, 20);
-      await this.actor.setFlag(scope, "extraDice", cur);
-    });
-
-    html.find("[data-action='extra-roll']").on("click", async (ev) => {
-      ev.preventDefault();
-      const cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
-      const choice = await rollModeDialog("Доп. бросок");
-      if (!choice) return;
-      const pool = clamp(cur + globalMods.dice + toNumber(choice.extraDice, 0), 1, 20);
-      const effectTotals = collectEffectTotals(this.actor);
-      const globalMods = getGlobalRollModifiers(effectTotals);
-      const rollLuck = choice.luck + globalMods.adv;
-      const rollUnluck = choice.unluck + globalMods.dis;
-      const rollFullMode =
-        globalMods.fullMode !== "normal"
-          ? globalMods.fullMode
-          : choice.fullMode;
-
-      await rollSuccessDice({
-        pool,
-        actorName: this.actor.name,
-        checkName: "Дополнительные кубы",
-        luck: rollLuck,
-        unluck: rollUnluck,
-        fullMode: rollFullMode,
-      });
-    });
-
-    // Create item
-    html.find("[data-action='create-item']").on("click", async (ev) => {
-      ev.preventDefault();
-      await this.actor.createEmbeddedDocuments("Item", [
-        {
-          name: "Новый предмет",
-          type: "item",
-          system: {
-            description: "",
-            quantity: 1,
-            actions: 1,
-            type: "equipment",
-            equipped: false,
-            attackAttr: "combat",
-            attackBonus: 0,
-            armorBonus: 0,
-            damage: 0,
-            canBlock: false,
-            effects: [],
-          },
-        },
-      ]);
-    });
-
-    // Toggle equip
-    html.find("[data-action='toggle-equip']").on("click", async (ev) => {
-      ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      const item = this.actor.items.get(id);
-      if (!item) return;
-      await item.update({ "system.equipped": !item.system?.equipped });
-    });
-
-    // Weapon attack
-    html.find("[data-action='weapon-attack']").on("click", async (ev) => {
-      ev.preventDefault();
-      const weaponId = ev.currentTarget.dataset.itemId;
-      const weapon = this.actor.items.get(weaponId);
-      if (!weapon) return;
-      if (game.vitruvium?.startWeaponAttackFlow) {
-        await game.vitruvium.startWeaponAttackFlow(this.actor, weapon);
-      }
-    });
-
-    // Item chat
-    html.find("[data-action='item-chat']").on("click", async (ev) => {
-      ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      const item = this.actor.items.get(id);
-      if (!item) return;
-
-      const desc = String(item.system?.description ?? "");
-      const descHtml = desc
-        ? escapeHtml(desc).replace(/\n/g, "<br>")
-        : `<span class="hint">Описание не задано.</span>`;
-
-      const qty = Number(item.system?.quantity ?? 1);
-      const img = item.img || "icons/svg/item-bag.svg";
-      const typeLabel =
-        item.type === "ability"
-          ? "Способность"
-          : item.type === "state"
-            ? "Состояние"
-            : "Предмет";
-
-      const content = `
-        <div class="vitruvium-chatcard v-itemcard">
-          <div class="v-itemcard__top">
-            <img class="v-itemcard__img" src="${escapeHtml(img)}" alt="${escapeHtml(item.name)}"/>
-            <div class="v-itemcard__head">
-              <div class="v-itemcard__title">@UUID[${item.uuid}]{${escapeHtml(item.name)}}${Number.isFinite(qty) ? ` ×${qty}` : ""}</div>
-              <div class="v-itemcard__sub">${escapeHtml(this.actor.name)} · ${typeLabel}</div>
-            </div>
-          </div>
-          <div class="v-itemcard__desc">${descHtml}</div>
-        </div>
-      `;
-
-      await ChatMessage.create({
-        ...chatVisibilityData(),
-        speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-        content,
-      });
-
-      if (game.vitruvium?.playAutomatedAnimation) {
-        await playAutomatedAnimation({ actor: this.actor, item });
-      }
-    });
-
-    // Create ability
-    html.find("[data-action='create-ability']").on("click", async (ev) => {
-      ev.preventDefault();
-      await this.actor.createEmbeddedDocuments("Item", [
-        {
-          name: "Новая способность",
-          type: "ability",
-          system: {
-            cost: 1,
-            actions: 1,
-            level: 1,
-            type: "primary",
-            active: false,
-            attackRoll: false,
-            attackAttr: "combat",
-            rollDamageBase: 0,
-            rollHealBase: 0,
-            description: "",
-            effects: [],
-          },
-        },
-      ]);
-    });
-
-    // Use ability
-    html.find("[data-action='use-ability']").on("click", async (ev) => {
-      ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      const ability = this.actor.items.get(id);
-      if (!ability) return;
-      if (game.vitruvium?.startAbilityFlow) {
-        await game.vitruvium.startAbilityFlow(this.actor, ability);
-      }
-    });
-
-    // Toggle ability active
-    html
-      .find("[data-action='toggle-ability-active']")
-      .on("click", async (ev) => {
-        ev.preventDefault();
-        const id = ev.currentTarget.dataset.itemId;
-        const item = this.actor.items.get(id);
-        if (!item) return;
-        await item.update({ "system.active": !item.system?.active });
-      });
-
-    // Create state
-    html.find("[data-action='create-state']").on("click", async (ev) => {
-      ev.preventDefault();
-      await this.actor.createEmbeddedDocuments("Item", [
-        {
-          name: "Новое состояние",
-          type: "state",
-          system: {
-            active: true,
-            durationRounds: 0,
-            durationRemaining: 0,
-            description: "",
-            effects: [],
-          },
-        },
-      ]);
-    });
-
-    // Toggle state active
-    html.find("[data-action='toggle-state-active']").on("click", async (ev) => {
-      ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      const item = this.actor.items.get(id);
-      if (!item) return;
-      const next = !item.system?.active;
-      const turnDuration = toRounds(
-        item.flags?.mySystem?.turnDuration,
-        toRounds(item.system?.durationRounds, 0),
-      );
-      await item.update({
-        "system.active": next,
-        "system.durationRounds": turnDuration,
-        "system.durationRemaining": next ? turnDuration : 0,
-        "flags.mySystem.turnDuration": turnDuration,
-        "flags.mySystem.remainingTurns": next ? turnDuration : 0,
-        "flags.mySystem.ownerActorId": item.actor?.id ?? "",
-      });
-    });
-
-    // Edit item
-    html.find("[data-action='edit-item']").on("click", async (ev) => {
-      ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      const item = this.actor.items.get(id);
-      if (!item) return;
-      await item.sheet?.render(true);
-    });
-
-    // Delete item
-    html.find("[data-action='delete-item']").on("click", async (ev) => {
-      ev.preventDefault();
-      const id = ev.currentTarget.dataset.itemId;
-      await this.actor.deleteEmbeddedDocuments("Item", [id]);
-    });
-
-    // Tab switching
-    html.find(".v-tabs__toggle").on("change", (ev) => {
-      this._activeTab = String(ev.currentTarget.value);
-    });
+  _postItemToChat(item) {
+    const content = `<div class="v-itemcard"><img src="${item.img}" width="32" height="32"/><b>${item.name}</b><p>${item.system.description || ""}</p></div>`;
+    ChatMessage.create({ content });
   }
 }

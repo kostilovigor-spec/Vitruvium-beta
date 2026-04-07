@@ -19,8 +19,8 @@ export class VitruviumItemSheet extends ItemSheet {
     });
   }
 
-  getData() {
-    const data = super.getData();
+  async getData() {
+    const data = await super.getData();
 
     // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
@@ -281,7 +281,7 @@ export class VitruviumItemSheet extends ItemSheet {
       const key = isOverTime
         ? typeKey
         : EFFECT_TARGETS.find((t) => t.key === effect.key)?.key ??
-          EFFECT_TARGETS[0]?.key;
+        EFFECT_TARGETS[0]?.key;
       const rawValue = Number.isFinite(effect.value) ? Number(effect.value) : 0;
       const value = isOverTime
         ? Math.max(0, Math.round(Math.abs(rawValue)))
@@ -330,9 +330,8 @@ export class VitruviumItemSheet extends ItemSheet {
       return `
         <div class="v-effects__row">
           <select class="v-effects__key">${options}</select>
-          <select class="v-effects__timing" ${
-            isOverTime ? "" : "style='display:none;'"
-          }>${timingOptions}</select>
+          <select class="v-effects__timing" ${isOverTime ? "" : "style='display:none;'"
+        }>${timingOptions}</select>
           <input type="number" class="v-effects__val" value="${value}" step="1" />
           <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
         </div>

@@ -2,16 +2,33 @@ import { DiceSystem } from "./dice-system.js";
 import { DamageResolver } from "./damage-resolver.js";
 import * as Effects from "../effects.js";
 import { ActionContext } from "./action-context.js";
+import { renderFaces } from "../rolls.js";
+import { escapeHtml } from "../utils/string.js";
+import { chatVisibilityData } from "../chat-visibility.js";
+import { genericRollDialog } from "../combat.js";
 
 export class ActionProcessor {
     async process(action) {
         const ctx = new ActionContext(action);
+
+        const needsPrompt = ["attribute", "luck", "bonus_dice"].includes(action.type) && !action.options?.fastForward;
+        if (needsPrompt) {
+            const result = await this.stagePrompt(ctx);
+            if (!result) return { success: false, cancelled: true };
+            action.options = foundry.utils.mergeObject(action.options || {}, result);
+        }
 
         switch (action.type) {
             case "attack":
                 return this.processAttack(ctx);
             case "ability":
                 return this.processAbility(ctx);
+            case "attribute":
+                return this.processAttribute(ctx);
+            case "luck":
+                return this.processLuck(ctx);
+            case "bonus_dice":
+                return this.processBonusDice(ctx);
             case "apply_dot":
                 return this.processApplyDot(ctx);
         }
@@ -49,7 +66,7 @@ export class ActionProcessor {
             attrKey: options.attackAttr,
         });
 
-        return Math.max(1, base + mod.dice); // Placeholder logic, will refine later if needed
+        return Math.max(1, base + mod.dice);
     }
 
     async stageModify(ctx) {
@@ -210,5 +227,116 @@ export class ActionProcessor {
         }
 
         return this.buildResult(ctx);
+    }
+
+    async processAttribute(ctx) {
+        const { attacker, options } = ctx.action;
+        const pool = options.pool ?? this.getAttributePool(attacker, options.attrKey);
+
+        const effectTotals = Effects.collectEffectTotals(attacker);
+        const attrMods = Effects.getAttributeRollModifiers(effectTotals, options.attrKey);
+        const globalMods = Effects.getGlobalRollModifiers(effectTotals);
+
+        ctx.rolls.check = await DiceSystem.rollPool(pool, {
+            luck: (options.luck || 0) + globalMods.adv + attrMods.adv,
+            unluck: (options.unluck || 0) + globalMods.dis + attrMods.dis,
+            fullMode: globalMods.fullMode !== "normal" ? globalMods.fullMode : (options.fullMode || "normal"),
+            extraDice: options.extraDice || 0
+        });
+
+        ctx.computed.successes = ctx.rolls.check.successes;
+        await this.stageEmit(ctx, options.attrKey.toUpperCase(), "Attribute Check");
+        return this.buildResult(ctx);
+    }
+
+    getAttributePool(actor, attrKey) {
+        const effectTotals = Effects.collectEffectTotals(actor);
+        const base = Effects.getEffectiveAttribute(actor.system?.attributes, attrKey, effectTotals);
+        const attrMods = Effects.getAttributeRollModifiers(effectTotals, attrKey);
+        const globalMods = Effects.getGlobalRollModifiers(effectTotals);
+
+        return Math.max(1, Math.min(20, base + attrMods.dice + globalMods.dice));
+    }
+
+    async processLuck(ctx) {
+        const { attacker, options } = ctx.action;
+        ctx.rolls.check = await DiceSystem.rollPool(options.pool || 1, {
+            luck: options.luck,
+            unluck: options.unluck,
+            fullMode: options.fullMode,
+            extraDice: options.extraDice
+        });
+        ctx.computed.successes = ctx.rolls.check.successes;
+        await this.stageEmit(ctx, "Luck", "Luck Roll");
+        return this.buildResult(ctx);
+    }
+
+    async processBonusDice(ctx) {
+        const { options } = ctx.action;
+        const pool = Math.max(1, Math.min(20, options.pool || 1));
+        ctx.rolls.check = await DiceSystem.rollPool(pool, {
+            luck: options.luck,
+            unluck: options.unluck,
+            fullMode: options.fullMode,
+            extraDice: options.extraDice
+        });
+        ctx.computed.successes = ctx.rolls.check.successes;
+        await this.stageEmit(ctx, "Bonus Dice", `Pool: ${pool}`);
+        return this.buildResult(ctx);
+    }
+
+    async stagePrompt(ctx) {
+        const { type, options, attacker } = ctx.action;
+        let title = "Roll";
+        let pool = 1;
+        let showPool = false;
+
+        switch (type) {
+            case "attribute":
+                title = `Check: ${options.attrKey.toUpperCase()}`;
+                pool = this.getAttributePool(attacker, options.attrKey);
+                break;
+            case "luck":
+                title = "Luck Roll";
+                pool = 1;
+                break;
+            case "bonus_dice":
+                title = "Bonus Dice";
+                pool = options.pool || 1;
+                showPool = true;
+                break;
+        }
+
+        return genericRollDialog({ title, pool, showPool, actor: attacker });
+    }
+
+    async stageEmit(ctx, title, sub) {
+        const roll = ctx.rolls.check;
+        if (!roll) return;
+
+        const content = `
+            <div class="v-card v-card--roll">
+                <div class="v-card__header">
+                    <div class="v-card__info">
+                        <div class="v-card__title">${escapeHtml(ctx.action.attacker?.name || "Actor")}</div>
+                        <div class="v-card__sub">${escapeHtml(title)} <span class="v-card__mode">${escapeHtml(sub)}</span></div>
+                    </div>
+                </div>
+                <div class="v-card__body">
+                    <div class="v-card__result">
+                        <span class="v-label">Successes</span>
+                        <span class="v-value">${ctx.computed.successes}</span>
+                    </div>
+                    ${renderFaces(roll.results)}
+                </div>
+            </div>
+        `;
+
+        await ChatMessage.create({
+            ...chatVisibilityData(),
+            content,
+            speaker: ChatMessage.getSpeaker({ actor: ctx.action.attacker }),
+            rolls: roll.rolls || []
+        });
     }
 }

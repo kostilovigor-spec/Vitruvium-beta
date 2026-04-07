@@ -6,7 +6,11 @@ import { escapeHtml } from "./utils/string.js";
  */
 export function registerChatDropHook() {
   Hooks.on("renderChatLog", (app, html, data) => {
-    const chatLog = html[0].querySelector("#chat-log") || html[0];
+    // html can be a jQuery object or a DOM element depending on Foundry version
+    const el = html instanceof HTMLElement ? html : (html[0] instanceof HTMLElement ? html[0] : null);
+    if (!el) return;
+
+    const chatLog = el.querySelector("#chat-log") || el;
 
     chatLog.addEventListener("drop", async (event) => {
       event.preventDefault();

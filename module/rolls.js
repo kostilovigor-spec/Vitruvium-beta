@@ -18,7 +18,7 @@ function dvFaceKind(face) {
   return "double";
 }
 
-function renderFaces(results = []) {
+export function renderFaces(results = []) {
   return `
     <div class="v-faces v-compact-faces">
       ${results
@@ -138,19 +138,20 @@ export async function rollSuccessDice({
     const content = `
       <div class="v-card v-card--roll ${cardClass}">
         <div class="v-card__header">
-          <div class="v-card__title">
-            ${escapeHtml(actorName)} бросает <${escapeHtml(checkName)}>
-            <span class="v-card__mode ${modeClass}">${modeLabel}</span>
+          <div class="v-card__info">
+            <div class="v-card__title">${escapeHtml(actorName)}</div>
+            <div class="v-card__sub">${escapeHtml(checkName)} <span class="v-card__mode ${modeClass}">${modeLabel}</span></div>
           </div>
-          <div class="v-card__sub">Пул: ${pool}</div>
+          <div class="v-card__meta">Pool: ${pool}</div>
         </div>
 
-        <div class="v-card__row v-card__row--big">
-          <div class="v-card__biglabel">Успехи</div>
-          <div class="v-card__bigvalue">${chosen.successes}</div>
+        <div class="v-card__body">
+          <div class="v-card__result">
+            <span class="v-label">Successes</span>
+            <span class="v-value">${chosen.successes}</span>
+          </div>
+          ${renderFaces(chosen.results)}
         </div>
-
-        ${renderFaces(chosen.results)}
       </div>
     `;
 
@@ -244,19 +245,20 @@ export async function rollSuccessDice({
   const content = `
     <div class="v-card v-card--roll ${cardClass}">
       <div class="v-card__header">
-        <div class="v-card__title">
-          ${escapeHtml(actorName)} бросает <${escapeHtml(checkName)}>
-          <span class="v-card__mode ${modeClass}">${modeLabel}</span>
+        <div class="v-card__info">
+          <div class="v-card__title">${escapeHtml(actorName)}</div>
+          <div class="v-card__sub">${escapeHtml(checkName)} <span class="v-card__mode ${modeClass}">${modeLabel}</span></div>
         </div>
-        <div class="v-card__sub">Пул: ${pool}</div>
+        <div class="v-card__meta">Pool: ${pool}</div>
       </div>
 
-      <div class="v-card__row v-card__row--big">
-        <div class="v-card__biglabel">Успехи</div>
-        <div class="v-card__bigvalue">${successes}</div>
+      <div class="v-card__body">
+        <div class="v-card__result">
+          <span class="v-label">Successes</span>
+          <span class="v-value">${successes}</span>
+        </div>
+        ${renderFaces(results)}
       </div>
-
-      ${renderFaces(results)}
     </div>
   `;
 
