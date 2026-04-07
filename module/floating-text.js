@@ -125,22 +125,25 @@ export function setupFloatingTextHook() {
   // Хук на изменение HP - срабатывает при любом изменении актора
   Hooks.on("updateActor", (actor, change, options, userId) => {
     const hpChange = change.system?.attributes?.hp?.value;
-    if (hpChange === undefined) return;
 
-    // Получаем сохранённое старое значение
-    const savedData = _oldHpValues.get(actor.id);
-    // Если preUpdate не сработал на этом клиенте, локально не считаем разницу,
-    // иначе знак урона/лечения может быть неверным (например oldHp=0).
-    // Корректный diff придёт через socket-событие от клиента, который сделал update.
-    if (!savedData) return;
-    const oldHp = savedData.oldHp;
-    const newHp = Number(hpChange);
-    const diff = newHp - oldHp;
+    let diff;
+    if (options?.vitruvium?.damage !== undefined) {
+      const dmg = Number(options.vitruvium.damage) || 0;
+      const isHeal = options.vitruvium.source === "heal" || options.vitruvium.source === "hot";
+      diff = isHeal ? Math.abs(dmg) : -Math.abs(dmg);
+    } else {
+      if (hpChange === undefined) return;
 
-    // Очищаем сохранённое значение
+      const savedData = _oldHpValues.get(actor.id);
+      if (!savedData) return;
+
+      const oldHp = savedData.oldHp;
+      const newHp = Number(hpChange);
+      diff = newHp - oldHp;
+    }
+
     _oldHpValues.delete(actor.id);
-
-    if (diff === 0) return;
+    if (!diff) return;
 
     const throttleKey = `hp-${actor.id}`;
 

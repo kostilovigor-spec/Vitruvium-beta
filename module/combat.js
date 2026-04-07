@@ -13,6 +13,7 @@ import {
 } from "./effects.js";
 import { getStateTemplateByUuid } from "./state-library.js";
 import { chatVisibilityData } from "./chat-visibility.js";
+import { ActionProcessor } from "./core/action-processor.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card with "Применить урон".
@@ -2433,39 +2434,29 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     });
     if (!atkChoice) return;
 
-    const effectTotals = collectEffectTotals(attackerActor);
-    const globalMods = getGlobalRollModifiers(effectTotals);
-    const attackMods = getAttackRollModifiers(effectTotals, {
-      attrKey: atkChoice.attrKey,
-    });
-    const atkPool = clamp(
-      getEffectiveAttribute(attackerActor.system?.attributes, atkChoice.attrKey, effectTotals) +
-      attackMods.dice +
-      globalMods.dice +
-      num(atkChoice.extraDice, 0),
-      1,
-      20,
-    );
-    const weaponMods = getWeaponRollMods(weaponItem);
-    const totalLuck =
-      num(atkChoice.luck, 0) + weaponMods.adv + globalMods.adv + attackMods.adv;
-    const totalUnluck =
-      num(atkChoice.unluck, 0) +
-      weaponMods.dis +
-      globalMods.dis +
-      attackMods.dis;
-    const finalFullMode =
-      globalMods.fullMode !== "normal"
-        ? globalMods.fullMode
-        : atkChoice.fullMode;
-    const atkRoll = await rollPool(atkPool, {
-      luck: totalLuck,
-      unluck: totalUnluck,
-      fullMode: finalFullMode,
-    });
-
     const defenseTargets = collectSelectedDefenseTargets();
     const hasTarget = defenseTargets.length > 0;
+    const defenderActor = hasTarget
+      ? (await actorFromTokenUuid(defenseTargets[0].defenderTokenUuid))
+      : null;
+
+    const processor = new ActionProcessor();
+    const result = await processor.process({
+      type: "attack",
+      attacker: attackerActor,
+      defender: defenderActor,
+      weapon: weaponItem,
+      options: {
+        attackAttr: atkChoice.attrKey,
+        luck: atkChoice.luck,
+        unluck: atkChoice.unluck,
+        extraDice: atkChoice.extraDice,
+        fullMode: atkChoice.fullMode,
+      },
+    });
+
+    const atkRoll = result.rolls.attack;
+
     const attackerToken =
       attackerActor?.getActiveTokens?.(true, true)?.[0] ??
       canvas.tokens.controlled?.[0] ??
