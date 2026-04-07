@@ -1,4 +1,6 @@
 import { chatVisibilityData } from "./chat-visibility.js";
+import { clamp } from "./utils/number.js";
+import { escapeHtml } from "./utils/string.js";
 
 /** Vitruvium dV: 1-3 = 0, 4-5 = 1, 6 = 2 */
 function dvSuccesses(face) {
@@ -20,29 +22,20 @@ function renderFaces(results = []) {
   return `
     <div class="v-faces v-compact-faces">
       ${results
-        .map((r) => {
-          const kind = dvFaceKind(r);
-          const icon =
-            kind === "double" ? "●●" : kind === "single" ? "●" : "○";
-          return `<span class="v-face v-face--${kind}" title="${r}">${icon}</span>`;
-        })
-        .join("")}
+      .map((r) => {
+        const kind = dvFaceKind(r);
+        const icon =
+          kind === "double" ? "●●" : kind === "single" ? "●" : "○";
+        return `<span class="v-face v-face--${kind}" title="${r}">${icon}</span>`;
+      })
+      .join("")}
     </div>
   `;
 }
 
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
-function clamp(n, min, max) {
-  return Math.min(Math.max(n, min), max);
-}
+
+
 
 async function rollDieOnce(roller) {
   if (typeof roller === "function") {
@@ -132,8 +125,8 @@ export async function rollSuccessDice({
           ? b
           : a
         : b.successes < a.successes
-        ? b
-        : a;
+          ? b
+          : a;
 
     const modeLabel =
       full === "adv"

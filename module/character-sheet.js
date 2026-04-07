@@ -1,4 +1,6 @@
-﻿import { rollSuccessDice } from "./rolls.js";
+﻿import { clamp, toNumber } from "./utils/number.js";
+import { escapeHtml } from "./utils/string.js";
+import { rollSuccessDice } from "./rolls.js";
 import {
   collectEffectTotals,
   getEffectValue,
@@ -38,12 +40,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
     const effectTotals = collectEffectTotals(this.actor);
 
     // Local helpers.
-    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
-    const num = (v, d) => {
-      const x = Number(v);
-      return Number.isNaN(x) ? d : x;
-    };
-    const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
+
+    const toRounds = (v, d = 0) => Math.max(0, Math.round(toNumber(v, d)));
     // Attribute getter with effects applied.
     const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
 
@@ -160,13 +158,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
     // Inspiration: base max + effects.
     const insp = attrs.inspiration ?? { value: 6, max: 6 };
-    const inspMaxBase = clamp(num(insp.max, 6), 0, 99);
+    const inspMaxBase = clamp(toNumber(insp.max, 6), 0, 99);
     const inspMax = clamp(
       inspMaxBase + getEffectValue(effectTotals, "inspMax"),
       0,
       99,
     );
-    const inspValue = clamp(num(insp.value, inspMax), 0, inspMax);
+    const inspValue = clamp(toNumber(insp.value, inspMax), 0, inspMax);
 
     // HP max derived from condition + effects.
     const condition = getAttr("condition");
@@ -175,12 +173,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
       condition * 8 + getEffectValue(effectTotals, "hpMax"),
     );
     const hp = attrs.hp ?? { value: hpMax, max: hpMax };
-    const hpValue = clamp(num(hp.value, hpMax), 0, hpMax);
+    const hpValue = clamp(toNumber(hp.value, hpMax), 0, hpMax);
 
     // Flags scope (system id).
     const scope = game.system.id;
     const savedExtra = this.actor.getFlag(scope, "extraDice");
-    const extraDice = clamp(num(savedExtra, 2), 1, 20);
+    const extraDice = clamp(toNumber(savedExtra, 2), 1, 20);
 
     // Attribute icons for the template.
     const icons = {
@@ -260,16 +258,16 @@ export class VitruviumCharacterSheet extends ActorSheet {
     const coins =
       this.actor.system.attributes?.coins ?? data.system.attributes.coins ?? {};
     data.system.attributes.coins = {
-      bronze: Math.max(0, Math.round(num(coins.bronze, 0))),
-      silver: Math.max(0, Math.round(num(coins.silver, 0))),
-      gold: Math.max(0, Math.round(num(coins.gold, 0))),
+      bronze: Math.max(0, Math.round(toNumber(coins.bronze, 0))),
+      silver: Math.max(0, Math.round(toNumber(coins.silver, 0))),
+      gold: Math.max(0, Math.round(toNumber(coins.gold, 0))),
     };
 
     // Effective armor: base attribute + equipped items + active effects.
     const baseArmor = clamp(
-      num(
+      toNumber(
         this.actor.system?.attributes?.armor?.value ??
-          this.actor.system?.attributes?.armor,
+        this.actor.system?.attributes?.armor,
         0,
       ),
       0,
@@ -323,20 +321,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
     super.activateListeners(html);
 
     // Local helpers.
-    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
-    const num = (v, d) => {
-      const x = Number(v);
-      return Number.isNaN(x) ? d : x;
-    };
-    const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
-    // Escape helper for safe HTML in chat content.
-    const esc = (s) =>
-      String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+
+    const toRounds = (v, d = 0) => Math.max(0, Math.round(toNumber(v, d)));
+
 
     // Flags scope (system id).
     const scope = game.system.id;
@@ -353,15 +340,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
           content: `<div style="display:grid; gap:8px;">
             <label>Удачливый бросок
               <select name="fullMode" style="width:100%">
-                <option value="normal" ${
-                  defaultFullMode === "normal" ? "selected" : ""
-                }>Обычный</option>
-                <option value="adv" ${
-                  defaultFullMode === "adv" ? "selected" : ""
-                }>Удачливый (полный переброс)</option>
-                <option value="dis" ${
-                  defaultFullMode === "dis" ? "selected" : ""
-                }>Неудачливый (полный переброс)</option>
+                <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""
+            }>Обычный</option>
+                <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""
+            }>Удачливый (полный переброс)</option>
+                <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""
+            }>Неудачливый (полный переброс)</option>
               </select>
             </label>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -384,17 +368,17 @@ export class VitruviumCharacterSheet extends ActorSheet {
               callback: (dlg) =>
                 resolve({
                   luck: clamp(
-                    num(dlg.find("input[name='luck']").val(), 0),
+                    toNumber(dlg.find("input[name='luck']").val(), 0),
                     0,
                     20,
                   ),
                   unluck: clamp(
-                    num(dlg.find("input[name='unluck']").val(), 0),
+                    toNumber(dlg.find("input[name='unluck']").val(), 0),
                     0,
                     20,
                   ),
                   extraDice: clamp(
-                    num(dlg.find("input[name='extraDice']").val(), 0),
+                    toNumber(dlg.find("input[name='extraDice']").val(), 0),
                     -20,
                     20,
                   ),
@@ -418,7 +402,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html
       .find("input[name='system.attributes.level']")
       .on("change", async (ev) => {
-        const v = Math.max(1, Math.round(num(ev.currentTarget.value, 1)));
+        const v = Math.max(1, Math.round(toNumber(ev.currentTarget.value, 1)));
         await this.actor.update({ "system.attributes.level": v });
       });
 
@@ -434,7 +418,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       ev.preventDefault();
       const key = ev.currentTarget.dataset.attr;
       const attrs = this.actor.system.attributes ?? {};
-      const current = clamp(num(attrs[key], 1), 1, 6);
+      const current = clamp(toNumber(attrs[key], 1), 1, 6);
       const next = clamp(current + 1, 1, 6);
 
       const patch = { [`system.attributes.${key}`]: next };
@@ -444,7 +428,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         patch["system.attributes.hp.max"] = newMaxHp;
 
         const curHp = clamp(
-          num(this.actor.system.attributes?.hp?.value, newMaxHp),
+          toNumber(this.actor.system.attributes?.hp?.value, newMaxHp),
           0,
           newMaxHp,
         );
@@ -459,7 +443,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       ev.preventDefault();
       const key = ev.currentTarget.dataset.attr;
       const attrs = this.actor.system.attributes ?? {};
-      const current = clamp(num(attrs[key], 1), 1, 6);
+      const current = clamp(toNumber(attrs[key], 1), 1, 6);
       const next = clamp(current - 1, 1, 6);
 
       const patch = { [`system.attributes.${key}`]: next };
@@ -469,7 +453,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         patch["system.attributes.hp.max"] = newMaxHp;
 
         const curHp = clamp(
-          num(this.actor.system.attributes?.hp?.value, newMaxHp),
+          toNumber(this.actor.system.attributes?.hp?.value, newMaxHp),
           0,
           newMaxHp,
         );
@@ -496,7 +480,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const choice = await rollModeDialog(`Проверка: ${label}`);
       if (!choice) return;
       const pool = clamp(
-        basePool + attrMods.dice + globalMods.dice + num(choice.extraDice, 0),
+        basePool + attrMods.dice + globalMods.dice + toNumber(choice.extraDice, 0),
         1,
         20,
       );
@@ -530,13 +514,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
       };
       // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
-      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const baseMax = clamp(toNumber(insp.max, 6), 0, 99);
       const effMax = clamp(
         baseMax + getEffectValue(effectTotals, "inspMax"),
         0,
         99,
       );
-      const v = clamp(num(insp.value, 6), 0, effMax);
+      const v = clamp(toNumber(insp.value, 6), 0, effMax);
       const next = clamp(v + 1, 0, effMax);
 
       await this.actor.update({
@@ -556,13 +540,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
       };
       // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
-      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const baseMax = clamp(toNumber(insp.max, 6), 0, 99);
       const effMax = clamp(
         baseMax + getEffectValue(effectTotals, "inspMax"),
         0,
         99,
       );
-      const v = clamp(num(insp.value, 6), 0, effMax);
+      const v = clamp(toNumber(insp.value, 6), 0, effMax);
       const next = clamp(v - 1, 0, effMax);
 
       await this.actor.update({
@@ -579,12 +563,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const effectTotals = collectEffectTotals(this.actor);
 
       // HP max = condition * 8 + hpMax effect.
-      const condition = clamp(num(attrs.condition, 1), 1, 6);
+      const condition = clamp(toNumber(attrs.condition, 1), 1, 6);
       const hpMax = condition * 8 + getEffectValue(effectTotals, "hpMax");
 
       // Inspiration max = base max + inspMax effect.
       const insp = attrs.inspiration ?? { value: 6, max: 6 };
-      const baseInspMax = clamp(num(insp.max, 6), 0, 99);
+      const baseInspMax = clamp(toNumber(insp.max, 6), 0, 99);
       const inspMax = clamp(
         baseInspMax + getEffectValue(effectTotals, "inspMax"),
         0,
@@ -607,7 +591,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
     // Extra dice increment (flag).
     html.find("[data-action='extra-inc']").on("click", async (ev) => {
       ev.preventDefault();
-      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      let cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       cur = clamp(cur + 1, 1, 20);
       await this.actor.setFlag(scope, "extraDice", cur);
     });
@@ -615,7 +599,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
     // Extra dice decrement (flag).
     html.find("[data-action='extra-dec']").on("click", async (ev) => {
       ev.preventDefault();
-      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      let cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       cur = clamp(cur - 1, 1, 20);
       await this.actor.setFlag(scope, "extraDice", cur);
     });
@@ -624,7 +608,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find("[data-action='extra-roll']").on("click", async (ev) => {
       ev.preventDefault();
 
-      const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      const cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. кубы");
       if (!choice) return;
 
@@ -632,7 +616,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const effectTotals = collectEffectTotals(this.actor);
       const globalMods = getGlobalRollModifiers(effectTotals);
 
-      const pool = clamp(cur + globalMods.dice + num(choice.extraDice, 0), 1, 20);
+      const pool = clamp(cur + globalMods.dice + toNumber(choice.extraDice, 0), 1, 20);
       const rollLuck = choice.luck + globalMods.adv;
       const rollUnluck = choice.unluck + globalMods.dis;
       const rollFullMode =
@@ -713,7 +697,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const desc = String(item.system?.description ?? "");
       const descHtml = desc
-        ? esc(desc).replace(/\n/g, "<br>")
+        ? escapeHtml(desc).replace(/\n/g, "<br>")
         : `<span class="hint">Описание не задано.</span>`;
 
       const isItem = item.type === "item";
@@ -733,10 +717,10 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const content = `
     <div class="vitruvium-chatcard v-itemcard">
       <div class="v-itemcard__top">
-        <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
+        <img class="v-itemcard__img" src="${escapeHtml(img)}" alt="${escapeHtml(item.name)}"/>
         <div class="v-itemcard__head">
-          <div class="v-itemcard__title">@UUID[${item.uuid}]{${esc(item.name)}}${qtyText}</div>
-          <div class="v-itemcard__sub">${esc(this.actor.name)} · ${typeLabel}</div>
+          <div class="v-itemcard__title">@UUID[${item.uuid}]{${escapeHtml(item.name)}}${qtyText}</div>
+          <div class="v-itemcard__sub">${escapeHtml(this.actor.name)} · ${typeLabel}</div>
         </div>
       </div>
       <div class="v-itemcard__desc">${descHtml}</div>
@@ -886,7 +870,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const ok = await Dialog.confirm({
         title: `Удалить ${item.type === "ability" ? "способность" : "предмет"}?`,
-        content: `<p>Удалить <b>${esc(item.name)}</b>?</p>`,
+        content: `<p>Удалить <b>${escapeHtml(item.name)}</b>?</p>`,
       });
 
       if (!ok) return;
@@ -902,11 +886,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       // Resolve system data and attributes.
       const sys = item.system ?? {};
-      const cost = Math.max(0, num(sys.cost, 0));
+      const cost = Math.max(0, toNumber(sys.cost, 0));
       const desc = String(sys.description ?? "");
 
-      const damageBase = clamp(num(sys.rollDamageBase, 0), 0, 99);
-      const healBase = clamp(num(sys.rollHealBase, 0), 0, 99);
+      const damageBase = clamp(toNumber(sys.rollDamageBase, 0), 0, 99);
+      const healBase = clamp(toNumber(sys.rollHealBase, 0), 0, 99);
       const attackRollEnabled = sys.attackRoll === true;
 
       // Normalize contestStates array - support both old and new format
@@ -917,7 +901,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         const oldUuid = String(sys.contestStateUuid ?? "").trim();
         const oldDuration = Math.max(
           0,
-          Math.round(num(sys.contestStateDurationRounds, 1)),
+          Math.round(toNumber(sys.contestStateDurationRounds, 1)),
         );
         const oldMode = [
           "self",
@@ -970,11 +954,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
       // Aggregate effects from items/abilities/states.
       const effectTotals = collectEffectTotals(this.actor);
       const inspMax = clamp(
-        num(insp.max, 6) + getEffectValue(effectTotals, "inspMax"),
+        toNumber(insp.max, 6) + getEffectValue(effectTotals, "inspMax"),
         0,
         99,
       );
-      const inspValue = clamp(num(insp.value, 0), 0, inspMax);
+      const inspValue = clamp(toNumber(insp.value, 0), 0, inspMax);
 
       if (inspValue < cost) {
         ui.notifications?.warn(
@@ -1006,19 +990,19 @@ export class VitruviumCharacterSheet extends ActorSheet {
           await playAutomatedAnimation({ actor: this.actor, item });
           const img = item.img ?? "icons/svg/mystery-man.svg";
           const stateLines = appliedStates
-            .map((name) => `<p>✓ Накладывает: <b>${esc(name)}</b></p>`)
+            .map((name) => `<p>✓ Накладывает: <b>${escapeHtml(name)}</b></p>`)
             .join("");
           const content = `
             <div class="vitruvium-chatcard">
               <div class="vitruvium-chatcard__top">
-                <img class="vitruvium-chatcard__img" src="${esc(img)}" title="${esc(item.name)}" />
+                <img class="vitruvium-chatcard__img" src="${escapeHtml(img)}" title="${escapeHtml(item.name)}" />
                 <div class="vitruvium-chatcard__head">
-                  <h3>${esc(item.name)}</h3>
-                  <p>${esc(this.actor.name)} использует способность</p>
+                  <h3>${escapeHtml(item.name)}</h3>
+                  <p>${escapeHtml(this.actor.name)} использует способность</p>
                 </div>
               </div>
               ${stateLines}
-              ${desc ? `<div class="vitruvium-chatcard__desc">${esc(desc).replace(/\n/g, "<br>")}</div>` : ""}
+              ${desc ? `<div class="vitruvium-chatcard__desc">${escapeHtml(desc).replace(/\n/g, "<br>")}</div>` : ""}
             </div>
           `;
           await ChatMessage.create({
@@ -1042,9 +1026,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
         const hpMax = Math.max(
           0,
           getEffectiveAttribute(attrs, "condition", effectTotals) * 8 +
-            getEffectValue(effectTotals, "hpMax"),
+          getEffectValue(effectTotals, "hpMax"),
         );
-        const hpCur = clamp(num(hp.value, hpMax), 0, hpMax);
+        const hpCur = clamp(toNumber(hp.value, hpMax), 0, hpMax);
         const hpNext = clamp(hpCur + healBase, 0, hpMax);
         actualHeal = Math.max(0, hpNext - hpCur);
         if (hpNext !== hpCur) {
@@ -1068,20 +1052,19 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const content = `
         <div class="vitruvium-chatcard">
           <div class="vitruvium-chatcard__top">
-            <img class="vitruvium-chatcard__img" src="${esc(img)}" title="${esc(
-              item.name,
-            )}" />
+            <img class="vitruvium-chatcard__img" src="${escapeHtml(img)}" title="${escapeHtml(
+        item.name,
+      )}" />
             <div class="vitruvium-chatcard__head">
-              <h3>${esc(item.name)}</h3>
+              <h3>${escapeHtml(item.name)}</h3>
               <p><b>Стоимость:</b> −${cost} вдохн.</p>
             </div>
           </div>
           ${effectLines}
-          ${
-            desc
-              ? `<p>${esc(desc).replace(/\n/g, "<br>")}</p>`
-              : `<p class="hint">Описание не задано.</p>`
-          }
+          ${desc
+          ? `<p>${escapeHtml(desc).replace(/\n/g, "<br>")}</p>`
+          : `<p class="hint">Описание не задано.</p>`
+        }
         </div>
       `;
 
@@ -1114,7 +1097,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const normalizeHp = (raw) => {
         const hpMax = computeMaxHp();
-        let v = num(raw, 0);
+        let v = toNumber(raw, 0);
         v = Math.round(v);
         v = clamp(v, 0, hpMax);
         return v;
@@ -1122,7 +1105,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
       const saveHpNow = async () => {
         const v = normalizeHp(hpInput.val());
-        const current = num(this.actor.system.attributes?.hp?.value, 0);
+        const current = toNumber(this.actor.system.attributes?.hp?.value, 0);
         if (v === current) return;
         await this.actor.update({ "system.attributes.hp.value": v });
       };
@@ -1181,9 +1164,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
       const saveCoinsNow = async () => {
         const current = this.actor.system.attributes?.coins ?? {};
         const next = getCoinsFromInputs();
-        const bronzeNow = num(current.bronze, 0);
-        const silverNow = num(current.silver, 0);
-        const goldNow = num(current.gold, 0);
+        const bronzeNow = toNumber(current.bronze, 0);
+        const silverNow = toNumber(current.silver, 0);
+        const goldNow = toNumber(current.gold, 0);
         if (
           next.bronze === bronzeNow &&
           next.silver === silverNow &&

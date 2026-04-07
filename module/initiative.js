@@ -1,4 +1,5 @@
 ﻿// systems/Vitruvium/module/initiative.js
+import { clamp, toNumber } from "./utils/number.js";
 import {
   collectEffectTotals,
   getAttributeRollModifiers,
@@ -7,13 +8,7 @@ import {
 import { chatVisibilityData } from "./chat-visibility.js";
 import { DiceSystem } from "./core/dice-system.js";
 
-function clamp(n, min, max) {
-  return Math.min(Math.max(n, min), max);
-}
-function num(v, d) {
-  const x = Number(v);
-  return Number.isNaN(x) ? d : x;
-}
+
 
 function successesIcons(n) {
   return Array.from({ length: Math.max(0, n) }, () => "◆").join(" ");
@@ -82,8 +77,8 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
   const updates = [];
   const chatLines = [];
 
-  const luck = clamp(num(rollOpts.luck, 0), 0, 20);
-  const unluck = clamp(num(rollOpts.unluck, 0), 0, 20);
+  const luck = clamp(toNumber(rollOpts.luck, 0), 0, 20);
+  const unluck = clamp(toNumber(rollOpts.unluck, 0), 0, 20);
   const fullMode = String(rollOpts.fullMode ?? "normal");
   const fullText = fullModeLabel(fullMode);
   const modeText =
@@ -100,7 +95,7 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
     const effectTotals = collectEffectTotals(a);
     const movementMods = getAttributeRollModifiers(effectTotals, "movement");
     const globalMods = getGlobalRollModifiers(effectTotals);
-    const baseMovement = num(
+    const baseMovement = toNumber(
       a.system?.attributes?.movement?.value ?? a.system?.attributes?.movement,
       1
     );
@@ -335,9 +330,9 @@ export function patchVitruviumInitiative() {
             label: "Бросить",
             callback: (html) =>
               resolve({
-                luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+                luck: clamp(toNumber(html.find("input[name='luck']").val(), 0), 0, 20),
                 unluck: clamp(
-                  num(html.find("input[name='unluck']").val(), 0),
+                  toNumber(html.find("input[name='unluck']").val(), 0),
                   0,
                   20
                 ),

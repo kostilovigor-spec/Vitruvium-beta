@@ -1,3 +1,4 @@
+import { escapeHtml } from "./utils/string.js";
 /**
  * Handles the drop event on the Foundry VTT Chat Log.
  * When an item, ability, skill, or state is dropped onto the chat,
@@ -30,17 +31,11 @@ export function registerChatDropHook() {
       // Create a chat card similar to the post-to-chat action
       // but ensure it has a draggable @UUID link.
       // Escape helper for safe HTML in chat content.
-      const esc = (s) =>
-        String(s ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/\"/g, "&quot;")
-          .replace(/'/g, "&#039;");
+
 
       const desc = String(item.system?.description ?? "");
       const descHtml = desc
-        ? esc(desc).replace(/\n/g, "<br>")
+        ? escapeHtml(desc).replace(/\n/g, "<br>")
         : `<span class="hint">Описание не задано.</span>`;
 
       const isItem = item.type === "item";
@@ -57,10 +52,10 @@ export function registerChatDropHook() {
       const content = `
         <div class="vitruvium-chatcard v-itemcard">
           <div class="v-itemcard__top">
-            <img class="v-itemcard__img" src="${esc(item.img)}" alt="${esc(item.name)}"/>
+            <img class="v-itemcard__img" src="${escapeHtml(item.img)}" alt="${escapeHtml(item.name)}"/>
             <div class="v-itemcard__head">
-              <div class="v-itemcard__title">@UUID[${item.uuid}]{${esc(item.name)}}${qtyText}</div>
-              <div class="v-itemcard__sub">${esc(actor ? actor.name : "Мировое")} · ${typeLabel}</div>
+              <div class="v-itemcard__title">@UUID[${item.uuid}]{${escapeHtml(item.name)}}${qtyText}</div>
+              <div class="v-itemcard__sub">${escapeHtml(actor ? actor.name : "Мировое")} · ${typeLabel}</div>
             </div>
           </div>
           <div class="v-itemcard__desc">${descHtml}</div>

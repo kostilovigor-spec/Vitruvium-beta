@@ -1,4 +1,6 @@
-﻿import { playAutomatedAnimation } from "./auto-animations.js";
+﻿import { clamp, toNumber } from "./utils/number.js";
+import { escapeHtml } from "./utils/string.js";
+import { playAutomatedAnimation } from "./auto-animations.js";
 import { DiceSystem } from "./core/dice-system.js";
 import { DamageResolver } from "./core/damage-resolver.js";
 import {
@@ -63,21 +65,8 @@ function chosenResults(r) {
   return r.results ?? r.all?.[0]?.results ?? [];
 }
 
-function clamp(n, min, max) {
-  return Math.min(Math.max(n, min), max);
-}
-function num(v, d) {
-  const x = Number(v);
-  return Number.isNaN(x) ? d : x;
-}
-function esc(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+
+
 
 const FLAG_SCOPE_PRIMARY = "Vitruvium";
 const FLAG_SCOPE_LEGACY = "vitruvium";
@@ -230,12 +219,12 @@ function listAttributeKeys(actor) {
 }
 
 function getWeaponDamage(actor, weaponItem = null) {
-  if (weaponItem) return clamp(num(weaponItem.system?.attackBonus, 0), 0, 99);
+  if (weaponItem) return clamp(toNumber(weaponItem.system?.attackBonus, 0), 0, 99);
   let best = 0;
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
     if (!it.system?.equipped) continue;
-    best = Math.max(best, num(it.system.attackBonus ?? 0, 0));
+    best = Math.max(best, toNumber(it.system.attackBonus ?? 0, 0));
   }
   return best;
 }
@@ -244,7 +233,7 @@ function getWeaponRollMods(weaponItem) {
   const effects = normalizeEffects(weaponItem?.system?.effects);
   const totals = {};
   for (const eff of effects) {
-    totals[eff.key] = (totals[eff.key] ?? 0) + num(eff.value, 0);
+    totals[eff.key] = (totals[eff.key] ?? 0) + toNumber(eff.value, 0);
   }
   return getLuckModifiers(totals, {
     signedKey: "weaponLuck",
@@ -278,7 +267,7 @@ function hasBlockWeaponEquipped(actor) {
 }
 
 function getArmorTotal(actor, { includeShield = true } = {}) {
-  const base = num(
+  const base = toNumber(
     actor.system?.attributes?.armor?.value ?? actor.system?.attributes?.armor,
     0,
   );
@@ -288,7 +277,7 @@ function getArmorTotal(actor, { includeShield = true } = {}) {
     if (!it.system?.equipped) continue;
     const isShield = !!it.system?.isShield;
     if (!includeShield && isShield) continue;
-    bonus += clamp(num(it.system.armorBonus, 0), 0, 6);
+    bonus += clamp(toNumber(it.system.armorBonus, 0), 0, 6);
   }
 
   // Добавляем значение брони из эффектов
@@ -315,7 +304,7 @@ function attackDialog({ actor, weaponName, defaultAttrKey }) {
   const options = keys
     .map(
       (k) =>
-        `<option value="${k}" ${k === defaultKey ? "selected" : ""}>${esc(
+        `<option value="${k}" ${k === defaultKey ? "selected" : ""}>${escapeHtml(
           prettyAttrLabel(k),
         )}</option>`,
     )
@@ -355,14 +344,14 @@ function attackDialog({ actor, weaponName, defaultAttrKey }) {
           callback: (html) =>
             resolve({
               attrKey: html.find("select[name='attr']").val(),
-              luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+              luck: clamp(toNumber(html.find("input[name='luck']").val(), 0), 0, 20),
               unluck: clamp(
-                num(html.find("input[name='unluck']").val(), 0),
+                toNumber(html.find("input[name='unluck']").val(), 0),
                 0,
                 20,
               ),
               extraDice: clamp(
-                num(html.find("input[name='extraDice']").val(), 0),
+                toNumber(html.find("input[name='extraDice']").val(), 0),
                 -20,
                 20,
               ),
@@ -397,14 +386,14 @@ function defenseDialog({
         callback: (html) =>
           resolve({
             type: "dodge",
-            luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+            luck: clamp(toNumber(html.find("input[name='luck']").val(), 0), 0, 20),
             unluck: clamp(
-              num(html.find("input[name='unluck']").val(), 0),
+              toNumber(html.find("input[name='unluck']").val(), 0),
               0,
               20,
             ),
             extraDice: clamp(
-              num(html.find("input[name='extraDice']").val(), 0),
+              toNumber(html.find("input[name='extraDice']").val(), 0),
               -20,
               20,
             ),
@@ -418,14 +407,14 @@ function defenseDialog({
         callback: (html) =>
           resolve({
             type: "block",
-            luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+            luck: clamp(toNumber(html.find("input[name='luck']").val(), 0), 0, 20),
             unluck: clamp(
-              num(html.find("input[name='unluck']").val(), 0),
+              toNumber(html.find("input[name='unluck']").val(), 0),
               0,
               20,
             ),
             extraDice: clamp(
-              num(html.find("input[name='extraDice']").val(), 0),
+              toNumber(html.find("input[name='extraDice']").val(), 0),
               -20,
               20,
             ),
@@ -488,7 +477,7 @@ function contestDialog({
   const options = keys
     .map(
       (k) =>
-        `<option value="${k}" ${k === defaultKey ? "selected" : ""}>${esc(
+        `<option value="${k}" ${k === defaultKey ? "selected" : ""}>${escapeHtml(
           prettyAttrLabel(k),
         )}</option>`,
     )
@@ -531,14 +520,14 @@ function contestDialog({
           callback: (html) =>
             resolve({
               attrKey: html.find("select[name='attr']").val(),
-              luck: clamp(num(html.find("input[name='luck']").val(), 0), 0, 20),
+              luck: clamp(toNumber(html.find("input[name='luck']").val(), 0), 0, 20),
               unluck: clamp(
-                num(html.find("input[name='unluck']").val(), 0),
+                toNumber(html.find("input[name='unluck']").val(), 0),
                 0,
                 20,
               ),
               extraDice: clamp(
-                num(html.find("input[name='extraDice']").val(), 0),
+                toNumber(html.find("input[name='extraDice']").val(), 0),
                 -20,
                 20,
               ),
@@ -601,18 +590,18 @@ function attackCardTwoCols({
   defenseTargets = [],
   resolvedResults = [],
 }) {
-  const wdmg = num(damageInfo?.base ?? 0, 0);
-  const atkSucc = num(atkRoll?.successes, 0);
+  const wdmg = toNumber(damageInfo?.base ?? 0, 0);
+  const atkSucc = toNumber(atkRoll?.successes, 0);
   const predictedDamage = Math.max(0, wdmg + atkSucc);
   const dmgFormula = `<div class="v-sub">${wdmg} (оружие) + ${atkSucc} (успехи) = ${predictedDamage}</div>`;
   const resolvedDefenderUuids = resolvedResults.map(r => r.uuid);
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack">
     <div class="v-head">
-      <div class="v-title">${esc(attackerName)} атакует ${esc(
+      <div class="v-title">${escapeHtml(attackerName)} атакует ${escapeHtml(
     defenderLabel,
   )}</div>
-      <div class="v-sub">Оружие: <b>${esc(weaponName)}</b> · Атрибут: ${esc(
+      <div class="v-sub">Оружие: <b>${escapeHtml(weaponName)}</b> · Атрибут: ${escapeHtml(
     prettyAttrLabel(attrKey),
   )}</div>
     </div>
@@ -647,11 +636,11 @@ function renderDefenseTargets({
       const statusHtml = isResolved ? resolvedHint : hint;
 
       return `
-      <div data-defender-token-uuid="${esc(
+      <div data-defender-token-uuid="${escapeHtml(
         norm.defenderTokenUuid,
       )}" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;">
-        <div class="v-sub"><b>${esc(norm.defenderName)}</b></div>
-        <button type="button" class="v-btn" data-action="vitruvium-defense" data-defender-token-uuid="${esc(
+        <div class="v-sub"><b>${escapeHtml(norm.defenderName)}</b></div>
+        <button type="button" class="v-btn" data-action="vitruvium-defense" data-defender-token-uuid="${escapeHtml(
         norm.defenderTokenUuid,
       )}" ${isResolved ? "disabled" : ""}>Защита</button>
         <div class="v-sub" data-role="defense-status" style="grid-column:1 / -1;">${statusHtml}</div>
@@ -687,11 +676,11 @@ function renderContestTargets({
       if (!norm) return "";
       const isResolved = resolved.has(norm.defenderTokenUuid);
       return `
-      <div data-contest-defender-token-uuid="${esc(
+      <div data-contest-defender-token-uuid="${escapeHtml(
         norm.defenderTokenUuid,
       )}" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;">
-        <div class="v-sub"><b>${esc(norm.defenderName)}</b></div>
-        <button type="button" class="v-btn" data-action="vitruvium-contest" data-defender-token-uuid="${esc(
+        <div class="v-sub"><b>${escapeHtml(norm.defenderName)}</b></div>
+        <button type="button" class="v-btn" data-action="vitruvium-contest" data-defender-token-uuid="${escapeHtml(
         norm.defenderTokenUuid,
       )}" ${isResolved ? "disabled" : ""}>Сопротивление</button>
         <div class="v-sub" data-role="contest-status" style="grid-column:1 / -1;">${isResolved ? resolvedHint : hint}</div>
@@ -713,7 +702,7 @@ function renderGmApplyButtons({ defenderTokenUuid, defenderName = "", damage, is
   const btnClass = isHealing ? "v-btn--success" : "v-btn--danger";
   const btnLabel = isHealing ? `Лечение (${damage})` : `Урон (${damage})${!isHealing && crit ? " ×2️ КРИТ" : ""}`;
   const nameHtml = defenderName
-    ? `<span class="v-dmg-name">${esc(defenderName)}</span>`
+    ? `<span class="v-dmg-name">${escapeHtml(defenderName)}</span>`
     : "";
 
   return `
@@ -726,7 +715,7 @@ function renderGmApplyButtons({ defenderTokenUuid, defenderName = "", damage, is
         <option value="1.5">×1.5</option>
         <option value="2">×2</option>
       </select>
-      <button type="button" class="v-btn ${btnClass} v-dmg-btn" data-action="${action}" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}">${btnLabel}</button>
+      <button type="button" class="v-btn ${btnClass} v-dmg-btn" data-action="${action}" data-defender-token-uuid="${escapeHtml(defenderTokenUuid)}" data-damage="${damage}">${btnLabel}</button>
     </div>
   `;
 }
@@ -786,8 +775,8 @@ async function createGmApplyMessage({
     const defenderTokenUuid = String(row.defenderTokenUuid ?? "").trim();
     const isHealing = !!row.isHealing;
     const kind = isHealing ? "applyHealing" : "applyDamage";
-    const dmg = Math.max(0, Math.floor(num(row.damage, 0)));
-    const prefix = row.label ? `<div class="v-sub"><b>${esc(row.label)}</b></div>` : "";
+    const dmg = Math.max(0, Math.floor(toNumber(row.damage, 0)));
+    const prefix = row.label ? `<div class="v-sub"><b>${escapeHtml(row.label)}</b></div>` : "";
 
     if (attackMessageId && applyPhase === "resolved") {
       for (const msg of game.messages ?? []) {
@@ -853,7 +842,7 @@ function abilityAttackCard({
   const hasAttack = !!atkRoll && isAttack;
   const hasDamage = !!damageInfo && damageInfo.base > 0;
   const hasHeal = !!healInfo && healInfo.base > 0;
-  const atkSucc = num(atkRoll?.successes, 0);
+  const atkSucc = toNumber(atkRoll?.successes, 0);
   const dmgFormula = hasDamage
     ? `<div class="v-sub">${damageInfo.base} (способность)${hasAttack ? ` + ${atkSucc} (успехи)` : ""} = ${damageInfo.total}</div>`
     : "";
@@ -908,9 +897,9 @@ function abilityAttackCard({
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--ability">
     <div class="v-head">
-      <div class="v-title">${esc(attackerName)} использует ${esc(
+      <div class="v-title">${escapeHtml(attackerName)} использует ${escapeHtml(
     abilityName,
-  )} → ${esc(defenderLabel)}</div>
+  )} → ${escapeHtml(defenderLabel)}</div>
       ${headerBits.length ? `<div class="v-sub">${headerBits.join(" · ")}</div>` : ""}
     </div>
 
@@ -972,8 +961,8 @@ function defenseCardTwoCols({
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--defense">
     <div class="v-head">
-      <div class="v-title">${esc(defenderName)} — защита</div>
-      <div class="v-sub">Действие: <b>${esc(reactionLabel)}</b></div>
+      <div class="v-title">${escapeHtml(defenderName)} — защита</div>
+      <div class="v-sub">Действие: <b>${escapeHtml(reactionLabel)}</b></div>
     </div>
     <div class="v-two">
       ${renderCollapsibleBox({ label: "Защита", value: defRoll.successes, roll: defRoll })}
@@ -994,14 +983,14 @@ function contestRollCardTwoCols({
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--defense">
     <div class="v-head">
-      <div class="v-title">${esc(defenderName)} — сопротивление</div>
-      <div class="v-sub">${esc(casterName)} (${esc(
+      <div class="v-title">${escapeHtml(defenderName)} — сопротивление</div>
+      <div class="v-sub">${escapeHtml(casterName)} (${escapeHtml(
     prettyAttrLabel(casterAttr),
-  )}) vs ${esc(prettyAttrLabel(defenderAttr))}</div>
+  )}) vs ${escapeHtml(prettyAttrLabel(defenderAttr))}</div>
     </div>
 
     <div class="v-two">
-      ${renderCollapsibleBox({ label: "Кастер", value: num(casterSuccesses, 0) })}
+      ${renderCollapsibleBox({ label: "Кастер", value: toNumber(casterSuccesses, 0) })}
       ${renderCollapsibleBox({ label: "Цель", value: defRoll.successes, roll: defRoll })}
     </div>
   </div>`;
@@ -1018,17 +1007,17 @@ function resolveContestCardHTML({
   defRoll = null,
 }) {
   const tail = applied
-    ? `Состояние <b>${esc(stateName)}</b> наложено`
+    ? `Состояние <b>${escapeHtml(stateName)}</b> наложено`
     : "Цель устояла — состояние не наложено";
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
     <div class="v-head">
-      <div class="v-title">${esc(defenderName)} — сопротивление</div>
-      <div class="v-sub">${esc(attackerName)} · ${esc(abilityName)}</div>
+      <div class="v-title">${escapeHtml(defenderName)} — сопротивление</div>
+      <div class="v-sub">${escapeHtml(attackerName)} · ${escapeHtml(abilityName)}</div>
     </div>
     <div class="v-two">
-      ${renderCollapsibleBox({ label: "Кастер", value: num(casterSuccesses, 0) })}
-      ${renderCollapsibleBox({ label: "Цель", value: num(targetSuccesses, 0), roll: defRoll })}
+      ${renderCollapsibleBox({ label: "Кастер", value: toNumber(casterSuccesses, 0) })}
+      ${renderCollapsibleBox({ label: "Цель", value: toNumber(targetSuccesses, 0), roll: defRoll })}
     </div>
     <div class="v-sub" style="margin-top:8px;">${tail}</div>
   </div>`;
@@ -1049,7 +1038,7 @@ function resolveCardHTML({
   <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
     <div class="v-head">
       <div class="v-title">Результат</div>
-      <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(
+      <div class="v-sub">${escapeHtml(attackerName)} → ${escapeHtml(defenderName)} · ${escapeHtml(
     weaponName,
   )} → ${statusText} · Урон ${damage}</div>
     </div>
@@ -1077,7 +1066,7 @@ function resolveAbilityCardHTML({
   <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
     <div class="v-head">
       <div class="v-title">Результат способности</div>
-      <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(
+      <div class="v-sub">${escapeHtml(attackerName)} → ${escapeHtml(defenderName)} · ${escapeHtml(
     abilityName,
   )}${tail}</div>
     </div>
@@ -1115,8 +1104,8 @@ export async function replaceStateFromTemplate(
   );
   const durationTurns =
     durationOverrideRounds === null || durationOverrideRounds === undefined
-      ? Math.max(0, Math.round(num(sourceSystem.durationRounds, 0)))
-      : Math.max(0, Math.round(num(durationOverrideRounds, 0)));
+      ? Math.max(0, Math.round(toNumber(sourceSystem.durationRounds, 0)))
+      : Math.max(0, Math.round(toNumber(durationOverrideRounds, 0)));
   const activeCombat = game.combat?.started ? game.combat : null;
   const appliedRound = Number.isFinite(Number(activeCombat?.round))
     ? Number(activeCombat.round)
@@ -1267,8 +1256,8 @@ Hooks.once("ready", () => {
       });
       if (!defender || !attacker) return;
 
-      const casterSuccesses = num(f.casterContestSuccesses, 0);
-      const targetSuccesses = num(f.targetContestSuccesses, 0);
+      const casterSuccesses = toNumber(f.casterContestSuccesses, 0);
+      const targetSuccesses = toNumber(f.targetContestSuccesses, 0);
       let applied = targetSuccesses < casterSuccesses;
       let stateName = null;
 
@@ -1351,9 +1340,9 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               f.defenderTokenUuid ??
               "",
             );
-            const dmg = num(btn.getAttribute("data-damage") ?? f.damage, 0);
+            const dmg = toNumber(btn.getAttribute("data-damage") ?? f.damage, 0);
             const multSelector = containerDiv?.querySelector("[data-role='dmg-multiplier']");
-            const multiplier = num(multSelector?.value ?? 1, 1);
+            const multiplier = toNumber(multSelector?.value ?? 1, 1);
             const finalVal = Math.floor(dmg * multiplier);
 
             let targetActor = null;
@@ -1369,8 +1358,8 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               return;
             }
 
-            const curHp = num(targetActor.system?.attributes?.hp?.value, 0);
-            const maxHp = num(targetActor.system?.attributes?.hp?.max, 100);
+            const curHp = toNumber(targetActor.system?.attributes?.hp?.value, 0);
+            const maxHp = toNumber(targetActor.system?.attributes?.hp?.max, 100);
 
             if (isHealing) {
               await targetActor.update({
@@ -1558,7 +1547,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               attrMods.dice +
               blockDiceEff +
               globalMods.dice +
-              num(choice.extraDice, 0),
+              toNumber(choice.extraDice, 0),
               1,
               20,
             );
@@ -1619,7 +1608,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               attrMods.dice +
               dodgeDiceEff +
               globalMods.dice +
-              num(choice.extraDice, 0),
+              toNumber(choice.extraDice, 0),
               1,
               20,
             );
@@ -1676,11 +1665,11 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           let crit = false;
           const attackKindDef = flags.attackKind ?? "weapon";
           const defSDef = defRoll.successes;
-          const atkSDef = num(flags.atkSuccesses, 0);
+          const atkSDef = toNumber(flags.atkSuccesses, 0);
 
           if (attackKindDef === "ability") {
-            const damageValue = num(flags.abilityDamageValue, 0);
-            const hasDamage = num(flags.abilityDamageBase, 0) > 0;
+            const damageValue = toNumber(flags.abilityDamageValue, 0);
+            const hasDamage = toNumber(flags.abilityDamageBase, 0) > 0;
             const attackRollEnabled = flags.attackRoll === true;
             if (hasDamage) {
               const dmgOut = DamageResolver.computeAbilityDamage({
@@ -1703,7 +1692,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const isBlock = defenseType === "block";
             const armor = isBlock ? armorFull : armorNoShield;
             const dmgOut = DamageResolver.computeWeaponDamage({
-              weaponDamage: num(flags.weaponDamage, 0),
+              weaponDamage: toNumber(flags.weaponDamage, 0),
               attackSuccesses: atkSDef,
               defenseSuccesses: defSDef,
               armor: armor,
@@ -1922,13 +1911,13 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             baseAttr +
             attrMods.dice +
             globalMods.dice +
-            num(choice.extraDice, 0),
+            toNumber(choice.extraDice, 0),
             1,
             20,
           );
-          const totalLuck = num(choice.luck, 0) + globalMods.adv + attrMods.adv;
+          const totalLuck = toNumber(choice.luck, 0) + globalMods.adv + attrMods.adv;
           const totalUnluck =
-            num(choice.unluck, 0) + globalMods.dis + attrMods.dis;
+            toNumber(choice.unluck, 0) + globalMods.dis + attrMods.dis;
           const finalFullMode =
             globalMods.fullMode !== "normal"
               ? globalMods.fullMode
@@ -1943,7 +1932,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           });
 
           // Single combined contest card: roll result + outcome
-          const casterSuccessesContest = num(flags.casterContestSuccesses, 0);
+          const casterSuccessesContest = toNumber(flags.casterContestSuccesses, 0);
           const targetSuccessesContest = defRoll.successes;
           let appliedContest = targetSuccessesContest < casterSuccessesContest;
           let stateNameContest = null;
@@ -2026,11 +2015,11 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const abilityName = abilityItem?.name ?? "Способность";
     const abilityDesc = String(abilityItem?.system?.description ?? "");
     const damageBase = clamp(
-      num(abilityItem?.system?.rollDamageBase, 0),
+      toNumber(abilityItem?.system?.rollDamageBase, 0),
       0,
       99,
     );
-    const healBase = clamp(num(abilityItem?.system?.rollHealBase, 0), 0, 99);
+    const healBase = clamp(toNumber(abilityItem?.system?.rollHealBase, 0), 0, 99);
 
     // Normalize contestStates array - support both old and new format
     let contestStates = Array.isArray(abilityItem?.system?.contestStates)
@@ -2043,7 +2032,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       ).trim();
       const oldDuration = Math.max(
         0,
-        Math.round(num(abilityItem?.system?.contestStateDurationRounds, 1)),
+        Math.round(toNumber(abilityItem?.system?.contestStateDurationRounds, 1)),
       );
       const oldMode = [
         "self",
@@ -2124,26 +2113,22 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         actor: attackerActor,
         item: abilityItem,
       });
-      const esc = (s) =>
-        String(s ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+
       const img = abilityItem.img ?? "icons/svg/mystery-man.svg";
       const stateLines = appliedSelfStates
-        .map((name) => `<p>✓ Накладывает: <b>${esc(name)}</b></p>`)
+        .map((name) => `<p>✓ Накладывает: <b>${escapeHtml(name)}</b></p>`)
         .join("");
       const content = `
         <div class="vitruvium-chatcard">
           <div class="vitruvium-chatcard__top">
-            <img class="vitruvium-chatcard__img" src="${esc(img)}" title="${esc(abilityName)}" />
+            <img class="vitruvium-chatcard__img" src="${escapeHtml(img)}" title="${escapeHtml(abilityName)}" />
             <div class="vitruvium-chatcard__head">
-              <h3>${esc(abilityName)}</h3>
-              <p>${esc(attackerActor.name)} использует способность</p>
+              <h3>${escapeHtml(abilityName)}</h3>
+              <p>${escapeHtml(attackerActor.name)} использует способность</p>
             </div>
           </div>
           ${stateLines}
-          ${abilityDesc ? `<div class="vitruvium-chatcard__desc">${esc(abilityDesc).replace(/\n/g, "<br>")}</div>` : ""}
+          ${abilityDesc ? `<div class="vitruvium-chatcard__desc">${escapeHtml(abilityDesc).replace(/\n/g, "<br>")}</div>` : ""}
         </div>
       `;
       await ChatMessage.create({
@@ -2272,7 +2257,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
 
     const damageValue = damageBase;
     const healValue = healBase;
-    const attackSuccesses = num(atkRoll?.successes, 0);
+    const attackSuccesses = toNumber(atkRoll?.successes, 0);
     const damageShown = hasDamage ? damageValue + attackSuccesses : 0;
     const healShown = hasHeal ? healValue + attackSuccesses : 0;
 
@@ -2447,12 +2432,12 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         content: `
         <div class="vitruvium-chatcard vitruvium-chatcard--attack">
           <div class="v-head">
-            <div class="v-title">${esc(
+            <div class="v-title">${escapeHtml(
           attackerActor.name,
         )} — атака (без цели)</div>
-            <div class="v-sub">Оружие: <b>${esc(
+            <div class="v-sub">Оружие: <b>${escapeHtml(
           weaponName,
-        )}</b> · Атрибут: ${esc(prettyAttrLabel(atkChoice.attrKey))}</div>
+        )}</b> · Атрибут: ${escapeHtml(prettyAttrLabel(atkChoice.attrKey))}</div>
           </div>
           <div class="v-two">
             <div class="v-box">

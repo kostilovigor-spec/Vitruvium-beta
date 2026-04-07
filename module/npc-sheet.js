@@ -1,4 +1,7 @@
+import { clamp, toNumber } from "./utils/number.js";
+import { escapeHtml } from "./utils/string.js";
 import {
+
   collectEffectTotals,
   getEffectValue,
   getAttributeRollModifiers,
@@ -29,12 +32,8 @@ export class VitruviumNPCSheet extends ActorSheet {
     const attrs = sys.attributes ?? {};
     const effectTotals = collectEffectTotals(this.actor);
 
-    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
-    const num = (v, d) => {
-      const x = Number(v);
-      return Number.isNaN(x) ? d : x;
-    };
-    const toRounds = (v, d = 0) => Math.max(0, Math.round(num(v, d)));
+
+    const toRounds = (v, d = 0) => Math.max(0, Math.round(toNumber(v, d)));
 
     const getAttr = (k) => getEffectiveAttribute(attrs, k, effectTotals);
 
@@ -104,19 +103,19 @@ export class VitruviumNPCSheet extends ActorSheet {
     }));
 
     const insp = attrs.inspiration ?? { value: 6, max: 6 };
-    const inspMaxBase = clamp(num(insp.max, 6), 0, 99);
+    const inspMaxBase = clamp(toNumber(insp.max, 6), 0, 99);
     const inspMax = clamp(
       inspMaxBase + getEffectValue(effectTotals, "inspMax"),
       0,
       99,
     );
-    const inspValue = clamp(num(insp.value, inspMax), 0, inspMax);
+    const inspValue = clamp(toNumber(insp.value, inspMax), 0, inspMax);
     data.vitruvium.inspiration = { value: inspValue, max: inspMax };
 
     // HP - читаем напрямую из actor, не вычисляем
     const hp = attrs.hp ?? { value: 0, max: 0 };
-    const hpMax = clamp(num(hp.max, 0), 0, 999);
-    const hpValue = clamp(num(hp.value, 0), 0, 999);
+    const hpMax = clamp(toNumber(hp.max, 0), 0, 999);
+    const hpValue = clamp(toNumber(hp.value, 0), 0, 999);
     data.vitruvium.hp = { value: hpValue, max: hpMax };
 
     // Сохраняем для шаблона
@@ -126,17 +125,17 @@ export class VitruviumNPCSheet extends ActorSheet {
 
     const scope = game.system.id;
     const savedExtra = this.actor.getFlag(scope, "extraDice");
-    data.vitruvium.extraDice = clamp(num(savedExtra, 2), 1, 20);
+    data.vitruvium.extraDice = clamp(toNumber(savedExtra, 2), 1, 20);
 
     // Armor - читаем напрямую
     const armor = attrs.armor ?? { value: 0 };
-    const armorValue = clamp(num(armor.value, 0), 0, 999);
+    const armorValue = clamp(toNumber(armor.value, 0), 0, 999);
     data.vitruvium.armor = { value: armorValue };
     data.system.attributes.armor = { value: armorValue };
 
     // Speed - читаем напрямую (не вычисляем из movement)
     const speed = attrs.speed ?? { value: 0 };
-    const speedValue = clamp(num(speed.value, 0), 0, 999);
+    const speedValue = clamp(toNumber(speed.value, 0), 0, 999);
     data.vitruvium.speed = { value: speedValue };
     data.system.attributes.speed = { value: speedValue };
 
@@ -186,19 +185,9 @@ export class VitruviumNPCSheet extends ActorSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
-    const num = (v, d) => {
-      const x = Number(v);
-      return Number.isNaN(x) ? d : x;
-    };
 
-    const esc = (s) =>
-      String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+
+
 
     const scope = game.system.id;
 
@@ -239,17 +228,17 @@ export class VitruviumNPCSheet extends ActorSheet {
               callback: (html) =>
                 resolve({
                   luck: clamp(
-                    num(html.find("input[name='luck']").val(), 0),
+                    toNumber(html.find("input[name='luck']").val(), 0),
                     0,
                     20,
                   ),
                   unluck: clamp(
-                    num(html.find("input[name='unluck']").val(), 0),
+                    toNumber(html.find("input[name='unluck']").val(), 0),
                     0,
                     20,
                   ),
                   extraDice: clamp(
-                    num(html.find("input[name='extraDice']").val(), 0),
+                    toNumber(html.find("input[name='extraDice']").val(), 0),
                     -20,
                     20,
                   ),
@@ -274,7 +263,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       ev.preventDefault();
       const key = ev.currentTarget.dataset.attr;
       const attrs = this.actor.system.attributes ?? {};
-      const current = num(attrs[key]?.value ?? 0, 0);
+      const current = toNumber(attrs[key]?.value ?? 0, 0);
       const next = clamp(current + 1, 0, 99);
       await this.actor.update({ [`system.attributes.${key}.value`]: next });
     });
@@ -283,7 +272,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       ev.preventDefault();
       const key = ev.currentTarget.dataset.attr;
       const attrs = this.actor.system.attributes ?? {};
-      const current = num(attrs[key]?.value ?? 0, 0);
+      const current = toNumber(attrs[key]?.value ?? 0, 0);
       const next = clamp(current - 1, 0, 99);
       await this.actor.update({ [`system.attributes.${key}.value`]: next });
     });
@@ -298,14 +287,14 @@ export class VitruviumNPCSheet extends ActorSheet {
       const effectTotals = collectEffectTotals(this.actor);
       const globalMods = getGlobalRollModifiers(effectTotals);
       const attrMods = getAttributeRollModifiers(effectTotals, key);
-      const base = num(attrs[key]?.value ?? 0, 0);
+      const base = toNumber(attrs[key]?.value ?? 0, 0);
       const choice = await rollModeDialog(`Проверка: ${label}`);
       if (!choice) return;
       const pool = clamp(
         getEffectiveAttribute(attrs, key, effectTotals) +
-          attrMods.dice +
-          globalMods.dice +
-          num(choice.extraDice, 0),
+        attrMods.dice +
+        globalMods.dice +
+        toNumber(choice.extraDice, 0),
         1,
         20,
       );
@@ -334,13 +323,13 @@ export class VitruviumNPCSheet extends ActorSheet {
         max: 6,
       };
       const effectTotals = collectEffectTotals(this.actor);
-      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const baseMax = clamp(toNumber(insp.max, 6), 0, 99);
       const effMax = clamp(
         baseMax + getEffectValue(effectTotals, "inspMax"),
         0,
         99,
       );
-      const v = clamp(num(insp.value, 6), 0, effMax);
+      const v = clamp(toNumber(insp.value, 6), 0, effMax);
       const next = clamp(v + 1, 0, effMax);
       await this.actor.update({
         "system.attributes.inspiration.max": baseMax,
@@ -355,13 +344,13 @@ export class VitruviumNPCSheet extends ActorSheet {
         max: 6,
       };
       const effectTotals = collectEffectTotals(this.actor);
-      const baseMax = clamp(num(insp.max, 6), 0, 99);
+      const baseMax = clamp(toNumber(insp.max, 6), 0, 99);
       const effMax = clamp(
         baseMax + getEffectValue(effectTotals, "inspMax"),
         0,
         99,
       );
-      const v = clamp(num(insp.value, 6), 0, effMax);
+      const v = clamp(toNumber(insp.value, 6), 0, effMax);
       const next = clamp(v - 1, 0, effMax);
       await this.actor.update({
         "system.attributes.inspiration.max": baseMax,
@@ -372,24 +361,24 @@ export class VitruviumNPCSheet extends ActorSheet {
     // Extra dice
     html.find("[data-action='extra-inc']").on("click", async (ev) => {
       ev.preventDefault();
-      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      let cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       cur = clamp(cur + 1, 1, 20);
       await this.actor.setFlag(scope, "extraDice", cur);
     });
 
     html.find("[data-action='extra-dec']").on("click", async (ev) => {
       ev.preventDefault();
-      let cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      let cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       cur = clamp(cur - 1, 1, 20);
       await this.actor.setFlag(scope, "extraDice", cur);
     });
 
     html.find("[data-action='extra-roll']").on("click", async (ev) => {
       ev.preventDefault();
-      const cur = clamp(num(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
+      const cur = clamp(toNumber(this.actor.getFlag(scope, "extraDice"), 2), 1, 20);
       const choice = await rollModeDialog("Доп. бросок");
       if (!choice) return;
-      const pool = clamp(cur + globalMods.dice + num(choice.extraDice, 0), 1, 20);
+      const pool = clamp(cur + globalMods.dice + toNumber(choice.extraDice, 0), 1, 20);
       const effectTotals = collectEffectTotals(this.actor);
       const globalMods = getGlobalRollModifiers(effectTotals);
       const rollLuck = choice.luck + globalMods.adv;
@@ -462,7 +451,7 @@ export class VitruviumNPCSheet extends ActorSheet {
 
       const desc = String(item.system?.description ?? "");
       const descHtml = desc
-        ? esc(desc).replace(/\n/g, "<br>")
+        ? escapeHtml(desc).replace(/\n/g, "<br>")
         : `<span class="hint">Описание не задано.</span>`;
 
       const qty = Number(item.system?.quantity ?? 1);
@@ -477,10 +466,10 @@ export class VitruviumNPCSheet extends ActorSheet {
       const content = `
         <div class="vitruvium-chatcard v-itemcard">
           <div class="v-itemcard__top">
-            <img class="v-itemcard__img" src="${esc(img)}" alt="${esc(item.name)}"/>
+            <img class="v-itemcard__img" src="${escapeHtml(img)}" alt="${escapeHtml(item.name)}"/>
             <div class="v-itemcard__head">
-              <div class="v-itemcard__title">@UUID[${item.uuid}]{${esc(item.name)}}${Number.isFinite(qty) ? ` ×${qty}` : ""}</div>
-              <div class="v-itemcard__sub">${esc(this.actor.name)} · ${typeLabel}</div>
+              <div class="v-itemcard__title">@UUID[${item.uuid}]{${escapeHtml(item.name)}}${Number.isFinite(qty) ? ` ×${qty}` : ""}</div>
+              <div class="v-itemcard__sub">${escapeHtml(this.actor.name)} · ${typeLabel}</div>
             </div>
           </div>
           <div class="v-itemcard__desc">${descHtml}</div>
