@@ -1,4 +1,4 @@
-import { normalizeEffects } from "./effects.js";
+import { normalizeEffects, applyEffect, removeEffect } from "./effects.js";
 
 const hasOwn = (obj, key) =>
   Object.prototype.hasOwnProperty.call(obj ?? {}, key);
@@ -183,24 +183,22 @@ async function createStateEffect(item) {
   const timing = readTurnState(item);
   const iconPath = item.img || "icons/svg/aura.svg";
   const statusId = `vitruvium-state-${item.id}`;
-  await item.actor.createEmbeddedDocuments("ActiveEffect", [
-    {
-      name: item.name,
-      label: item.name,
-      // Keep both keys for compatibility across Foundry versions/modules.
-      icon: iconPath,
-      img: iconPath,
-      origin: item.uuid,
-      // We do not use Foundry round ticking anymore, but keep a turn duration
-      // so the effect is treated as temporary and shown on tokens.
-      duration: {
-        turns: Math.max(1, timing.remainingTurns || timing.turnDuration || 1),
-      },
-      statuses: [statusId],
-      changes: [],
-      disabled: false,
+  await applyEffect(item.actor, {
+    name: item.name,
+    label: item.name,
+    // Keep both keys for compatibility across Foundry versions/modules.
+    icon: iconPath,
+    img: iconPath,
+    origin: item.uuid,
+    // We do not use Foundry round ticking anymore, but keep a turn duration
+    // so the effect is treated as temporary and shown on tokens.
+    duration: {
+      turns: Math.max(1, timing.remainingTurns || timing.turnDuration || 1),
     },
-  ]);
+    statuses: [statusId],
+    changes: [],
+    disabled: false,
+  });
 }
 
 /**
@@ -209,15 +207,7 @@ async function createStateEffect(item) {
  */
 async function deleteStateEffects(item) {
   if (!item.actor) return;
-  const effectsToRemove =
-    item.actor.effects?.filter((ef) => ef.origin && ef.origin.includes(item.uuid)) ||
-    [];
-  if (effectsToRemove.length > 0) {
-    await item.actor.deleteEmbeddedDocuments(
-      "ActiveEffect",
-      effectsToRemove.map((ef) => ef.id),
-    );
-  }
+  await removeEffect(item.actor, item.uuid);
 }
 
 const collectOverTimeEntries = (stateItem, triggerTiming) => {

@@ -356,7 +356,7 @@ const renderEffectRow = (effect = {}) => {
   const key = isOverTime
     ? typeKey
     : EFFECT_TARGETS.find((t) => t.key === effect.key)?.key ??
-      EFFECT_TARGETS[0].key;
+    EFFECT_TARGETS[0].key;
   const rawValue = Number.isFinite(effect.value) ? Number(effect.value) : 0;
   const value = isOverTime
     ? Math.max(0, Math.round(Math.abs(rawValue)))
@@ -404,9 +404,8 @@ const renderEffectRow = (effect = {}) => {
   return `
     <div class="v-effects__row">
       <select class="v-effects__key">${options}</select>
-      <select class="v-effects__timing" ${
-        isOverTime ? "" : "style='display:none;'"
-      }>${timingOptions}</select>
+      <select class="v-effects__timing" ${isOverTime ? "" : "style='display:none;'"
+    }>${timingOptions}</select>
       <input type="number" class="v-effects__val" value="${value}" step="1" />
       <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
     </div>
@@ -526,3 +525,16 @@ export const openEffectsDialog = async (item) => {
 
   dialog.render(true);
 };
+
+export async function applyEffect(actor, effectData) {
+  if (!actor) return;
+  return await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
+}
+
+export async function removeEffect(actor, originUuid) {
+  if (!actor) return;
+  const effectsToRemove = actor.effects?.filter((ef) => ef.origin && ef.origin.includes(originUuid)) || [];
+  if (effectsToRemove.length > 0) {
+    return await actor.deleteEmbeddedDocuments("ActiveEffect", effectsToRemove.map((ef) => ef.id));
+  }
+}
