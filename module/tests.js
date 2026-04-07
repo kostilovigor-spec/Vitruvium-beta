@@ -1,4 +1,5 @@
-import { rollPool, computeDamageCompact } from "./combat.js";
+import { rollPool } from "./combat.js";
+import { DamageResolver } from "./core/damage-resolver.js";
 import { rollSuccessDice } from "./rolls.js";
 import {
   normalizeEffects,
@@ -68,14 +69,13 @@ export const registerVitruviumTests = () => {
       }
     };
 
-    await run("combat.computeDamageCompact.block", async () => {
-      const out = computeDamageCompact({
+    await run("core.damageResolver.weaponDamage.block", async () => {
+      const out = DamageResolver.computeWeaponDamage({
         weaponDamage: 3,
-        atkS: 4,
-        defS: 2,
-        defenseType: "block",
-        armorFull: 2,
-        armorNoShield: 1,
+        attackSuccesses: 4,
+        defenseSuccesses: 2,
+        isBlock: true,
+        armor: 2,
       });
       assertEqual(out.damage, 5, "block damage");
       assertEqual(out.hit, true, "block hit");
@@ -86,28 +86,26 @@ export const registerVitruviumTests = () => {
       );
     });
 
-    await run("combat.computeDamageCompact.dodgeHit", async () => {
-      const out = computeDamageCompact({
+    await run("core.damageResolver.weaponDamage.dodgeHit", async () => {
+      const out = DamageResolver.computeWeaponDamage({
         weaponDamage: 2,
-        atkS: 3,
-        defS: 1,
-        defenseType: "dodge",
-        armorFull: 0,
-        armorNoShield: 2,
+        attackSuccesses: 3,
+        defenseSuccesses: 1,
+        isBlock: false,
+        armor: 2,
       });
       assertEqual(out.damage, 3, "dodge hit damage");
       assertEqual(out.hit, true, "dodge hit");
       assertEqual(out.compact, "2 + max(0, 3 - 2) = 3", "dodge hit compact");
     });
 
-    await run("combat.computeDamageCompact.dodgeMiss", async () => {
-      const out = computeDamageCompact({
+    await run("core.damageResolver.weaponDamage.dodgeMiss", async () => {
+      const out = DamageResolver.computeWeaponDamage({
         weaponDamage: 2,
-        atkS: 1,
-        defS: 2,
-        defenseType: "dodge",
-        armorFull: 0,
-        armorNoShield: 3,
+        attackSuccesses: 1,
+        defenseSuccesses: 2,
+        isBlock: false,
+        armor: 3,
       });
       assertEqual(out.damage, 0, "dodge miss damage");
       assertEqual(out.hit, false, "dodge miss");

@@ -1,5 +1,6 @@
 ﻿import { playAutomatedAnimation } from "./auto-animations.js";
 import { DiceSystem } from "./core/dice-system.js";
+import { DamageResolver } from "./core/damage-resolver.js";
 import {
   normalizeEffects,
   collectEffectTotals,
@@ -1153,94 +1154,6 @@ export async function replaceStateFromTemplate(
 
 /* ---------- Damage ---------- */
 
-function isCriticalHit(atk, def) {
-  return atk >= 2 && atk >= 2 * def && atk - def >= 2;
-}
-
-function computeDamageCompact({
-  weaponDamage,
-  atkS,
-  defS,
-  defenseType,
-  armorFull,
-  armorNoShield,
-}) {
-  const atk = num(atkS, 0);
-  const def = num(defS, 0);
-  const base = num(weaponDamage, 0);
-
-  // Блок:
-  // 1) Блок уменьшает как урон оружия, так и успехи атаки
-  // 2) Формула: max(0, (успехи атаки - броня) + урон оружия - успехи блока) + пролом
-  // 3) Пролом = успехи атаки - успехи блока
-  // 4) Но итоговый урон не может превышать ((успехи атаки - броня) + урон оружия)
-  if (defenseType === "block") {
-    const armorVal = num(armorFull, 0);
-    const blockBonusEnabled = false;
-    const blockBonusMinArmor = 2;
-    const blockBonusValue = 1;
-    const blockBonus =
-      blockBonusEnabled && armorVal >= blockBonusMinArmor ? blockBonusValue : 0;
-    const effBlock = Math.max(0, def + blockBonus);
-
-    // Рассчитываем урон по новой формуле
-    const attackAfterArmor = Math.max(0, atk - armorVal); // Успехи атаки после брони
-    const totalPotential = base + attackAfterArmor; // Весь потенциальный урон
-    const breakthrough = Math.max(0, atk - effBlock); // Пролом = успехи атаки - успехи блока
-
-    const rawDmg = Math.max(0, totalPotential - effBlock) + breakthrough;
-    const dmg = Math.min(rawDmg, totalPotential);
-
-    const crit = isCriticalHit(atk, def);
-    const finalDmg = crit ? dmg * 2 : dmg;
-    const blockLabel = blockBonus ? `${def}+${blockBonus}` : `${def}`;
-    const formula = `min(max(0, (${base} + max(0, ${atk} - ${armorFull})) - ${blockLabel}) + max(0, ${atk} - ${blockLabel}), ${base} + max(0, ${atk} - ${armorFull}))`;
-    const compact = crit
-      ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
-      : `${formula} = ${dmg}`;
-    return { damage: finalDmg, compact, hit: true, crit };
-  }
-
-  const hit = atk > def;
-  if (!hit) {
-    return {
-      damage: 0,
-      compact: `промах: ${atk} <= ${def} -> 0`,
-      hit: false,
-      crit: false,
-    };
-  }
-
-  const armorBase = num(armorNoShield, 0);
-  const effAtk = Math.max(0, atk - armorBase);
-  const dmg = base + effAtk;
-  const crit = isCriticalHit(atk, def);
-  const finalDmg = crit ? dmg * 2 : dmg;
-  const formula = `${base} + max(0, ${atk} - ${armorNoShield})`;
-  const compact = crit
-    ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
-    : `${formula} = ${dmg}`;
-  return { damage: finalDmg, compact, hit: true, crit };
-}
-
-function computeAbilityDamage({ abilityValue, atkS, defS }) {
-  const base = num(abilityValue, 0);
-  const atk = num(atkS, 0);
-  const def = num(defS, 0);
-  const hit = atk > def;
-  const total = base + atk;
-  const dmg = hit ? Math.max(0, total) : 0;
-  const crit = hit ? isCriticalHit(atk, def) : false;
-  const finalDmg = crit ? dmg * 2 : dmg;
-  const formula = `${base} + ${atk}`;
-  const compact = hit
-    ? crit
-      ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
-      : `${formula} = ${dmg}`
-    : `промах: ${atk} <= ${def} -> 0`;
-  return { damage: finalDmg, compact, hit, crit, atkS: atk, defS: def };
-}
-
 /* ---------- Token/Actor helpers ---------- */
 
 async function tokenDocByUuid(uuid) {
@@ -1769,10 +1682,10 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const hasDamage = num(flags.abilityDamageBase, 0) > 0;
             const attackRollEnabled = flags.attackRoll === true;
             if (hasDamage) {
-              const dmgOut = computeAbilityDamage({
-                abilityValue: damageValue,
-                atkS: atkSDef,
-                defS: defSDef,
+              const dmgOut = DamageResolver.computeAbilityDamage({
+                weaponDamage: damageValue,
+                attackSuccesses: atkSDef,
+                defenseSuccesses: defSDef,
               });
               damage = dmgOut.damage;
               compact = dmgOut.compact;
@@ -1786,13 +1699,14 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const armorNoShield = getArmorTotal(defender, {
               includeShield: false,
             });
-            const dmgOut = computeDamageCompact({
+            const isBlock = defenseType === "block";
+            const armor = isBlock ? armorFull : armorNoShield;
+            const dmgOut = DamageResolver.computeWeaponDamage({
               weaponDamage: num(flags.weaponDamage, 0),
-              atkS: atkSDef,
-              defS: defSDef,
-              defenseType,
-              armorFull,
-              armorNoShield,
+              attackSuccesses: atkSDef,
+              defenseSuccesses: defSDef,
+              armor: armor,
+              isBlock: isBlock,
             });
             damage = dmgOut.damage;
             compact = dmgOut.compact;
@@ -2656,4 +2570,4 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
   }
 }
 
-export { rollPool, computeDamageCompact };
+export { rollPool };
