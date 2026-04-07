@@ -2225,6 +2225,8 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const needsAttackRoll = attackRollEnabled && (hasDamage || hasHeal);
     let atkRoll = null;
     let atkAttrKey = String(abilityItem?.system?.attackAttr ?? "combat");
+    let casterContestRoll = null;
+    let casterContestSuccesses = 0;
     if (needsAttackRoll) {
       const atkChoice = await attackDialog({
         actor: attackerActor,
@@ -2233,69 +2235,39 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       });
       if (!atkChoice) return;
       atkAttrKey = atkChoice.attrKey;
-      const attackMods = getAttackRollModifiers(effectTotals, {
-        attrKey: atkChoice.attrKey,
-      });
-      const atkBaseAttr = getEffectiveAttribute(
-        attackerActor.system?.attributes,
-        atkChoice.attrKey,
-        effectTotals,
-      );
-      const atkPool = clamp(
-        atkBaseAttr +
-        attackMods.dice +
-        globalMods.dice +
-        num(atkChoice.extraDice, 0),
-        1,
-        20,
-      );
-      const totalLuck =
-        num(atkChoice.luck, 0) + globalMods.adv + attackMods.adv;
-      const totalUnluck =
-        num(atkChoice.unluck, 0) + globalMods.dis + attackMods.dis;
-      const finalFullMode =
-        globalMods.fullMode !== "normal"
-          ? globalMods.fullMode
-          : atkChoice.fullMode;
-      atkRoll = await rollPool(atkPool, {
-        luck: totalLuck,
-        unluck: totalUnluck,
-        fullMode: finalFullMode,
-      });
-    }
 
-    // Contest roll for "targetContest" states.
-    let casterContestRoll = null;
-    let casterContestSuccesses = 0;
-    if (doContestRoll) {
-      if (needsAttackRoll && atkAttrKey === contestCasterAttr && atkRoll) {
-        casterContestRoll = atkRoll;
-        casterContestSuccesses = num(atkRoll.successes, 0);
-      } else {
-        const contestAttrMods = getAttributeRollModifiers(
-          effectTotals,
-          contestCasterAttr,
-        );
-        const contestBaseAttr = getEffectiveAttribute(
-          attackerActor.system?.attributes,
-          contestCasterAttr,
-          effectTotals,
-        );
-        const contestPool = clamp(
-          contestBaseAttr +
-          contestAttrMods.dice +
-          globalMods.dice,
-          1,
-          20,
-        );
+      const processor = new ActionProcessor();
+      const result = await processor.process({
+        type: "ability",
+        attacker: attackerActor,
+        options: {
+          needsAttackRoll: true,
+          attackAttr: atkAttrKey,
+          luck: atkChoice.luck,
+          unluck: atkChoice.unluck,
+          fullMode: atkChoice.fullMode,
+          extraDice: atkChoice.extraDice,
+          doContestRoll,
+          contestCasterAttr
+        }
+      });
 
-        casterContestRoll = await rollPool(contestPool, {
-          luck: globalMods.adv + contestAttrMods.adv,
-          unluck: globalMods.dis + contestAttrMods.dis,
-          fullMode: globalMods.fullMode,
-        });
-        casterContestSuccesses = num(casterContestRoll?.successes, 0);
-      }
+      atkRoll = result.rolls.attack;
+      casterContestRoll = result.rolls.contest;
+      casterContestSuccesses = result.computed.casterContestSuccesses || 0;
+    } else if (doContestRoll) {
+      const processor = new ActionProcessor();
+      const result = await processor.process({
+        type: "ability",
+        attacker: attackerActor,
+        options: {
+          needsAttackRoll: false,
+          doContestRoll,
+          contestCasterAttr
+        }
+      });
+      casterContestRoll = result.rolls.contest;
+      casterContestSuccesses = result.computed.casterContestSuccesses || 0;
     }
 
     const damageValue = damageBase;
@@ -2425,7 +2397,6 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
 export async function startWeaponAttackFlow(attackerActor, weaponItem) {
   try {
     const weaponName = weaponItem?.name ?? "Оружие";
-    const weaponDamage = getWeaponDamage(attackerActor, weaponItem);
 
     const atkChoice = await attackDialog({
       actor: attackerActor,
@@ -2467,7 +2438,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     await playAutomatedAnimation({ actor: attackerActor, item: weaponItem });
 
     if (!hasTarget) {
-      const total = Math.max(0, weaponDamage + atkRoll.successes);
+      const weaponDamage = result.computed.weaponDamage;
+      const atkRoll = result.rolls.attack;
+      const total = weaponDamage + atkRoll.successes;
       await ChatMessage.create({
         ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
@@ -2491,8 +2464,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
             <div class="v-box">
               <div class="v-box__label">Урон</div>
               <div class="v-box__big">${total}</div>
-              <div class="v-sub">${weaponDamage} + ${atkRoll.successes
-          } = ${total}</div>
+              <div class="v-sub">${weaponDamage} + ${atkRoll.successes} = ${total}</div>
             </div>
           </div>
         </div>`,
@@ -2505,7 +2477,8 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     const defenderName = defenseLabel(defenseTargets);
 
     // Public attack message (always includes defense button)
-    const predictedDmgValue = weaponDamage + atkRoll.successes;
+    const weaponDamage = result.computed.weaponDamage;
+    const predictedDmgValue = weaponDamage + result.rolls.attack.successes;
     const publicContent = attackCardTwoCols({
       attackerName: attackerActor.name,
       defenderLabel: defenderName,

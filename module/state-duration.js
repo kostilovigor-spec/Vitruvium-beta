@@ -255,13 +255,14 @@ const expireStatesOnTurnStartForActor = async (actor) => {
   }
 };
 
+import { ActionProcessor } from "./core/action-processor.js";
+
 const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
   if (!actor?.id) return;
   if (!OVERTIME_TIMINGS.has(triggerTiming)) return;
 
-  let hpValue = toNumber(actor.system?.attributes?.hp?.value, 0);
-  const hpMax = Math.max(0, toNumber(actor.system?.attributes?.hp?.max, 100));
-  let changed = false;
+  const processor = new ActionProcessor();
+  let hotTotal = 0;
 
   for (const item of actor.items ?? []) {
     if (item.type !== "state") continue;
@@ -270,18 +271,27 @@ const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
     for (const eff of entries) {
       const value = Math.max(0, Math.round(Math.abs(toNumber(eff.value, 0))));
       if (!value) continue;
+
       if (eff.type === "dot") {
-        hpValue = Math.max(0, hpValue - value);
-        changed = true;
+        await processor.process({
+          type: "apply_dot",
+          actor,
+          value
+        });
       } else if (eff.type === "hot") {
-        hpValue = Math.min(hpMax, hpValue + value);
-        changed = true;
+        hotTotal += value;
       }
     }
   }
 
-  if (changed) {
-    await actor.update({ "system.attributes.hp.value": hpValue });
+  // Preserve manual updates for hot specifically
+  if (hotTotal > 0) {
+    const hpValue = Math.max(0, toNumber(actor.system?.attributes?.hp?.value, 0));
+    const hpMax = Math.max(0, toNumber(actor.system?.attributes?.hp?.max, 100));
+    const newHp = Math.min(hpMax, hpValue + hotTotal);
+    if (newHp !== hpValue) {
+      await actor.update({ "system.attributes.hp.value": newHp });
+    }
   }
 };
 

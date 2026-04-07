@@ -10,6 +10,10 @@ export class ActionProcessor {
         switch (action.type) {
             case "attack":
                 return this.processAttack(ctx);
+            case "ability":
+                return this.processAbility(ctx);
+            case "apply_dot":
+                return this.processApplyDot(ctx);
         }
 
         throw new Error(`Unknown action type: ${action.type}`);
@@ -69,6 +73,7 @@ export class ActionProcessor {
     }
 
     getArmor(actor) {
+        if (!actor) return 0;
         const base = Number(
             actor.system?.attributes?.armor?.value ?? actor.system?.attributes?.armor,
         ) || 0;
@@ -103,6 +108,7 @@ export class ActionProcessor {
         ctx.computed = {
             attackSuccesses: atk,
             defenseSuccesses: def,
+            weaponDamage: weaponDamage,
             damage: result.damage,
             isCritical: result.crit
         };
@@ -136,5 +142,73 @@ export class ActionProcessor {
             computed: ctx.computed,
             applied: ctx.applied
         };
+    }
+
+    async processApplyDot(ctx) {
+        const { actor, value } = ctx.action;
+        if (!actor) return;
+
+        const hp = Number(actor.system.attributes?.hp?.value) || 0;
+        const newHp = Math.max(0, hp - value);
+
+        await actor.update({
+            "system.attributes.hp.value": newHp
+        }, {
+            vitruvium: {
+                damage: value,
+                source: "dot"
+            }
+        });
+
+        ctx.applied.hpDamage = value;
+        return this.buildResult(ctx);
+    }
+
+    async processAbility(ctx) {
+        const { attacker, options } = ctx.action;
+        const effectTotals = Effects.collectEffectTotals(attacker);
+        const globalMods = Effects.getGlobalRollModifiers(effectTotals);
+
+        if (options.needsAttackRoll && options.attackAttr) {
+            const attackMods = Effects.getAttackRollModifiers(effectTotals, {
+                attrKey: options.attackAttr,
+            });
+            const baseAttr = Effects.getEffectiveAttribute(
+                attacker.system?.attributes,
+                options.attackAttr,
+                effectTotals
+            );
+            const pool = Math.max(1, Math.min(20, baseAttr + attackMods.dice + globalMods.dice + (options.extraDice || 0)));
+            const luck = (options.luck || 0) + globalMods.adv + attackMods.adv;
+            const unluck = (options.unluck || 0) + globalMods.dis + attackMods.dis;
+            const fullMode = globalMods.fullMode !== "normal" ? globalMods.fullMode : options.fullMode;
+
+            ctx.rolls.attack = await DiceSystem.rollPool(pool, { luck, unluck, fullMode });
+            ctx.computed.attackSuccesses = ctx.rolls.attack.successes;
+        }
+
+        if (options.doContestRoll && options.contestCasterAttr) {
+            if (options.needsAttackRoll && options.attackAttr === options.contestCasterAttr && ctx.rolls.attack) {
+                ctx.rolls.contest = ctx.rolls.attack;
+                ctx.computed.casterContestSuccesses = ctx.rolls.attack.successes;
+            } else {
+                const attrMods = Effects.getAttributeRollModifiers(effectTotals, options.contestCasterAttr);
+                const baseAttr = Effects.getEffectiveAttribute(
+                    attacker.system?.attributes,
+                    options.contestCasterAttr,
+                    effectTotals
+                );
+                const pool = Math.max(1, Math.min(20, baseAttr + attrMods.dice + globalMods.dice));
+
+                ctx.rolls.contest = await DiceSystem.rollPool(pool, {
+                    luck: globalMods.adv + attrMods.adv,
+                    unluck: globalMods.dis + attrMods.dis,
+                    fullMode: globalMods.fullMode
+                });
+                ctx.computed.casterContestSuccesses = ctx.rolls.contest.successes;
+            }
+        }
+
+        return this.buildResult(ctx);
     }
 }
