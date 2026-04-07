@@ -585,12 +585,11 @@ function defenseDialog({
     new Dialog({
       title: "Защита",
       content: `<div style="display:grid; gap:8px;">
-        <div>${
-          allowDodge && allowBlock
-            ? "Выберите реакцию защиты"
-            : allowDodge
-              ? "Доступно только уклонение."
-              : "<b>Тяжёлые доспехи:</b> уклонение недоступно. Можно только принять удар."
+        <div>${allowDodge && allowBlock
+          ? "Выберите реакцию защиты"
+          : allowDodge
+            ? "Доступно только уклонение."
+            : "<b>Тяжёлые доспехи:</b> уклонение недоступно. Можно только принять удар."
         }</div>
         <label>Удачливый бросок
           <select name="fullMode" style="width:100%">
@@ -653,15 +652,12 @@ function contestDialog({
         </label>
         <label>Удачливый бросок
           <select name="fullMode" style="width:100%">
-            <option value="normal" ${
-              defaultFullMode === "normal" ? "selected" : ""
-            }>Обычный</option>
-            <option value="adv" ${
-              defaultFullMode === "adv" ? "selected" : ""
-            }>Удачливый (полный переброс)</option>
-            <option value="dis" ${
-              defaultFullMode === "dis" ? "selected" : ""
-            }>Неудачливый (полный переброс)</option>
+            <option value="normal" ${defaultFullMode === "normal" ? "selected" : ""
+        }>Обычный</option>
+            <option value="adv" ${defaultFullMode === "adv" ? "selected" : ""
+        }>Удачливый (полный переброс)</option>
+            <option value="dis" ${defaultFullMode === "dis" ? "selected" : ""
+        }>Неудачливый (полный переброс)</option>
           </select>
         </label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -763,11 +759,11 @@ function attackCardTwoCols({
   <div class="vitruvium-chatcard vitruvium-chatcard--attack">
     <div class="v-head">
       <div class="v-title">${esc(attackerName)} атакует ${esc(
-        defenderLabel,
-      )}</div>
+    defenderLabel,
+  )}</div>
       <div class="v-sub">Оружие: <b>${esc(weaponName)}</b> · Атрибут: ${esc(
-        prettyAttrLabel(attrKey),
-      )}</div>
+    prettyAttrLabel(attrKey),
+  )}</div>
     </div>
 
     <div class="v-two">
@@ -805,8 +801,8 @@ function renderDefenseTargets({
       )}" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;">
         <div class="v-sub"><b>${esc(norm.defenderName)}</b></div>
         <button type="button" class="v-btn" data-action="vitruvium-defense" data-defender-token-uuid="${esc(
-          norm.defenderTokenUuid,
-        )}" ${isResolved ? "disabled" : ""}>Защита</button>
+        norm.defenderTokenUuid,
+      )}" ${isResolved ? "disabled" : ""}>Защита</button>
         <div class="v-sub" data-role="defense-status" style="grid-column:1 / -1;">${statusHtml}</div>
       </div>`;
     })
@@ -845,8 +841,8 @@ function renderContestTargets({
       )}" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;">
         <div class="v-sub"><b>${esc(norm.defenderName)}</b></div>
         <button type="button" class="v-btn" data-action="vitruvium-contest" data-defender-token-uuid="${esc(
-          norm.defenderTokenUuid,
-        )}" ${isResolved ? "disabled" : ""}>Сопротивление</button>
+        norm.defenderTokenUuid,
+      )}" ${isResolved ? "disabled" : ""}>Сопротивление</button>
         <div class="v-sub" data-role="contest-status" style="grid-column:1 / -1;">${isResolved ? resolvedHint : hint}</div>
       </div>`;
     })
@@ -866,7 +862,7 @@ function renderGmApplyButtons({ defenderTokenUuid, damage, isHealing = false, cr
   const btnClass = isHealing ? "v-btn--success" : "v-btn--danger";
   const label = isHealing ? "Применить лечение" : "Применить урон";
   const critText = !isHealing && crit ? " [КРИТ ×2]" : "";
-  
+
   return `
     <div class="v-actions gm-only" style="display:flex;align-items:center;gap:4px;margin-top:8px;">
       <select data-role="dmg-multiplier" style="height:28px;border-radius:4px;border:1px solid #999;padding:0 4px;width:auto;flex:0 0 auto;">
@@ -965,11 +961,11 @@ async function createGmApplyMessage({
           <div class="v-actions" style="display:grid;gap:6px;">
             ${prefix}
             ${renderGmApplyButtons({
-              defenderTokenUuid,
-              damage: dmg,
-              isHealing,
-              crit: !!row.crit,
-            })}
+      defenderTokenUuid,
+      damage: dmg,
+      isHealing,
+      crit: !!row.crit,
+    })}
           </div>
         </div>
       </div>
@@ -1028,25 +1024,25 @@ function abilityAttackCard({
   const boxes = [
     hasAttack
       ? renderCollapsibleBox({
-          label: "Атака",
-          value: atkRoll.successes,
-          roll: atkRoll,
-        })
+        label: "Атака",
+        value: atkRoll.successes,
+        roll: atkRoll,
+      })
       : null,
     hasDamage
       ? renderCollapsibleBox({
-          label: "Урон",
-          value: damageInfo.total,
-          detailHtml: dmgFormula,
-        })
+        label: "Урон",
+        value: damageInfo.total,
+        detailHtml: dmgFormula,
+      })
       : null,
     hasHeal
       ? renderCollapsibleBox({
-          label: "Хил",
-          value: healInfo.total,
-          detailHtml: healFormula,
-          extraHtml: healExtra,
-        })
+        label: "Хил",
+        value: healInfo.total,
+        detailHtml: healFormula,
+        extraHtml: healExtra,
+      })
       : null,
   ]
     .filter(Boolean)
@@ -1065,13 +1061,13 @@ function abilityAttackCard({
         : label;
     headerBits.push(withSuccesses);
   }
-  
+
   return `
   <div class="vitruvium-chatcard vitruvium-chatcard--attack vitruvium-chatcard--ability">
     <div class="v-head">
       <div class="v-title">${esc(attackerName)} использует ${esc(
-        abilityName,
-      )} → ${esc(defenderLabel)}</div>
+    abilityName,
+  )} → ${esc(defenderLabel)}</div>
       ${headerBits.length ? `<div class="v-sub">${headerBits.join(" · ")}</div>` : ""}
     </div>
 
@@ -1079,23 +1075,21 @@ function abilityAttackCard({
       ${boxes}
     </div>
 
-    ${
-      showDefense
-        ? renderDefenseTargets({ 
-            defenseTargets, 
-            resolvedDefenderUuids, 
-            resolvedResults, 
-            predictedDamage: (damageInfo?.total ?? 0) 
-          })
-        : ""
+    ${showDefense
+      ? renderDefenseTargets({
+        defenseTargets,
+        resolvedDefenderUuids,
+        resolvedResults,
+        predictedDamage: (damageInfo?.total ?? 0)
+      })
+      : ""
     }
-    ${
-      showContest
-        ? renderContestTargets({
-            contestTargets,
-            resolvedContestDefenderUuids,
-          })
-        : ""
+    ${showContest
+      ? renderContestTargets({
+        contestTargets,
+        resolvedContestDefenderUuids,
+      })
+      : ""
     }
   </div>`;
 }
@@ -1120,11 +1114,11 @@ function defenseCardTwoCols({
       </div>`
       : hit
         ? renderCollapsibleBox({
-            label: `Урон${critBadge}`,
-            value: damage,
-            detailHtml: dmgDetail,
-            extraClass: crit ? "v-box--crit" : "",
-          })
+          label: `Урон${critBadge}`,
+          value: damage,
+          detailHtml: dmgDetail,
+          extraClass: crit ? "v-box--crit" : "",
+        })
         : `<div class="v-box">
         <div class="v-box__label">Результат</div>
         <div class="v-box__big" style="font-size:18px;">Miss</div>
@@ -1159,8 +1153,8 @@ function contestRollCardTwoCols({
     <div class="v-head">
       <div class="v-title">${esc(defenderName)} — сопротивление</div>
       <div class="v-sub">${esc(casterName)} (${esc(
-        prettyAttrLabel(casterAttr),
-      )}) vs ${esc(prettyAttrLabel(defenderAttr))}</div>
+    prettyAttrLabel(casterAttr),
+  )}) vs ${esc(prettyAttrLabel(defenderAttr))}</div>
     </div>
 
     <div class="v-two">
@@ -1213,8 +1207,8 @@ function resolveCardHTML({
     <div class="v-head">
       <div class="v-title">Результат</div>
       <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(
-        weaponName,
-      )} → ${statusText} · Урон ${damage}</div>
+    weaponName,
+  )} → ${statusText} · Урон ${damage}</div>
     </div>
     <div class="v-actions">
       <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage">Применить урон</button>
@@ -1241,15 +1235,14 @@ function resolveAbilityCardHTML({
     <div class="v-head">
       <div class="v-title">Результат способности</div>
       <div class="v-sub">${esc(attackerName)} → ${esc(defenderName)} · ${esc(
-        abilityName,
-      )}${tail}</div>
+    abilityName,
+  )}${tail}</div>
     </div>
-    ${
-      hasDamage
-        ? `<div class="v-actions">
+    ${hasDamage
+      ? `<div class="v-actions">
       <button type="button" class="v-btn v-btn--danger" data-action="vitruvium-apply-damage">Применить урон</button>
     </div>`
-        : ""
+      : ""
     }
   </div>`;
 }
@@ -1337,9 +1330,9 @@ function computeDamageCompact({
 
   // Блок:
   // 1) Блок уменьшает как урон оружия, так и успехи атаки
-  // 2) Формула: (урон оружия - успехи блока) + (успехи атаки - броня) + пролом
+  // 2) Формула: max(0, (успехи атаки - броня) + урон оружия - успехи блока) + пролом
   // 3) Пролом = успехи атаки - успехи блока
-  // 4) Но итоговый урон не может превышать (урон оружия + max(0, успехи атаки - броня))
+  // 4) Но итоговый урон не может превышать ((успехи атаки - броня) + урон оружия)
   if (defenseType === "block") {
     const armorVal = num(armorFull, 0);
     const blockBonusEnabled = false;
@@ -1350,19 +1343,17 @@ function computeDamageCompact({
     const effBlock = Math.max(0, def + blockBonus);
 
     // Рассчитываем урон по новой формуле
-    const weaponDamageAfterBlock = Math.max(0, base - effBlock); // Урон оружия после блока
     const attackAfterArmor = Math.max(0, atk - armorVal); // Успехи атаки после брони
+    const totalPotential = base + attackAfterArmor; // Весь потенциальный урон
     const breakthrough = Math.max(0, atk - effBlock); // Пролом = успехи атаки - успехи блока
-    const rawDmg = weaponDamageAfterBlock + attackAfterArmor + breakthrough;
 
-    // Максимально возможный урон не должен превышать (base + max(0, atk - armorVal))
-    const maxPossibleDmg = base + Math.max(0, atk - armorVal);
-    const dmg = Math.min(rawDmg, maxPossibleDmg);
+    const rawDmg = Math.max(0, totalPotential - effBlock) + breakthrough;
+    const dmg = Math.min(rawDmg, totalPotential);
 
     const crit = isCriticalHit(atk, def);
     const finalDmg = crit ? dmg * 2 : dmg;
     const blockLabel = blockBonus ? `${def}+${blockBonus}` : `${def}`;
-    const formula = `min(max(0, ${base} - ${blockLabel}) + max(0, ${atk} - ${armorFull}) + max(0, ${atk} - ${blockLabel}), ${base} + max(0, ${atk} - ${armorFull}))`;
+    const formula = `min(max(0, (${base} + max(0, ${atk} - ${armorFull})) - ${blockLabel}) + max(0, ${atk} - ${blockLabel}), ${base} + max(0, ${atk} - ${armorFull}))`;
     const compact = crit
       ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
       : `${formula} = ${dmg}`;
@@ -1535,11 +1526,11 @@ Hooks.once("ready", () => {
           contestStates.length > 0
             ? contestStates.filter((s) => s.applyMode === "targetContest")
             : [
-                {
-                  uuid: f.contestStateUuid,
-                  durationRounds: f.contestStateDurationRounds,
-                },
-              ];
+              {
+                uuid: f.contestStateUuid,
+                durationRounds: f.contestStateDurationRounds,
+              },
+            ];
 
         for (const state of statesToApply) {
           if (state.uuid) {
@@ -1593,7 +1584,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         .forEach((el) => {
           const newEl = el.cloneNode(true);
           el.parentNode.replaceChild(newEl, el);
-          
+
           newEl.addEventListener("click", async (ev) => {
             ev.preventDefault();
             if (!game.user.isGM) return;
@@ -1602,14 +1593,14 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const containerDiv = btn.closest("div");
             const tokenUuid = String(
               btn.getAttribute("data-defender-token-uuid") ??
-                f.defenderTokenUuid ??
-                "",
+              f.defenderTokenUuid ??
+              "",
             );
             const dmg = num(btn.getAttribute("data-damage") ?? f.damage, 0);
             const multSelector = containerDiv?.querySelector("[data-role='dmg-multiplier']");
             const multiplier = num(multSelector?.value ?? 1, 1);
             const finalVal = Math.floor(dmg * multiplier);
-            
+
             let targetActor = null;
             if (tokenUuid) {
               targetActor = await actorFromTokenUuid(tokenUuid);
@@ -1617,7 +1608,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               const t = canvas.tokens.controlled[0];
               targetActor = t?.actor;
             }
-            
+
             if (!targetActor) {
               ui.notifications?.warn("Выберите токен для применения.");
               return;
@@ -1625,7 +1616,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
             const curHp = num(targetActor.system?.attributes?.hp?.value, 0);
             const maxHp = num(targetActor.system?.attributes?.hp?.max, 100);
-            
+
             if (isHealing) {
               await targetActor.update({
                 "system.attributes.hp.value": Math.min(maxHp, curHp + finalVal),
@@ -1637,637 +1628,637 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               });
               btn.textContent = `Урон применён (-${finalVal}) ✓`;
             }
-            
+
             btn.disabled = true;
             if (multSelector) multSelector.disabled = true;
           });
         });
     }
 
-  // Apply healing or damage button (GM-only)
-  if (
-    f.kind === "applyDamage" ||
-    f.kind === "applyHealing" ||
-    f.kind === "defense" ||
-    f.kind === "attack"
-  ) {
-    bindApplyButtons(html);
-  }
+    // Apply healing or damage button (GM-only)
+    if (
+      f.kind === "applyDamage" ||
+      f.kind === "applyHealing" ||
+      f.kind === "defense" ||
+      f.kind === "attack"
+    ) {
+      bindApplyButtons(html);
+    }
 
-  if (f.kind === "attack") {
-    const resolvedResults = Array.isArray(f.resolvedResults) ? f.resolvedResults : [];
-    const resolvedDefenderUuids = new Set(resolvedResults.map(r => r.uuid));
-    const resolvedContestDefenderUuids = new Set(
-      getResolvedContestDefenderUuids(f),
-    );
-    const fallbackUuid = String(f.defenderTokenUuid ?? "").trim();
-    html.querySelectorAll("[data-action='vitruvium-defense']").forEach((el) => {
-      const btn = el;
-      const defenderTokenUuid = String(
-        btn.getAttribute("data-defender-token-uuid") ?? fallbackUuid,
-      ).trim();
-      if (!defenderTokenUuid) return;
-      const isResolved =
-        f.resolved || resolvedDefenderUuids.has(defenderTokenUuid);
-      const row = btn.closest("[data-defender-token-uuid]");
-      if (isResolved) btn.disabled = true;
-      if (row) {
-        const statusEl = row.querySelector("[data-role='defense-status']");
-        if (statusEl) {
-          statusEl.textContent = isResolved ? "Защита уже выбрана" : "";
-        }
-      } else {
-        if (isResolved) {
-          const subEl = html.querySelector(".v-actions .v-sub");
-          if (subEl) subEl.textContent = "Защита уже выбрана";
-        }
-      }
-    });
-
-    html.querySelectorAll("[data-action='vitruvium-contest']").forEach((el) => {
-      const btn = el;
-      const defenderTokenUuid = String(
-        btn.getAttribute("data-defender-token-uuid") ?? fallbackUuid,
-      ).trim();
-      if (!defenderTokenUuid) return;
-      const isResolved = resolvedContestDefenderUuids.has(defenderTokenUuid);
-      if (!isResolved) return;
-      btn.disabled = true;
-      const row = btn.closest("[data-contest-defender-token-uuid]");
-      if (row) {
-        const statusEl = row.querySelector("[data-role='contest-status']");
-        if (statusEl) statusEl.textContent = "Сопротивление уже выбрано";
-      }
-    });
-  }
-
-  // Defense button
-  html.querySelectorAll("[data-action='vitruvium-defense']").forEach((el) => {
-    el.addEventListener("click", async (ev) => {
-      ev.preventDefault();
-      const btn = ev.currentTarget;
-      const row = btn.closest("[data-defender-token-uuid]");
-      const markResolvedInUI = () => {
-        btn.disabled = true;
+    if (f.kind === "attack") {
+      const resolvedResults = Array.isArray(f.resolvedResults) ? f.resolvedResults : [];
+      const resolvedDefenderUuids = new Set(resolvedResults.map(r => r.uuid));
+      const resolvedContestDefenderUuids = new Set(
+        getResolvedContestDefenderUuids(f),
+      );
+      const fallbackUuid = String(f.defenderTokenUuid ?? "").trim();
+      html.querySelectorAll("[data-action='vitruvium-defense']").forEach((el) => {
+        const btn = el;
+        const defenderTokenUuid = String(
+          btn.getAttribute("data-defender-token-uuid") ?? fallbackUuid,
+        ).trim();
+        if (!defenderTokenUuid) return;
+        const isResolved =
+          f.resolved || resolvedDefenderUuids.has(defenderTokenUuid);
+        const row = btn.closest("[data-defender-token-uuid]");
+        if (isResolved) btn.disabled = true;
         if (row) {
           const statusEl = row.querySelector("[data-role='defense-status']");
           if (statusEl) {
-            statusEl.textContent = "Защита уже выбрана";
+            statusEl.textContent = isResolved ? "Защита уже выбрана" : "";
           }
         } else {
-          const subEl = html.querySelector(".v-actions .v-sub");
-          if (subEl) subEl.textContent = "Защита уже выбрана";
-        }
-      };
-
-      const fresh = game.messages.get(message.id) ?? message;
-      const flags = readCombatFlags(fresh) ?? {};
-      if (flags.kind !== "attack") return;
-      const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
-      const speakerActor = speakerActorId
-        ? game.actors?.get(speakerActorId)
-        : null;
-
-      const defenderTokenUuid = String(
-        btn.getAttribute("data-defender-token-uuid") ??
-          flags.defenderTokenUuid ??
-          "",
-      ).trim();
-      if (!defenderTokenUuid) return;
-
-      const resolvedDefenderUuids = getResolvedDefenderUuids(flags);
-      if (flags.resolved || resolvedDefenderUuids.includes(defenderTokenUuid)) {
-        ui.notifications?.info("Защита уже выбрана.");
-        markResolvedInUI();
-        return;
-      }
-
-      const lockKey = attackResolveLockKey(message.id, defenderTokenUuid);
-      if (_resolvedAttackDefenseKeys.has(lockKey)) {
-        ui.notifications?.info("Защита уже обрабатывается.");
-        return;
-      }
-
-      _resolvedAttackDefenseKeys.add(lockKey);
-      try {
-        const defender = await resolveCombatActor({
-          tokenUuid: defenderTokenUuid,
-        });
-        const attacker = await resolveCombatActor({
-          tokenUuid: flags.attackerTokenUuid,
-          actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
-        });
-        if (!defender || !attacker) {
-          ui.notifications?.warn(
-            "Не удалось определить участников атаки. Создайте атаку заново.",
-          );
-          return;
-        }
-
-        if (!userCanDefend(defender)) {
-          ui.notifications?.warn(
-            "Только владелец цели или ГМ может нажать «Защита».",
-          );
-          return;
-        }
-
-        const isAbility = flags.attackKind === "ability";
-        const isAttackRollAbility = isAbility && flags.attackRoll === true;
-        const allowDodge = isAbility ? true : !hasHeavyArmorEquipped(defender);
-        const allowBlock =
-          hasBlockWeaponEquipped(defender) &&
-          (!isAbility || isAttackRollAbility);
-        if (!allowDodge && !allowBlock) {
-          ui.notifications?.warn(
-            "Защита недоступна: нужен предмет с галочкой «Даёт блок» или возможность уклониться.",
-          );
-          return;
-        }
-        const choice = await defenseDialog({
-          allowDodge,
-          allowBlock,
-          actor: defender,
-        });
-        if (!choice) return;
-
-        const effectTotals = collectEffectTotals(defender);
-        const globalMods = getGlobalRollModifiers(effectTotals);
-        const finalFullMode =
-          globalMods.fullMode !== "normal"
-            ? globalMods.fullMode
-            : choice.fullMode;
-        let defRoll, armorShown, reactionLabel, defenseType;
-        const fullText = fullModeLabel(finalFullMode);
-        if (choice.type === "block") {
-          defenseType = "block";
-          const attrMods = getAttributeRollModifiers(effectTotals, "condition");
-          const blockLuckMods = getLuckModifiers(effectTotals, {
-            signedKey: "blockLuck",
-            advKey: "blockAdv",
-            disKey: "blockDis",
-          });
-          const blockDiceEff = getEffectValue(effectTotals, "blockDice");
-          const poolVal = clamp(
-            getEffectiveAttribute(defender.system?.attributes, "condition", effectTotals) +
-              attrMods.dice +
-              blockDiceEff +
-              globalMods.dice +
-              num(choice.extraDice, 0),
-            1,
-            20,
-          );
-          let appliedLuck =
-            (choice.luck ?? 0) +
-            globalMods.adv +
-            attrMods.adv +
-            blockLuckMods.adv;
-          let appliedUnluck =
-            (choice.unluck ?? 0) +
-            globalMods.dis +
-            attrMods.dis +
-            blockLuckMods.dis;
-          const diff = appliedLuck - appliedUnluck;
-          if (diff > 0) {
-            appliedLuck = diff;
-            appliedUnluck = 0;
-          } else if (diff < 0) {
-            appliedUnluck = Math.abs(diff);
-            appliedLuck = 0;
-          }
-          appliedLuck = Math.min(appliedLuck, poolVal);
-          appliedUnluck = Math.min(appliedUnluck, poolVal);
-          const modeText =
-            finalFullMode === "adv" || finalFullMode === "dis"
-              ? fullText
-              : modeLabel(appliedLuck, appliedUnluck);
-          const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-          const totalLuck =
-            (choice.luck ?? 0) +
-            globalMods.adv +
-            attrMods.adv +
-            blockLuckMods.adv;
-          const totalUnluck =
-            (choice.unluck ?? 0) +
-            globalMods.dis +
-            attrMods.dis +
-            blockLuckMods.dis;
-          defRoll = await rollPool(poolVal, {
-            luck: totalLuck,
-            unluck: totalUnluck,
-            fullMode: finalFullMode,
-          });
-          armorShown = getArmorTotal(defender, { includeShield: true });
-          const baseLabel = allowDodge ? "Блок" : "Принять удар (тяж. броня)";
-          reactionLabel = `${baseLabel}${modeSuffix}`;
-        } else {
-          defenseType = "dodge";
-          const attrMods = getAttributeRollModifiers(effectTotals, "movement");
-          const dodgeLuckMods = getLuckModifiers(effectTotals, {
-            signedKey: "dodgeLuck",
-            advKey: "dodgeAdv",
-            disKey: "dodgeDis",
-          });
-          const dodgeDiceEff = getEffectValue(effectTotals, "dodgeDice");
-          const poolVal = clamp(
-            getEffectiveAttribute(defender.system?.attributes, "movement", effectTotals) +
-              attrMods.dice +
-              dodgeDiceEff +
-              globalMods.dice +
-              num(choice.extraDice, 0),
-            1,
-            20,
-          );
-          let appliedLuck =
-            (choice.luck ?? 0) +
-            globalMods.adv +
-            attrMods.adv +
-            dodgeLuckMods.adv;
-          let appliedUnluck =
-            (choice.unluck ?? 0) +
-            globalMods.dis +
-            attrMods.dis +
-            dodgeLuckMods.dis;
-          const diff = appliedLuck - appliedUnluck;
-          if (diff > 0) {
-            appliedLuck = diff;
-            appliedUnluck = 0;
-          } else if (diff < 0) {
-            appliedUnluck = Math.abs(diff);
-            appliedLuck = 0;
-          }
-          appliedLuck = Math.min(appliedLuck, poolVal);
-          appliedUnluck = Math.min(appliedUnluck, poolVal);
-          const modeText =
-            finalFullMode === "adv" || finalFullMode === "dis"
-              ? fullText
-              : modeLabel(appliedLuck, appliedUnluck);
-          const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-          const totalLuck =
-            (choice.luck ?? 0) +
-            globalMods.adv +
-            attrMods.adv +
-            dodgeLuckMods.adv;
-          const totalUnluck =
-            (choice.unluck ?? 0) +
-            globalMods.dis +
-            attrMods.dis +
-            dodgeLuckMods.dis;
-          defRoll = await rollPool(poolVal, {
-            luck: totalLuck,
-            unluck: totalUnluck,
-            fullMode: finalFullMode,
-          });
-          armorShown = isAbility
-            ? 0
-            : getArmorTotal(defender, { includeShield: false });
-          reactionLabel = `Уклонение${modeSuffix}`;
-        }
-
-        // Compute damage right here (GM may not be present instantly)
-        let hit = false;
-        let damage = 0;
-        let compact = "";
-        let crit = false;
-        const attackKindDef = flags.attackKind ?? "weapon";
-        const defSDef = defRoll.successes;
-        const atkSDef = num(flags.atkSuccesses, 0);
-
-        if (attackKindDef === "ability") {
-          const damageValue = num(flags.abilityDamageValue, 0);
-          const hasDamage = num(flags.abilityDamageBase, 0) > 0;
-          const attackRollEnabled = flags.attackRoll === true;
-          if (hasDamage) {
-            const dmgOut = computeAbilityDamage({
-              abilityValue: damageValue,
-              atkS: atkSDef,
-              defS: defSDef,
-            });
-            damage = dmgOut.damage;
-            compact = dmgOut.compact;
-            hit = attackRollEnabled ? (atkSDef > defSDef) : true;
-            crit = dmgOut.crit ?? false;
-          } else {
-            hit = attackRollEnabled ? atkSDef > defSDef : true;
-          }
-        } else {
-          const armorFull = getArmorTotal(defender, { includeShield: true });
-          const armorNoShield = getArmorTotal(defender, {
-            includeShield: false,
-          });
-          const dmgOut = computeDamageCompact({
-            weaponDamage: num(flags.weaponDamage, 0),
-            atkS: atkSDef,
-            defS: defSDef,
-            defenseType,
-            armorFull,
-            armorNoShield,
-          });
-          damage = dmgOut.damage;
-          compact = dmgOut.compact;
-          hit = dmgOut.hit;
-          crit = dmgOut.crit ?? false;
-        }
-
-        // Apply states configured for CRIT_ATTACK mode.
-        // Reuses the already computed "crit" result from normal attack resolution.
-        const critAttackStates = Array.isArray(flags.critAttackStates)
-          ? flags.critAttackStates
-          : [];
-        if (
-          crit &&
-          flags.attackKind === "ability" &&
-          flags.attackRoll === true &&
-          critAttackStates.length > 0
-        ) {
-          for (const state of critAttackStates) {
-            if (!state?.uuid) continue;
-            await replaceStateFromTemplate(
-              defender,
-              state.uuid,
-              state.durationRounds,
-              defenderTokenUuid,
-            );
+          if (isResolved) {
+            const subEl = html.querySelector(".v-actions .v-sub");
+            if (subEl) subEl.textContent = "Защита уже выбрана";
           }
         }
+      });
 
-        // Single public defense card — contains result + GM apply-damage button
-        await ChatMessage.create({
-          ...chatVisibilityData(),
-          speaker: ChatMessage.getSpeaker({ actor: defender }),
-          content: defenseCardTwoCols({
-            defenderName: defender.name,
-            reactionLabel,
-            defRoll,
-            hit,
-            damage,
-            defenderTokenUuid,
-            crit,
-            compact,
-          }),
-          rolls: defRoll.rolls,
-          flags: buildCombatFlags({
-            kind: "defense",
-            defenderTokenUuid,
-            damage,
-            hit,
-            crit,
-          }),
-        });
-
-        await cleanupPredictedGmApplyMessages({
-          attackMessageId: fresh.id,
-          defenderTokenUuid,
-          isHealing: false,
-        });
-
-        if (damage > 0) {
-          await createGmApplyMessage({
-            title: "Бросок ведущему",
-            subtitle: `${attacker.name} -> ${defender.name} · итог после защиты`,
-            attackMessageId: fresh.id,
-            applyPhase: "resolved",
-            rows: [
-              {
-                defenderTokenUuid,
-                label: defender.name,
-                damage,
-                isHealing: false,
-                crit,
-              },
-            ],
-          });
-        }
-
-        const resolvedResults = Array.isArray(flags.resolvedResults) ? flags.resolvedResults : [];
-        const nextResolvedResults = [
-          ...resolvedResults,
-          { uuid: defenderTokenUuid, damage, hit, crit }
-        ];
-        
-        const nextResolvedDefenderUuids = nextResolvedResults.map(r => r.uuid);
-        const defenseTargets = getDefenseTargetsFromFlags(flags);
-        const allResolved =
-          defenseTargets.length > 0 &&
-          defenseTargets.every((t) =>
-            nextResolvedDefenderUuids.includes(t.defenderTokenUuid),
-          );
-
-        await fresh.update({
-          "flags.vitruvium.resolvedResults": nextResolvedResults,
-          "flags.vitruvium.resolvedDefenderUuids": nextResolvedDefenderUuids,
-          "flags.vitruvium.resolved": allResolved,
-          "flags.vitruvium.resolvedBy": game.user.id,
-          "flags.Vitruvium.resolvedResults": nextResolvedResults,
-          "flags.Vitruvium.resolvedDefenderUuids": nextResolvedDefenderUuids,
-          "flags.Vitruvium.resolved": allResolved,
-          "flags.Vitruvium.resolvedBy": game.user.id,
-        });
-
-        markResolvedInUI();
-      } catch (e) {
-        console.error("Vitruvium | defense flow error", e);
-        ui.notifications?.error(`Ошибка защиты: ${e?.message ?? e}`);
-      } finally {
-        _resolvedAttackDefenseKeys.delete(lockKey);
-      }
-    });
-  });
-
-  // State contest button
-  html.querySelectorAll("[data-action='vitruvium-contest']").forEach((el) => {
-    el.addEventListener("click", async (ev) => {
-      ev.preventDefault();
-      const btn = ev.currentTarget;
-      const row = btn.closest("[data-contest-defender-token-uuid]");
-      const markResolvedInUI = () => {
+      html.querySelectorAll("[data-action='vitruvium-contest']").forEach((el) => {
+        const btn = el;
+        const defenderTokenUuid = String(
+          btn.getAttribute("data-defender-token-uuid") ?? fallbackUuid,
+        ).trim();
+        if (!defenderTokenUuid) return;
+        const isResolved = resolvedContestDefenderUuids.has(defenderTokenUuid);
+        if (!isResolved) return;
         btn.disabled = true;
+        const row = btn.closest("[data-contest-defender-token-uuid]");
         if (row) {
           const statusEl = row.querySelector("[data-role='contest-status']");
           if (statusEl) statusEl.textContent = "Сопротивление уже выбрано";
         }
-      };
+      });
+    }
 
-      const fresh = game.messages.get(message.id) ?? message;
-      const flags = readCombatFlags(fresh) ?? {};
-      if (flags.kind !== "attack") return;
-      // Support both old contestStateUuid and new contestStates format
-      const contestStates = Array.isArray(flags.contestStates)
-        ? flags.contestStates
-        : [];
-      const hasContestStates =
-        contestStates.length > 0 ||
-        (flags.contestEnabled && flags.contestStateUuid);
-      if (!hasContestStates) return;
-      const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
-      const speakerActor = speakerActorId
-        ? game.actors?.get(speakerActorId)
-        : null;
+    // Defense button
+    html.querySelectorAll("[data-action='vitruvium-defense']").forEach((el) => {
+      el.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        const btn = ev.currentTarget;
+        const row = btn.closest("[data-defender-token-uuid]");
+        const markResolvedInUI = () => {
+          btn.disabled = true;
+          if (row) {
+            const statusEl = row.querySelector("[data-role='defense-status']");
+            if (statusEl) {
+              statusEl.textContent = "Защита уже выбрана";
+            }
+          } else {
+            const subEl = html.querySelector(".v-actions .v-sub");
+            if (subEl) subEl.textContent = "Защита уже выбрана";
+          }
+        };
 
-      const defenderTokenUuid = String(
-        btn.getAttribute("data-defender-token-uuid") ??
+        const fresh = game.messages.get(message.id) ?? message;
+        const flags = readCombatFlags(fresh) ?? {};
+        if (flags.kind !== "attack") return;
+        const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
+        const speakerActor = speakerActorId
+          ? game.actors?.get(speakerActorId)
+          : null;
+
+        const defenderTokenUuid = String(
+          btn.getAttribute("data-defender-token-uuid") ??
           flags.defenderTokenUuid ??
           "",
-      ).trim();
-      if (!defenderTokenUuid) return;
+        ).trim();
+        if (!defenderTokenUuid) return;
 
-      const resolvedContestDefenderUuids =
-        getResolvedContestDefenderUuids(flags);
-      if (resolvedContestDefenderUuids.includes(defenderTokenUuid)) {
-        ui.notifications?.info("Сопротивление уже выбрано.");
-        markResolvedInUI();
-        return;
-      }
-
-      const lockKey = attackResolveLockKey(
-        message.id,
-        defenderTokenUuid,
-        "contest",
-      );
-      if (_resolvedAttackDefenseKeys.has(lockKey)) {
-        ui.notifications?.info("Сопротивление уже обрабатывается.");
-        return;
-      }
-
-      _resolvedAttackDefenseKeys.add(lockKey);
-      try {
-        const defender = await resolveCombatActor({
-          tokenUuid: defenderTokenUuid,
-        });
-        const attacker = await resolveCombatActor({
-          tokenUuid: flags.attackerTokenUuid,
-          actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
-        });
-        if (!defender || !attacker) {
-          ui.notifications?.warn(
-            "Не удалось определить участников. Создайте применение заново.",
-          );
+        const resolvedDefenderUuids = getResolvedDefenderUuids(flags);
+        if (flags.resolved || resolvedDefenderUuids.includes(defenderTokenUuid)) {
+          ui.notifications?.info("Защита уже выбрана.");
+          markResolvedInUI();
           return;
         }
 
-
-
-        if (!userCanDefend(defender)) {
-          ui.notifications?.warn(
-            "Только владелец цели или ГМ может нажать «Сопротивление».",
-          );
+        const lockKey = attackResolveLockKey(message.id, defenderTokenUuid);
+        if (_resolvedAttackDefenseKeys.has(lockKey)) {
+          ui.notifications?.info("Защита уже обрабатывается.");
           return;
         }
 
-        const choice = await contestDialog({
-          actor: defender,
-          defaultAttrKey: flags.contestTargetAttr,
-          title: "Сопротивление состоянию",
-        });
-        if (!choice) return;
+        _resolvedAttackDefenseKeys.add(lockKey);
+        try {
+          const defender = await resolveCombatActor({
+            tokenUuid: defenderTokenUuid,
+          });
+          const attacker = await resolveCombatActor({
+            tokenUuid: flags.attackerTokenUuid,
+            actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
+          });
+          if (!defender || !attacker) {
+            ui.notifications?.warn(
+              "Не удалось определить участников атаки. Создайте атаку заново.",
+            );
+            return;
+          }
 
-        const effectTotals = collectEffectTotals(defender);
-        const globalMods = getGlobalRollModifiers(effectTotals);
-        const attrMods = getAttributeRollModifiers(
-          effectTotals,
-          choice.attrKey,
+          if (!userCanDefend(defender)) {
+            ui.notifications?.warn(
+              "Только владелец цели или ГМ может нажать «Защита».",
+            );
+            return;
+          }
+
+          const isAbility = flags.attackKind === "ability";
+          const isAttackRollAbility = isAbility && flags.attackRoll === true;
+          const allowDodge = isAbility ? true : !hasHeavyArmorEquipped(defender);
+          const allowBlock =
+            hasBlockWeaponEquipped(defender) &&
+            (!isAbility || isAttackRollAbility);
+          if (!allowDodge && !allowBlock) {
+            ui.notifications?.warn(
+              "Защита недоступна: нужен предмет с галочкой «Даёт блок» или возможность уклониться.",
+            );
+            return;
+          }
+          const choice = await defenseDialog({
+            allowDodge,
+            allowBlock,
+            actor: defender,
+          });
+          if (!choice) return;
+
+          const effectTotals = collectEffectTotals(defender);
+          const globalMods = getGlobalRollModifiers(effectTotals);
+          const finalFullMode =
+            globalMods.fullMode !== "normal"
+              ? globalMods.fullMode
+              : choice.fullMode;
+          let defRoll, armorShown, reactionLabel, defenseType;
+          const fullText = fullModeLabel(finalFullMode);
+          if (choice.type === "block") {
+            defenseType = "block";
+            const attrMods = getAttributeRollModifiers(effectTotals, "condition");
+            const blockLuckMods = getLuckModifiers(effectTotals, {
+              signedKey: "blockLuck",
+              advKey: "blockAdv",
+              disKey: "blockDis",
+            });
+            const blockDiceEff = getEffectValue(effectTotals, "blockDice");
+            const poolVal = clamp(
+              getEffectiveAttribute(defender.system?.attributes, "condition", effectTotals) +
+              attrMods.dice +
+              blockDiceEff +
+              globalMods.dice +
+              num(choice.extraDice, 0),
+              1,
+              20,
+            );
+            let appliedLuck =
+              (choice.luck ?? 0) +
+              globalMods.adv +
+              attrMods.adv +
+              blockLuckMods.adv;
+            let appliedUnluck =
+              (choice.unluck ?? 0) +
+              globalMods.dis +
+              attrMods.dis +
+              blockLuckMods.dis;
+            const diff = appliedLuck - appliedUnluck;
+            if (diff > 0) {
+              appliedLuck = diff;
+              appliedUnluck = 0;
+            } else if (diff < 0) {
+              appliedUnluck = Math.abs(diff);
+              appliedLuck = 0;
+            }
+            appliedLuck = Math.min(appliedLuck, poolVal);
+            appliedUnluck = Math.min(appliedUnluck, poolVal);
+            const modeText =
+              finalFullMode === "adv" || finalFullMode === "dis"
+                ? fullText
+                : modeLabel(appliedLuck, appliedUnluck);
+            const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
+            const totalLuck =
+              (choice.luck ?? 0) +
+              globalMods.adv +
+              attrMods.adv +
+              blockLuckMods.adv;
+            const totalUnluck =
+              (choice.unluck ?? 0) +
+              globalMods.dis +
+              attrMods.dis +
+              blockLuckMods.dis;
+            defRoll = await rollPool(poolVal, {
+              luck: totalLuck,
+              unluck: totalUnluck,
+              fullMode: finalFullMode,
+            });
+            armorShown = getArmorTotal(defender, { includeShield: true });
+            const baseLabel = allowDodge ? "Блок" : "Принять удар (тяж. броня)";
+            reactionLabel = `${baseLabel}${modeSuffix}`;
+          } else {
+            defenseType = "dodge";
+            const attrMods = getAttributeRollModifiers(effectTotals, "movement");
+            const dodgeLuckMods = getLuckModifiers(effectTotals, {
+              signedKey: "dodgeLuck",
+              advKey: "dodgeAdv",
+              disKey: "dodgeDis",
+            });
+            const dodgeDiceEff = getEffectValue(effectTotals, "dodgeDice");
+            const poolVal = clamp(
+              getEffectiveAttribute(defender.system?.attributes, "movement", effectTotals) +
+              attrMods.dice +
+              dodgeDiceEff +
+              globalMods.dice +
+              num(choice.extraDice, 0),
+              1,
+              20,
+            );
+            let appliedLuck =
+              (choice.luck ?? 0) +
+              globalMods.adv +
+              attrMods.adv +
+              dodgeLuckMods.adv;
+            let appliedUnluck =
+              (choice.unluck ?? 0) +
+              globalMods.dis +
+              attrMods.dis +
+              dodgeLuckMods.dis;
+            const diff = appliedLuck - appliedUnluck;
+            if (diff > 0) {
+              appliedLuck = diff;
+              appliedUnluck = 0;
+            } else if (diff < 0) {
+              appliedUnluck = Math.abs(diff);
+              appliedLuck = 0;
+            }
+            appliedLuck = Math.min(appliedLuck, poolVal);
+            appliedUnluck = Math.min(appliedUnluck, poolVal);
+            const modeText =
+              finalFullMode === "adv" || finalFullMode === "dis"
+                ? fullText
+                : modeLabel(appliedLuck, appliedUnluck);
+            const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
+            const totalLuck =
+              (choice.luck ?? 0) +
+              globalMods.adv +
+              attrMods.adv +
+              dodgeLuckMods.adv;
+            const totalUnluck =
+              (choice.unluck ?? 0) +
+              globalMods.dis +
+              attrMods.dis +
+              dodgeLuckMods.dis;
+            defRoll = await rollPool(poolVal, {
+              luck: totalLuck,
+              unluck: totalUnluck,
+              fullMode: finalFullMode,
+            });
+            armorShown = isAbility
+              ? 0
+              : getArmorTotal(defender, { includeShield: false });
+            reactionLabel = `Уклонение${modeSuffix}`;
+          }
+
+          // Compute damage right here (GM may not be present instantly)
+          let hit = false;
+          let damage = 0;
+          let compact = "";
+          let crit = false;
+          const attackKindDef = flags.attackKind ?? "weapon";
+          const defSDef = defRoll.successes;
+          const atkSDef = num(flags.atkSuccesses, 0);
+
+          if (attackKindDef === "ability") {
+            const damageValue = num(flags.abilityDamageValue, 0);
+            const hasDamage = num(flags.abilityDamageBase, 0) > 0;
+            const attackRollEnabled = flags.attackRoll === true;
+            if (hasDamage) {
+              const dmgOut = computeAbilityDamage({
+                abilityValue: damageValue,
+                atkS: atkSDef,
+                defS: defSDef,
+              });
+              damage = dmgOut.damage;
+              compact = dmgOut.compact;
+              hit = attackRollEnabled ? (atkSDef > defSDef) : true;
+              crit = dmgOut.crit ?? false;
+            } else {
+              hit = attackRollEnabled ? atkSDef > defSDef : true;
+            }
+          } else {
+            const armorFull = getArmorTotal(defender, { includeShield: true });
+            const armorNoShield = getArmorTotal(defender, {
+              includeShield: false,
+            });
+            const dmgOut = computeDamageCompact({
+              weaponDamage: num(flags.weaponDamage, 0),
+              atkS: atkSDef,
+              defS: defSDef,
+              defenseType,
+              armorFull,
+              armorNoShield,
+            });
+            damage = dmgOut.damage;
+            compact = dmgOut.compact;
+            hit = dmgOut.hit;
+            crit = dmgOut.crit ?? false;
+          }
+
+          // Apply states configured for CRIT_ATTACK mode.
+          // Reuses the already computed "crit" result from normal attack resolution.
+          const critAttackStates = Array.isArray(flags.critAttackStates)
+            ? flags.critAttackStates
+            : [];
+          if (
+            crit &&
+            flags.attackKind === "ability" &&
+            flags.attackRoll === true &&
+            critAttackStates.length > 0
+          ) {
+            for (const state of critAttackStates) {
+              if (!state?.uuid) continue;
+              await replaceStateFromTemplate(
+                defender,
+                state.uuid,
+                state.durationRounds,
+                defenderTokenUuid,
+              );
+            }
+          }
+
+          // Single public defense card — contains result + GM apply-damage button
+          await ChatMessage.create({
+            ...chatVisibilityData(),
+            speaker: ChatMessage.getSpeaker({ actor: defender }),
+            content: defenseCardTwoCols({
+              defenderName: defender.name,
+              reactionLabel,
+              defRoll,
+              hit,
+              damage,
+              defenderTokenUuid,
+              crit,
+              compact,
+            }),
+            rolls: defRoll.rolls,
+            flags: buildCombatFlags({
+              kind: "defense",
+              defenderTokenUuid,
+              damage,
+              hit,
+              crit,
+            }),
+          });
+
+          await cleanupPredictedGmApplyMessages({
+            attackMessageId: fresh.id,
+            defenderTokenUuid,
+            isHealing: false,
+          });
+
+          if (damage > 0) {
+            await createGmApplyMessage({
+              title: "Бросок ведущему",
+              subtitle: `${attacker.name} -> ${defender.name} · итог после защиты`,
+              attackMessageId: fresh.id,
+              applyPhase: "resolved",
+              rows: [
+                {
+                  defenderTokenUuid,
+                  label: defender.name,
+                  damage,
+                  isHealing: false,
+                  crit,
+                },
+              ],
+            });
+          }
+
+          const resolvedResults = Array.isArray(flags.resolvedResults) ? flags.resolvedResults : [];
+          const nextResolvedResults = [
+            ...resolvedResults,
+            { uuid: defenderTokenUuid, damage, hit, crit }
+          ];
+
+          const nextResolvedDefenderUuids = nextResolvedResults.map(r => r.uuid);
+          const defenseTargets = getDefenseTargetsFromFlags(flags);
+          const allResolved =
+            defenseTargets.length > 0 &&
+            defenseTargets.every((t) =>
+              nextResolvedDefenderUuids.includes(t.defenderTokenUuid),
+            );
+
+          await fresh.update({
+            "flags.vitruvium.resolvedResults": nextResolvedResults,
+            "flags.vitruvium.resolvedDefenderUuids": nextResolvedDefenderUuids,
+            "flags.vitruvium.resolved": allResolved,
+            "flags.vitruvium.resolvedBy": game.user.id,
+            "flags.Vitruvium.resolvedResults": nextResolvedResults,
+            "flags.Vitruvium.resolvedDefenderUuids": nextResolvedDefenderUuids,
+            "flags.Vitruvium.resolved": allResolved,
+            "flags.Vitruvium.resolvedBy": game.user.id,
+          });
+
+          markResolvedInUI();
+        } catch (e) {
+          console.error("Vitruvium | defense flow error", e);
+          ui.notifications?.error(`Ошибка защиты: ${e?.message ?? e}`);
+        } finally {
+          _resolvedAttackDefenseKeys.delete(lockKey);
+        }
+      });
+    });
+
+    // State contest button
+    html.querySelectorAll("[data-action='vitruvium-contest']").forEach((el) => {
+      el.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        const btn = ev.currentTarget;
+        const row = btn.closest("[data-contest-defender-token-uuid]");
+        const markResolvedInUI = () => {
+          btn.disabled = true;
+          if (row) {
+            const statusEl = row.querySelector("[data-role='contest-status']");
+            if (statusEl) statusEl.textContent = "Сопротивление уже выбрано";
+          }
+        };
+
+        const fresh = game.messages.get(message.id) ?? message;
+        const flags = readCombatFlags(fresh) ?? {};
+        if (flags.kind !== "attack") return;
+        // Support both old contestStateUuid and new contestStates format
+        const contestStates = Array.isArray(flags.contestStates)
+          ? flags.contestStates
+          : [];
+        const hasContestStates =
+          contestStates.length > 0 ||
+          (flags.contestEnabled && flags.contestStateUuid);
+        if (!hasContestStates) return;
+        const speakerActorId = String(fresh.speaker?.actor ?? "").trim();
+        const speakerActor = speakerActorId
+          ? game.actors?.get(speakerActorId)
+          : null;
+
+        const defenderTokenUuid = String(
+          btn.getAttribute("data-defender-token-uuid") ??
+          flags.defenderTokenUuid ??
+          "",
+        ).trim();
+        if (!defenderTokenUuid) return;
+
+        const resolvedContestDefenderUuids =
+          getResolvedContestDefenderUuids(flags);
+        if (resolvedContestDefenderUuids.includes(defenderTokenUuid)) {
+          ui.notifications?.info("Сопротивление уже выбрано.");
+          markResolvedInUI();
+          return;
+        }
+
+        const lockKey = attackResolveLockKey(
+          message.id,
+          defenderTokenUuid,
+          "contest",
         );
-        const baseAttr = getEffectiveAttribute(
-          defender.system?.attributes,
-          choice.attrKey,
-          effectTotals,
-        );
-        const poolVal = clamp(
-          baseAttr +
+        if (_resolvedAttackDefenseKeys.has(lockKey)) {
+          ui.notifications?.info("Сопротивление уже обрабатывается.");
+          return;
+        }
+
+        _resolvedAttackDefenseKeys.add(lockKey);
+        try {
+          const defender = await resolveCombatActor({
+            tokenUuid: defenderTokenUuid,
+          });
+          const attacker = await resolveCombatActor({
+            tokenUuid: flags.attackerTokenUuid,
+            actorUuid: flags.attackerActorUuid ?? speakerActor?.uuid,
+          });
+          if (!defender || !attacker) {
+            ui.notifications?.warn(
+              "Не удалось определить участников. Создайте применение заново.",
+            );
+            return;
+          }
+
+
+
+          if (!userCanDefend(defender)) {
+            ui.notifications?.warn(
+              "Только владелец цели или ГМ может нажать «Сопротивление».",
+            );
+            return;
+          }
+
+          const choice = await contestDialog({
+            actor: defender,
+            defaultAttrKey: flags.contestTargetAttr,
+            title: "Сопротивление состоянию",
+          });
+          if (!choice) return;
+
+          const effectTotals = collectEffectTotals(defender);
+          const globalMods = getGlobalRollModifiers(effectTotals);
+          const attrMods = getAttributeRollModifiers(
+            effectTotals,
+            choice.attrKey,
+          );
+          const baseAttr = getEffectiveAttribute(
+            defender.system?.attributes,
+            choice.attrKey,
+            effectTotals,
+          );
+          const poolVal = clamp(
+            baseAttr +
             attrMods.dice +
             globalMods.dice +
             num(choice.extraDice, 0),
-          1,
-          20,
-        );
-        const totalLuck = num(choice.luck, 0) + globalMods.adv + attrMods.adv;
-        const totalUnluck =
-          num(choice.unluck, 0) + globalMods.dis + attrMods.dis;
-        const finalFullMode =
-          globalMods.fullMode !== "normal"
-            ? globalMods.fullMode
-            : choice.fullMode;
+            1,
+            20,
+          );
+          const totalLuck = num(choice.luck, 0) + globalMods.adv + attrMods.adv;
+          const totalUnluck =
+            num(choice.unluck, 0) + globalMods.dis + attrMods.dis;
+          const finalFullMode =
+            globalMods.fullMode !== "normal"
+              ? globalMods.fullMode
+              : choice.fullMode;
 
 
 
-        const defRoll = await rollPool(poolVal, {
-          luck: totalLuck,
-          unluck: totalUnluck,
-          fullMode: finalFullMode,
-        });
+          const defRoll = await rollPool(poolVal, {
+            luck: totalLuck,
+            unluck: totalUnluck,
+            fullMode: finalFullMode,
+          });
 
-        // Single combined contest card: roll result + outcome
-        const casterSuccessesContest = num(flags.casterContestSuccesses, 0);
-        const targetSuccessesContest = defRoll.successes;
-        let appliedContest = targetSuccessesContest < casterSuccessesContest;
-        let stateNameContest = null;
+          // Single combined contest card: roll result + outcome
+          const casterSuccessesContest = num(flags.casterContestSuccesses, 0);
+          const targetSuccessesContest = defRoll.successes;
+          let appliedContest = targetSuccessesContest < casterSuccessesContest;
+          let stateNameContest = null;
 
-        if (appliedContest) {
-          // Use contestStates array if available, otherwise fall back to old format
-          const statesToApply =
-            contestStates.length > 0
-              ? contestStates.filter((s) => s.applyMode === "targetContest")
-              : [
+          if (appliedContest) {
+            // Use contestStates array if available, otherwise fall back to old format
+            const statesToApply =
+              contestStates.length > 0
+                ? contestStates.filter((s) => s.applyMode === "targetContest")
+                : [
                   {
                     uuid: flags.contestStateUuid,
                     durationRounds: flags.contestStateDurationRounds,
                   },
                 ];
 
-          for (const state of statesToApply) {
-            if (state.uuid) {
-              const out = await replaceStateFromTemplate(
-                defender,
-                state.uuid,
-                state.durationRounds,
-                defenderTokenUuid,
-              );
-              appliedContest = !!out.applied;
-              stateNameContest = out.stateName;
+            for (const state of statesToApply) {
+              if (state.uuid) {
+                const out = await replaceStateFromTemplate(
+                  defender,
+                  state.uuid,
+                  state.durationRounds,
+                  defenderTokenUuid,
+                );
+                appliedContest = !!out.applied;
+                stateNameContest = out.stateName;
+              }
             }
           }
+
+
+
+          const contestCard = resolveContestCardHTML({
+            attackerName: attacker.name,
+            defenderName: defender.name,
+            abilityName: flags.weaponName ?? "Способность",
+            stateName: stateNameContest ?? "Состояние",
+            casterSuccesses: casterSuccessesContest,
+            targetSuccesses: targetSuccessesContest,
+            applied: appliedContest,
+            casterAttr: flags.contestCasterAttr,
+            defenderAttr: choice.attrKey,
+            defRoll,
+          });
+
+          await ChatMessage.create({
+            ...chatVisibilityData(),
+            speaker: ChatMessage.getSpeaker({ actor: defender }),
+            content: contestCard,
+            rolls: defRoll.rolls,
+          });
+
+          const nextResolvedContestDefenderUuids = [
+            ...new Set([...resolvedContestDefenderUuids, defenderTokenUuid]),
+          ];
+          await fresh.update({
+            "flags.vitruvium.resolvedContestDefenderUuids":
+              nextResolvedContestDefenderUuids,
+            "flags.Vitruvium.resolvedContestDefenderUuids":
+              nextResolvedContestDefenderUuids,
+          });
+
+          markResolvedInUI();
+        } catch (e) {
+          console.error("Vitruvium | contest flow error", e);
+          ui.notifications?.error(`Ошибка сопротивления: ${e?.message ?? e}`);
+        } finally {
+          _resolvedAttackDefenseKeys.delete(lockKey);
         }
-
-
-
-        const contestCard = resolveContestCardHTML({
-          attackerName: attacker.name,
-          defenderName: defender.name,
-          abilityName: flags.weaponName ?? "Способность",
-          stateName: stateNameContest ?? "Состояние",
-          casterSuccesses: casterSuccessesContest,
-          targetSuccesses: targetSuccessesContest,
-          applied: appliedContest,
-          casterAttr: flags.contestCasterAttr,
-          defenderAttr: choice.attrKey,
-          defRoll,
-        });
-
-        await ChatMessage.create({
-          ...chatVisibilityData(),
-          speaker: ChatMessage.getSpeaker({ actor: defender }),
-          content: contestCard,
-          rolls: defRoll.rolls,
-        });
-
-        const nextResolvedContestDefenderUuids = [
-          ...new Set([...resolvedContestDefenderUuids, defenderTokenUuid]),
-        ];
-        await fresh.update({
-          "flags.vitruvium.resolvedContestDefenderUuids":
-            nextResolvedContestDefenderUuids,
-          "flags.Vitruvium.resolvedContestDefenderUuids":
-            nextResolvedContestDefenderUuids,
-        });
-
-        markResolvedInUI();
-      } catch (e) {
-        console.error("Vitruvium | contest flow error", e);
-        ui.notifications?.error(`Ошибка сопротивления: ${e?.message ?? e}`);
-      } finally {
-        _resolvedAttackDefenseKeys.delete(lockKey);
-      }
+      });
     });
-  });
   } catch (e) {
     console.error("Vitruvium | renderChatMessageHTML error", e);
   }
@@ -2496,9 +2487,9 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       );
       const atkPool = clamp(
         atkBaseAttr +
-          attackMods.dice +
-          globalMods.dice +
-          num(atkChoice.extraDice, 0),
+        attackMods.dice +
+        globalMods.dice +
+        num(atkChoice.extraDice, 0),
         1,
         20,
       );
@@ -2536,8 +2527,8 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         );
         const contestPool = clamp(
           contestBaseAttr +
-            contestAttrMods.dice +
-            globalMods.dice,
+          contestAttrMods.dice +
+          globalMods.dice,
           1,
           20,
         );
@@ -2694,9 +2685,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     });
     const atkPool = clamp(
       getEffectiveAttribute(attackerActor.system?.attributes, atkChoice.attrKey, effectTotals) +
-        attackMods.dice +
-        globalMods.dice +
-        num(atkChoice.extraDice, 0),
+      attackMods.dice +
+      globalMods.dice +
+      num(atkChoice.extraDice, 0),
       1,
       20,
     );
@@ -2738,11 +2729,11 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         <div class="vitruvium-chatcard vitruvium-chatcard--attack">
           <div class="v-head">
             <div class="v-title">${esc(
-              attackerActor.name,
-            )} — атака (без цели)</div>
+          attackerActor.name,
+        )} — атака (без цели)</div>
             <div class="v-sub">Оружие: <b>${esc(
-              weaponName,
-            )}</b> · Атрибут: ${esc(prettyAttrLabel(atkChoice.attrKey))}</div>
+          weaponName,
+        )}</b> · Атрибут: ${esc(prettyAttrLabel(atkChoice.attrKey))}</div>
           </div>
           <div class="v-two">
             <div class="v-box">
@@ -2754,9 +2745,8 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
             <div class="v-box">
               <div class="v-box__label">Урон</div>
               <div class="v-box__big">${total}</div>
-              <div class="v-sub">${weaponDamage} + ${
-                atkRoll.successes
-              } = ${total}</div>
+              <div class="v-sub">${weaponDamage} + ${atkRoll.successes
+          } = ${total}</div>
             </div>
           </div>
         </div>`,

@@ -100,8 +100,8 @@ async function rollPool(pool, { luck = 0, unluck = 0, fullMode = "normal" } = {}
           ? b
           : a
         : b.successes < a.successes
-        ? b
-        : a;
+          ? b
+          : a;
     return {
       roll: chosen.roll,
       rolls: [a.roll, b.roll],
@@ -227,8 +227,8 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
     );
     const move = clamp(
       clamp(baseMovement, 1, 6) +
-        movementMods.dice +
-        globalMods.dice,
+      movementMods.dice +
+      globalMods.dice,
       1,
       20
     );
@@ -273,9 +273,9 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
   if (updates.length)
     await combat.updateEmbeddedDocuments("Combatant", updates);
 
-  // Тай-брейк PC vs NPC при равной инициативе:
-  // делаем лёгкий сдвиг +0.01, чтобы Foundry отсортировал.
-  await vitruviumResolvePcNpcTies(combat);
+  // Тай-брейк:
+  // делаем лёгкий сдвиг новых участников для правильной сортировки Foundry
+  await vitruviumResolvePcNpcTies(combat, rollIds);
 
   // Сообщение в чат о бросках
   const head =
@@ -299,7 +299,10 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
   await ChatMessage.create({ ...chatVisibilityData(), content });
 }
 
-async function vitruviumResolvePcNpcTies(combat) {
+async function vitruviumResolvePcNpcTies(combat, rollIds) {
+  const rollIdSet = new Set(rollIds || []);
+  if (!rollIdSet.size) return;
+
   // группируем по базовой инициативе (целой части)
   const groups = new Map(); // key: integer initiative, val: combatants[]
   for (const c of combat.combatants) {
@@ -314,20 +317,59 @@ async function vitruviumResolvePcNpcTies(combat) {
   for (const [base, list] of groups.entries()) {
     if (list.length < 2) continue;
 
-    const pcs = list.filter(isPC);
-    const npcs = list.filter((c) => !isPC(c));
+    const rollers = list.filter((c) => rollIdSet.has(c.id));
+    if (!rollers.length) continue;
 
-    // интересует только смешанная группа
-    if (!pcs.length || !npcs.length) continue;
+    const existing = list.filter((c) => !rollIdSet.has(c.id));
 
-    // Мы делаем простой вариант: каждый PC делает 1 бросок удачи против "группы NPC" этого тай-брейка.
-    // успех → PC слегка выше (base + 0.01), провал → слегка ниже (base - 0.01).
-    for (const pc of pcs) {
-      const ok = await luckRollShow(pc.name, "NPC");
-      const newInit = base + (ok ? 0.01 : -0.01);
-      tieUpdates.push({ _id: pc.id, initiative: newInit });
+    let currentMin = base;
+    let currentMax = base;
+    if (existing.length > 0) {
+      const inits = existing.map((c) => Number(c.initiative));
+      currentMin = Math.min(...inits);
+      currentMax = Math.max(...inits);
     }
-    // NPC оставляем на base; NPC↔NPC и PC↔PC равенства решаются ручной перестановкой, как ты описал.
+
+    const allNPCs = list.filter((c) => !isPC(c));
+
+    // Сначала обрабатываем NPC, потом PC, чтобы при одновременном броске
+    // PC мог сделать бросок против уже размещенного NPC.
+    rollers.sort((a, b) => {
+      const aPC = isPC(a);
+      const bPC = isPC(b);
+      if (aPC === bPC) return 0;
+      return aPC ? 1 : -1;
+    });
+
+    for (const c of rollers) {
+      let newInit = base;
+
+      if (isPC(c) && allNPCs.length > 0) {
+        // PC против NPC: бросок удачи
+        const ok = await luckRollShow(c.name, "NPC");
+        if (ok) {
+          currentMax += 0.01;
+          newInit = currentMax;
+        } else {
+          currentMin -= 0.01;
+          newInit = currentMin;
+        }
+      } else {
+        // NPC или PC без конфликта с NPC: просто идет после всех
+        // Если это первый участник в пустой группе, оставляем ему base.
+        if (existing.length === 0 && newInit === currentMin) {
+          existing.push(c); // Теперь группа не пуста для следующих
+        } else {
+          currentMin -= 0.01;
+          newInit = currentMin;
+        }
+      }
+
+      newInit = Number(newInit.toFixed(4));
+      tieUpdates.push({ _id: c.id, initiative: newInit });
+      // Обновляем локально, чтобы следующие броски учитывали сдвиг
+      c.initiative = newInit;
+    }
   }
 
   if (tieUpdates.length)
