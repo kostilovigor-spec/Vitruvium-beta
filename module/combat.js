@@ -1,4 +1,5 @@
 ﻿import { playAutomatedAnimation } from "./auto-animations.js";
+import { DiceSystem } from "./core/dice-system.js";
 import {
   normalizeEffects,
   collectEffectTotals,
@@ -18,22 +19,6 @@ import { chatVisibilityData } from "./chat-visibility.js";
 // GM client listens to createChatMessage for that flag and posts Resolve (GM-only).
 // Attack and defense cards follow current core chat roll mode.
 
-function dvSuccesses(face) {
-  const v = Number(face);
-  if (!Number.isFinite(v)) return 0;
-  if (v <= 3) return 0;
-  if (v <= 5) return 1;
-  return 2; // 6
-}
-
-function dvFaceKind(face) {
-  const v = Number(face);
-  if (!Number.isFinite(v)) return "blank";
-  if (v <= 3) return "blank";
-  if (v <= 5) return "single";
-  return "double";
-}
-
 function renderFacesInline(results = []) {
   const arr = Array.isArray(results) ? results : [];
   if (!arr.length) return "";
@@ -41,7 +26,7 @@ function renderFacesInline(results = []) {
   const iconSingle = "♦";
   const iconDouble = "♦♦";
   const parts = arr.map((v) => {
-    const kind = dvFaceKind(v);
+    const kind = DiceSystem.classifyFace(v);
     const icon =
       kind === "double"
         ? iconDouble
@@ -51,34 +36,6 @@ function renderFacesInline(results = []) {
     return `<span class="v-face v-face--${kind}" data-face="${kind}">${icon}</span>`;
   });
   return `<div class="v-faces v-faces--inline">${parts.join("")}</div>`;
-}
-
-async function rollDieOnce(roller) {
-  if (typeof roller === "function") {
-    const custom = await roller();
-    const result = Number(custom?.result ?? custom);
-    return {
-      roll: custom?.roll ?? null,
-      result: Number.isFinite(result) ? result : 1,
-    };
-  }
-
-  const roll = new Roll("1dV");
-  await roll.evaluate();
-  const result = roll.dice?.[0]?.results?.[0]?.result ?? 1;
-  return { roll, result: Number(result) };
-}
-
-function pickIndex(results, preferHighest) {
-  let idx = 0;
-  for (let i = 1; i < results.length; i++) {
-    if (preferHighest) {
-      if (results[i] > results[idx]) idx = i;
-    } else if (results[i] < results[idx]) {
-      idx = i;
-    }
-  }
-  return idx;
 }
 
 function modeLabel(luck = 0, unluck = 0) {
@@ -224,116 +181,8 @@ function attackResolveLockKey(messageId, defenderTokenUuid, flow = "defense") {
 
 const _resolvedAttackDefenseKeys = new Set();
 
-async function rollPool(pool, mode = "normal") {
-  pool = clamp(num(pool, 1), 1, 20);
-  const opts = typeof mode === "object" && mode ? mode : {};
-  const roller = typeof opts.roller === "function" ? opts.roller : null;
-  const dieRoller =
-    typeof opts.dieRoller === "function" ? opts.dieRoller : null;
-  const fullMode = String(opts.fullMode ?? "normal");
-  let luck = clamp(Math.round(num(opts.luck, 0)), 0, 20);
-  let unluck = clamp(Math.round(num(opts.unluck, 0)), 0, 20);
-
-  const rollOnce = async () => {
-    if (roller) {
-      const custom = await roller(pool);
-      const results = Array.isArray(custom?.results)
-        ? custom.results.map((v) => Number(v))
-        : [];
-      const successes = Number.isFinite(custom?.successes)
-        ? custom.successes
-        : results.reduce((acc, v) => acc + dvSuccesses(v), 0);
-      return {
-        roll: custom?.roll ?? null,
-        results,
-        successes,
-      };
-    }
-
-    const roll = new Roll(`${pool}dV`);
-    await roll.evaluate();
-    const results = (roll.dice?.[0]?.results ?? []).map((r) =>
-      Number(r.result),
-    );
-    let successes = 0;
-    for (const v of results) successes += dvSuccesses(v);
-    return { roll, results, successes };
-  };
-
-  if (fullMode === "adv" || fullMode === "dis") {
-    const a = await rollOnce();
-    const b = await rollOnce();
-    const chosen =
-      fullMode === "adv"
-        ? b.successes > a.successes
-          ? b
-          : a
-        : b.successes < a.successes
-          ? b
-          : a;
-    return {
-      pool,
-      successes: chosen.successes,
-      rolls: [a.roll, b.roll],
-      results: chosen.results,
-      luck: 0,
-      unluck: 0,
-      fullMode,
-    };
-  }
-
-  const diff = luck - unluck;
-  if (diff > 0) {
-    luck = diff;
-    unluck = 0;
-  } else if (diff < 0) {
-    unluck = Math.abs(diff);
-    luck = 0;
-  }
-  luck = Math.min(luck, pool);
-  unluck = Math.min(unluck, pool);
-
-  const base = await rollOnce();
-  const roll = base.roll;
-  const results = Array.isArray(base.results) ? base.results : [];
-  const rolls = roll ? [roll] : [];
-  const rerolls = [];
-
-  const applyReroll = async (index, preferHigher) => {
-    const before = results[index];
-    const rr = await rollDieOnce(dieRoller);
-    const after = rr.result;
-    const chosen = preferHigher
-      ? Math.max(before, after)
-      : Math.min(before, after);
-    results[index] = chosen;
-    if (rr.roll) rolls.push(rr.roll);
-    return { index, before, after, chosen };
-  };
-
-  for (let i = 0; i < luck; i++) {
-    const idx = pickIndex(results, false);
-    rerolls.push({ kind: "luck", ...(await applyReroll(idx, true)) });
-  }
-  for (let i = 0; i < unluck; i++) {
-    const idx = pickIndex(results, true);
-    rerolls.push({ kind: "unluck", ...(await applyReroll(idx, false)) });
-  }
-
-  let successes = 0;
-  for (const v of results) successes += dvSuccesses(v);
-
-  return {
-    pool,
-    successes,
-    rolls,
-    results,
-    luck,
-    unluck,
-    fullMode: "normal",
-    rerolls,
-  };
-}
+// rollPool — делегируем в DiceSystem (единственная реализация)
+const rollPool = (pool, opts) => DiceSystem.rollPool(pool, opts);
 
 function renderModeDetailSmall(r) {
   if (!r) return "";
@@ -857,22 +706,25 @@ function renderContestTargets({
   `;
 }
 
-function renderGmApplyButtons({ defenderTokenUuid, damage, isHealing = false, crit = false }) {
+function renderGmApplyButtons({ defenderTokenUuid, defenderName = "", damage, isHealing = false, crit = false }) {
   const action = isHealing ? "vitruvium-apply-healing" : "vitruvium-apply-damage";
   const btnClass = isHealing ? "v-btn--success" : "v-btn--danger";
-  const label = isHealing ? "Применить лечение" : "Применить урон";
-  const critText = !isHealing && crit ? " [КРИТ ×2]" : "";
+  const btnLabel = isHealing ? `Лечение (${damage})` : `Урон (${damage})${!isHealing && crit ? " ×2️ КРИТ" : ""}`;
+  const nameHtml = defenderName
+    ? `<span class="v-dmg-name">${esc(defenderName)}</span>`
+    : "";
 
   return `
-    <div class="v-actions gm-only" style="display:flex;align-items:center;gap:4px;margin-top:8px;">
-      <select data-role="dmg-multiplier" style="height:28px;border-radius:4px;border:1px solid #999;padding:0 4px;width:auto;flex:0 0 auto;">
+    <div class="v-dmg-row gm-only">
+      ${nameHtml}
+      <select data-role="dmg-multiplier" class="v-dmg-mul">
         <option value="0">×0</option>
         <option value="0.5">×0.5</option>
         <option value="1" selected>×1</option>
         <option value="1.5">×1.5</option>
         <option value="2">×2</option>
       </select>
-      <button type="button" class="v-btn ${btnClass}" data-action="${action}" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}" style="flex:1;">${label} (${damage})${critText}</button>
+      <button type="button" class="v-btn ${btnClass} v-dmg-btn" data-action="${action}" data-defender-token-uuid="${esc(defenderTokenUuid)}" data-damage="${damage}">${btnLabel}</button>
     </div>
   `;
 }
@@ -951,26 +803,15 @@ async function createGmApplyMessage({
       }
     }
 
-    const content = `
-      <div class="vitruvium-chatcard vitruvium-chatcard--resolve">
-        <div class="v-head">
-          <div class="v-title">${esc(title)}</div>
-          ${subtitle ? `<div class="v-sub">${esc(subtitle)}</div>` : ""}
-        </div>
-        <div class="v-actions" style="display:grid;gap:10px;">
-          <div class="v-actions" style="display:grid;gap:6px;">
-            ${prefix}
-            ${renderGmApplyButtons({
+    const targetDoc = defenderTokenUuid ? fromUuidSync(defenderTokenUuid) : null;
+    const defName = String(row.label || targetDoc?.name || targetDoc?.actor?.name || "Цель").trim();
+    const content = renderGmApplyButtons({
       defenderTokenUuid,
+      defenderName: defName,
       damage: dmg,
       isHealing,
       crit: !!row.crit,
-    })}
-          </div>
-        </div>
-      </div>
-    `;
-
+    });
     await ChatMessage.create({
       ...chatVisibilityData({ gmOnly: true }),
       content,

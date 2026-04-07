@@ -5,6 +5,7 @@ import {
   getGlobalRollModifiers,
 } from "./effects.js";
 import { chatVisibilityData } from "./chat-visibility.js";
+import { DiceSystem } from "./core/dice-system.js";
 
 function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
@@ -14,44 +15,8 @@ function num(v, d) {
   return Number.isNaN(x) ? d : x;
 }
 
-// успехи: 4-5 = 1, 6 = 2
-function countSuccesses(roll) {
-  // roll.dice[0].results -> [{result:1..6}, ...]
-  const die = roll.dice?.[0];
-  const results = die?.results ?? [];
-  let s = 0;
-  for (const r of results) {
-    const v = r.result;
-    if (v === 6) s += 2;
-    else if (v === 4 || v === 5) s += 1;
-  }
-  return s;
-}
-
 function successesIcons(n) {
-  // если у тебя уже есть иконки успехов - замени здесь на свои
-  return Array.from({ length: Math.max(0, n) }, () => "?").join(" ");
-}
-
-async function rollDieOnce() {
-  const r = await new Roll("1dV").evaluate();
-  if (game.dice3d) {
-    await game.dice3d.showForRoll(r, game.user, true);
-  }
-  const result = r.dice?.[0]?.results?.[0]?.result ?? 1;
-  return { roll: r, result: Number(result) };
-}
-
-function pickIndex(results, preferHighest) {
-  let idx = 0;
-  for (let i = 1; i < results.length; i++) {
-    if (preferHighest) {
-      if (results[i] > results[idx]) idx = i;
-    } else if (results[i] < results[idx]) {
-      idx = i;
-    }
-  }
-  return idx;
+  return Array.from({ length: Math.max(0, n) }, () => "◆").join(" ");
 }
 
 function modeLabel(luck = 0, unluck = 0) {
@@ -72,100 +37,14 @@ function fullModeLabel(mode) {
   return "Обычный";
 }
 
-async function rollPool(pool, { luck = 0, unluck = 0, fullMode = "normal" } = {}) {
-  pool = clamp(num(pool, 1), 1, 20);
-  const full = String(fullMode ?? "normal");
-
-  const rollOnce = async () => {
-    const roll = await new Roll(`${pool}dV`).evaluate();
-    if (game.dice3d) {
-      await game.dice3d.showForRoll(roll, game.user, true);
-    }
-    const results = (roll.dice?.[0]?.results ?? []).map((r) =>
-      Number(r.result)
-    );
-    const successRoll = {
-      dice: [{ results: results.map((result) => ({ result })) }],
-    };
-    const successes = countSuccesses(successRoll);
-    return { roll, results, successes };
-  };
-
-  if (full === "adv" || full === "dis") {
-    const a = await rollOnce();
-    const b = await rollOnce();
-    const chosen =
-      full === "adv"
-        ? b.successes > a.successes
-          ? b
-          : a
-        : b.successes < a.successes
-          ? b
-          : a;
-    return {
-      roll: chosen.roll,
-      rolls: [a.roll, b.roll],
-      results: chosen.results,
-      successes: chosen.successes,
-      luck: 0,
-      unluck: 0,
-      fullMode: full,
-    };
-  }
-
-  const roll = await new Roll(`${pool}dV`).evaluate();
-  if (game.dice3d) {
-    await game.dice3d.showForRoll(roll, game.user, true);
-  }
-
-  const results = (roll.dice?.[0]?.results ?? []).map((r) =>
-    Number(r.result)
-  );
-  const rolls = [roll];
-
-  const applyReroll = async (index, preferHigher) => {
-    const before = results[index];
-    const rr = await rollDieOnce();
-    const after = rr.result;
-    results[index] = preferHigher ? Math.max(before, after) : Math.min(before, after);
-    rolls.push(rr.roll);
-  };
-
-  let luckCount = clamp(Math.round(num(luck, 0)), 0, 20);
-  let unluckCount = clamp(Math.round(num(unluck, 0)), 0, 20);
-  const diff = luckCount - unluckCount;
-  if (diff > 0) {
-    luckCount = diff;
-    unluckCount = 0;
-  } else if (diff < 0) {
-    unluckCount = Math.abs(diff);
-    luckCount = 0;
-  }
-  luckCount = Math.min(luckCount, pool);
-  unluckCount = Math.min(unluckCount, pool);
-
-  for (let i = 0; i < luckCount; i++) {
-    const idx = pickIndex(results, false);
-    await applyReroll(idx, true);
-  }
-  for (let i = 0; i < unluckCount; i++) {
-    const idx = pickIndex(results, true);
-    await applyReroll(idx, false);
-  }
-
-  const successRoll = {
-    dice: [{ results: results.map((result) => ({ result })) }],
-  };
-  const successes = countSuccesses(successRoll);
-  return {
-    roll,
-    rolls,
-    results,
-    successes,
-    luck: luckCount,
-    unluck: unluckCount,
-    fullMode: "normal",
-  };
+/** Обёртка над DiceSystem.rollPool с поддержкой Dice So Nice через onRoll */
+function rollPool(pool, opts = {}) {
+  return DiceSystem.rollPool(pool, {
+    ...opts,
+    onRoll: game.dice3d
+      ? (r) => game.dice3d.showForRoll(r, game.user, true)
+      : undefined,
+  });
 }
 
 async function luckRollShow(actorName, targetName) {

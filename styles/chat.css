@@ -111,12 +111,15 @@
   color: rgba(0, 0, 0, 0.75);
   line-height: 1.2;
 }
+
 .chat-message .v-card__mode--adv {
   background: rgba(255, 255, 255, 0.55);
 }
+
 .chat-message .v-card__mode--dis {
   background: rgba(255, 255, 255, 0.55);
 }
+
 .chat-message .v-card__mode--normal {
   background: rgba(255, 255, 255, 0.55);
 }
@@ -236,4 +239,71 @@
   min-width: 20px;
   padding: 0 7px;
   font-size: 11px;
+}
+
+/* ── Compact GM apply-damage row ─────────────────────────── */
+.v-dmg-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.v-dmg-name {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  flex: 0 1 auto;
+  opacity: 0.9;
+}
+
+.v-dmg-mul {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 60px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.v-dmg-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: 26px;
+  font-size: 12px;
+}
+
+/* Button colour modifiers */
+.v-btn--danger,
+.chat-message .v-btn--danger {
+  border-color: rgba(160, 30, 30, 0.55);
+  background: rgba(200, 60, 60, 0.18);
+  color: rgba(120, 10, 10, 0.95);
+}
+
+.v-btn--danger:hover,
+.chat-message .v-btn--danger:hover {
+  background: rgba(200, 60, 60, 0.32);
+}
+
+.v-btn--success,
+.chat-message .v-btn--success {
+  border-color: rgba(30, 130, 60, 0.55);
+  background: rgba(40, 160, 80, 0.18);
+  color: rgba(10, 90, 30, 0.95);
+}
+
+.v-btn--success:hover,
+.chat-message .v-btn--success:hover {
+  background: rgba(40, 160, 80, 0.32);
 }
