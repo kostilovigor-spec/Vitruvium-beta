@@ -245,7 +245,7 @@ export class ActionProcessor {
         });
 
         ctx.computed.successes = ctx.rolls.check.successes;
-        await this.stageEmit(ctx, options.attrKey.toUpperCase(), "Attribute Check");
+        await this.stageEmit(ctx, options.attrKey.toUpperCase(), "Проверка атрибута");
         return this.buildResult(ctx);
     }
 
@@ -267,7 +267,7 @@ export class ActionProcessor {
             extraDice: options.extraDice
         });
         ctx.computed.successes = ctx.rolls.check.successes;
-        await this.stageEmit(ctx, "Luck", "Luck Roll");
+        await this.stageEmit(ctx, "Удача", "Бросок на удачу");
         return this.buildResult(ctx);
     }
 
@@ -281,27 +281,27 @@ export class ActionProcessor {
             extraDice: options.extraDice
         });
         ctx.computed.successes = ctx.rolls.check.successes;
-        await this.stageEmit(ctx, "Bonus Dice", `Pool: ${pool}`);
+        await this.stageEmit(ctx, "Бонусные кубики", `Пулл: ${pool}`);
         return this.buildResult(ctx);
     }
 
     async stagePrompt(ctx) {
         const { type, options, attacker } = ctx.action;
-        let title = "Roll";
+        let title = "Бросок";
         let pool = 1;
         let showPool = false;
 
         switch (type) {
             case "attribute":
-                title = `Check: ${options.attrKey.toUpperCase()}`;
+                title = `Проверка: ${options.attrKey.toUpperCase()}`;
                 pool = this.getAttributePool(attacker, options.attrKey);
                 break;
             case "luck":
-                title = "Luck Roll";
+                title = "Бросок на удачу";
                 pool = 1;
                 break;
             case "bonus_dice":
-                title = "Bonus Dice";
+                title = "Бонусные кубики";
                 pool = options.pool || 1;
                 showPool = true;
                 break;
@@ -318,13 +318,13 @@ export class ActionProcessor {
             <div class="v-card v-card--roll">
                 <div class="v-card__header">
                     <div class="v-card__info">
-                        <div class="v-card__title">${escapeHtml(ctx.action.attacker?.name || "Actor")}</div>
+                        <div class="v-card__title">${escapeHtml(ctx.action.attacker?.name || "Актёр")}</div>
                         <div class="v-card__sub">${escapeHtml(title)} <span class="v-card__mode">${escapeHtml(sub)}</span></div>
                     </div>
                 </div>
                 <div class="v-card__body">
                     <div class="v-card__result">
-                        <span class="v-label">Successes</span>
+                        <span class="v-label">Успехи</span>
                         <span class="v-value">${ctx.computed.successes}</span>
                     </div>
                     ${renderFaces(roll.results)}

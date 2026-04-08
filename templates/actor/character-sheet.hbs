@@ -21,7 +21,7 @@
           {{else}}
           <span class="v-meta__name">{{actor.name}}</span>
           <span class="v-meta__sep">/</span>
-          <span class="v-meta__level">RG {{vitruvium.header.level}}</span>
+          <span class="v-meta__level">Уровень {{vitruvium.header.level}}</span>
           {{/if}}
         </div>
 
@@ -33,7 +33,7 @@
               <input name="system.attributes.hp.value" type="number" value="{{vitruvium.header.hp.value}}" /> /
               <input name="system.attributes.hp.max" type="number" value="{{vitruvium.header.hp.max}}" />
               {{else}}
-              {{vitruvium.header.hp.value}} / {{vitruvium.header.hp.max}} HP
+              {{vitruvium.header.hp.value}} / {{vitruvium.header.hp.max}} ОЗ
               {{/if}}
             </div>
           </div>
@@ -62,12 +62,18 @@
         {{/each}}
       </div>
       <div class="v-coins">
-        {{#each vitruvium.sidebar.coins as |val key|}}
-        <div class="v-coin {{key}}">
-          <input name="system.coins.{{key}}" type="number" value="{{val}}" />
-          <span>{{key}}</span>
+        <div class="v-coin bronze">
+          <input name="system.coins.bronze" type="number" value="{{vitruvium.sidebar.coins.bronze}}" />
+          <span>Бронза</span>
         </div>
-        {{/each}}
+        <div class="v-coin silver">
+          <input name="system.coins.silver" type="number" value="{{vitruvium.sidebar.coins.silver}}" />
+          <span>Серебро</span>
+        </div>
+        <div class="v-coin gold">
+          <input name="system.coins.gold" type="number" value="{{vitruvium.sidebar.coins.gold}}" />
+          <span>Золото</span>
+        </div>
       </div>
     </div>
   </header>

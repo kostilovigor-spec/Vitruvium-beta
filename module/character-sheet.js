@@ -102,12 +102,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
     // 2. Sidebar Data
     vitruvium.sidebar = {
       attributes: [
-        { key: "condition", label: "CON", value: cond, icon: "fa-heart" },
-        { key: "attention", label: "ATT", value: getAttr("attention"), icon: "fa-eye" },
-        { key: "movement", label: "MOV", value: getAttr("movement"), icon: "fa-walking" },
-        { key: "combat", label: "CMB", value: getAttr("combat"), icon: "fa-fist-raised" },
-        { key: "thinking", label: "THK", value: getAttr("thinking"), icon: "fa-brain" },
-        { key: "communication", label: "COM", value: getAttr("communication"), icon: "fa-comments" },
+        { key: "condition", label: "Самочувствие", value: cond, icon: "fa-heart" },
+        { key: "attention", label: "Внимание", value: getAttr("attention"), icon: "fa-eye" },
+        { key: "movement", label: "Движение", value: getAttr("movement"), icon: "fa-walking" },
+        { key: "combat", label: "Сражение", value: getAttr("combat"), icon: "fa-fist-raised" },
+        { key: "thinking", label: "Мышление", value: getAttr("thinking"), icon: "fa-brain" },
+        { key: "communication", label: "Общение", value: getAttr("communication"), icon: "fa-comments" },
       ],
       derived: {
         armor: clamp(toNumber(sys.armor?.value ?? sys.armor, 0), 0, 99) +
