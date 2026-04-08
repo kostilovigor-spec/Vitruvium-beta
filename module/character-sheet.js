@@ -27,6 +27,39 @@ export class VitruviumCharacterSheet extends ActorSheet {
     });
   }
 
+  /** Save scroll position of the main tab content area */
+  _saveScrollPositions(html) {
+    const container = html.find(".v-tab-content")[0];
+    if (container) {
+      this._scrollPos = container.scrollTop;
+    }
+  }
+
+  /** Restore scroll position of the main tab content area */
+  _restoreScrollPositions(html) {
+    if (this._scrollPos === undefined) return;
+    const container = html.find(".v-tab-content")[0];
+    if (container) {
+      container.scrollTop = this._scrollPos;
+    }
+  }
+
+  /** Map of English group keys to Russian labels */
+  #groupLabels = {
+    // Item types (inventory)
+    "weapon": "Оружие",
+    "equipment": "Снаряжение",
+    "consumables": "Расходники",
+    "trinkets": "Безделушки",
+    "tools": "Инструменты",
+    "loot": "Добыча",
+    "Other": "Прочее",
+    // Ability types
+    "primary": "Основные",
+    "secondary": "Вторичные",
+    "other": "Остальные",
+  };
+
   async getData(options) {
     const data = await super.getData(options);
     const sys = this.actor.system ?? {};
@@ -119,7 +152,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       abilities: {
         groups: Object.entries(groupBy(items.filter(i => i.type === "ability"), "system.type")).map(([k, v]) => ({
           key: k,
-          label: k,
+          label: this.#groupLabels[k] || k,
           items: v,
           isCollapsed: collapsed.includes(`ability-${k}`)
         }))
@@ -127,7 +160,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
       inventory: {
         groups: Object.entries(groupBy(items.filter(i => i.type === "item"), "system.type")).map(([k, v]) => ({
           key: k,
-          label: k,
+          label: this.#groupLabels[k] || k,
           items: v,
           isCollapsed: collapsed.includes(`item-${k}`)
         }))
@@ -161,9 +194,15 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.on("click", "[data-action]", (ev) => this._onAction(ev));
     html.find("input").on("change", (ev) => this._onInputChange(ev));
     html.find(".v-tab-link").on("click", (ev) => {
+      this._saveScrollPositions(this.element);
       this._activeTab = ev.currentTarget.dataset.tab;
       this.render();
     });
+  }
+
+  async _render(force, options) {
+    await super._render(force, options);
+    this._restoreScrollPositions(this.element);
   }
 
   async _onAction(event) {
@@ -224,11 +263,13 @@ export class VitruviumCharacterSheet extends ActorSheet {
   }
 
   async _toggleGroup(groupId) {
+    this._saveScrollPositions(this.element);
     const collapsed = Array.from(this.actor.getFlag("Vitruvium", "collapsedGroups") || []);
     const idx = collapsed.indexOf(groupId);
     if (idx === -1) collapsed.push(groupId);
     else collapsed.splice(idx, 1);
     await this.actor.setFlag("Vitruvium", "collapsedGroups", collapsed);
+    this.render();
   }
 
   async _onInputChange(ev) {

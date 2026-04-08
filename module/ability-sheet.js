@@ -176,14 +176,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Restore active tab (Описание / Эффекты) after re-render.
-    const tabBase = `v-tabs-${this.appId}`;
-    if (this._abilityTab === "effects") {
-      const effectsRadio = html.find(`#${tabBase}-effects`);
-      if (effectsRadio.length) effectsRadio.prop("checked", true);
-    }
-    html.find(".v-itemtabs__toggle").on("change", (ev) => {
-      this._abilityTab = ev.currentTarget.value === "effects" ? "effects" : "desc";
+    // Tab switching
+    html.find(".v-tab-link").on("click", (ev) => {
+      ev.preventDefault();
+      this._abilityTab = ev.currentTarget.dataset.tab;
+      this.render();
     });
 
     // Icon editing should always be available.

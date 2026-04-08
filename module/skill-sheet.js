@@ -103,13 +103,10 @@ export class VitruviumSkillSheet extends ItemSheet {
     super.activateListeners(html);
 
     // Tab switching
-    const tabBase = `v-tabs-${this.appId}`;
-    if (this._activeTab === "effects") {
-      const effectsRadio = html.find(`#${tabBase}-effects`);
-      if (effectsRadio.length) effectsRadio.prop("checked", true);
-    }
-    html.find(".v-itemtabs__toggle").on("change", (ev) => {
-      this._activeTab = ev.currentTarget.value === "effects" ? "effects" : "desc";
+    html.find(".v-tab-link").on("click", (ev) => {
+      ev.preventDefault();
+      this._activeTab = ev.currentTarget.dataset.tab;
+      this.render();
     });
 
     const form = html.closest("form");

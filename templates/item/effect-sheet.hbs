@@ -1,49 +1,28 @@
-<form class="{{cssClass}} v-sheet v-abilitysheet v-effect" autocomplete="off">
+<form class="{{cssClass}} v-sheet v-effect-sheet" autocomplete="off">
 
-  <!-- HEADER -->
-  <header class="v-abilitysheet__header">
-    <div class="v-abilitysheet__headrow">
-      <input
-        class="v-abilitysheet__name"
-        type="text"
-        name="name"
-        value="{{item.name}}"
-        placeholder="Название эффекта"
-      />
+  {{!-- HEADER --}}
+  <header class="v-effect-sheet__header">
+    <div class="v-effect-sheet__iconbox">
+      <img class="v-effect-sheet__icon" src="{{item.img}}" data-edit="img" title="{{item.name}}" />
+    </div>
+
+    <div class="v-effect-sheet__titleblock">
+      <div class="v-effect-sheet__name-view">{{item.name}}</div>
+      <input class="v-effect-sheet__name-input" type="text" name="name" value="{{item.name}}" placeholder="Название эффекта" />
+    </div>
+
+    <div class="v-effect-sheet__actions">
+      <button type="button" class="v-btn v-btn--primary" data-action="edit-effects">
+        <i class="fas fa-magic"></i>
+        <span>Эффекты</span>
+      </button>
     </div>
   </header>
 
-  <!-- BODY: 2 columns -->
-  <section class="v-abilitysheet__body">
-    <!-- LEFT -->
-    <aside class="v-abilitysheet__left">
-      <img
-        class="v-abilitysheet__img"
-        src="{{item.img}}"
-        data-edit="img"
-        title="Нажми, чтобы выбрать иконку эффекта"
-      />
-
-      <div class="v-abilitysheet__actions">
-        <button
-          type="button"
-          class="v-mini"
-          data-action="edit-effects"
-        >
-          Эффекты
-        </button>
-      </div>
-    </aside>
-
-    <!-- RIGHT -->
-    <main class="v-abilitysheet__right">
-      <div class="v-abilitysheet__descrhead">Описание</div>
-      <textarea
-        class="v-abilitysheet__desc"
-        name="system.description"
-        placeholder="Что делает этот эффект."
-      >{{system.description}}</textarea>
-    </main>
+  {{!-- BODY --}}
+  <section class="v-effect-sheet__body">
+    <div class="v-effect-sheet__desc-header">Описание</div>
+    <div class="v-line"></div>
+    <textarea class="v-effect-sheet__desc" name="system.description" placeholder="Что делает этот эффект.">{{system.description}}</textarea>
   </section>
-
 </form>

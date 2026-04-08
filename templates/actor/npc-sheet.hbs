@@ -6,7 +6,7 @@
       <div class="v-header__portrait">
         <img src="{{actor.img}}" data-edit="img" title="{{actor.name}}" />
         <button type="button" class="v-edit-toggle {{#if vitruvium.isEditing}}is-active{{/if}}"
-          data-action="toggle-edit" title="Toggle Edit Mode">
+          data-action="toggle-edit" title="Переключить режим редактирования">
           <i class="fas fa-edit"></i>
         </button>
       </div>
@@ -26,14 +26,14 @@
         </div>
 
         <div class="v-resource-bars">
-          <div class="v-resource-bar hp" title="Health Points">
+          <div class="v-resource-bar hp" title="Очки здоровья">
             <div class="v-resource-bar__fill" style="width: {{vitruvium.header.hp.pct}}%"></div>
             <div class="v-resource-bar__label">
               {{#if vitruvium.isEditing}}
               <input name="system.attributes.hp.value" type="number" value="{{vitruvium.header.hp.value}}" /> /
               <input name="system.attributes.hp.max" type="number" value="{{vitruvium.header.hp.max}}" />
               {{else}}
-              {{vitruvium.header.hp.value}} / {{vitruvium.header.hp.max}} HP
+              {{vitruvium.header.hp.value}} / {{vitruvium.header.hp.max}} ОЗ
               {{/if}}
             </div>
           </div>
@@ -41,9 +41,9 @@
       </div>
 
       <div class="v-header__actions">
-        <button type="button" class="v-mini" data-action="create-item" data-type="ability" title="Add Ability"><i
+        <button type="button" class="v-mini" data-action="create-item" data-type="ability" title="Добавить способность"><i
             class="fas fa-magic"></i></button>
-        <button type="button" class="v-mini" data-action="create-item" data-type="item" title="Add Item"><i
+        <button type="button" class="v-mini" data-action="create-item" data-type="item" title="Добавить предмет"><i
             class="fas fa-plus"></i></button>
       </div>
     </div>
@@ -64,24 +64,24 @@
     {{!-- ZONE B: CENTRAL --}}
     <main class="v-main">
       <nav class="v-tabs">
-        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'actions')}}is-active{{/if}}" data-tab="actions">Actions</a>
+        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'actions')}}is-active{{/if}}" data-tab="actions">Действия</a>
         <a class="v-tab-link {{#if (eq vitruvium.activeTab 'inventory')}}is-active{{/if}}"
-          data-tab="inventory">Inventory</a>
-        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects">Effects</a>
+          data-tab="inventory">Инвентарь</a>
+        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects">Эффекты</a>
       </nav>
 
       <section class="v-tab-content">
         {{#if (eq vitruvium.activeTab 'actions')}}
         <div class="v-actions-grid">
           <div class="v-section">
-            <div class="v-section__header">Attacks</div>
+            <div class="v-section__header">Атаки</div>
             <div class="v-action-cards">
               {{#each vitruvium.tabs.actions.weapons as |w|}}
               <div class="v-action-card weapon">
                 <img src="{{w.img}}" data-action="use" data-item-id="{{w.id}}" />
                 <div class="v-action-card__info">
                   <span class="v-name">{{w.name}}</span>
-                  <span class="v-dmg">+{{w.damage}} DMG</span>
+                  <span class="v-dmg">+{{w.damage}} УРН</span>
                 </div>
                 <button type="button" class="v-roll-btn" data-action="attack" data-item-id="{{w.id}}">
                   <i class="fas fa-dice-d20"></i>
@@ -92,14 +92,14 @@
           </div>
 
           <div class="v-section">
-            <div class="v-section__header">Abilities</div>
+            <div class="v-section__header">Способности</div>
             <div class="v-list">
               {{#each vitruvium.tabs.actions.abilities as |a|}}
               <div class="v-list-item">
                 <img src="{{a.img}}" data-action="use" data-item-id="{{a.id}}" />
                 <div class="v-item-info">
                   <div class="v-item-name">{{a.name}}</div>
-                  <div class="v-item-meta">Cost: {{a.cost}}</div>
+                  <div class="v-item-meta">Цена: {{a.cost}}</div>
                 </div>
                 <div class="v-item-controls">
                   <button type="button" class="v-icon-btn {{#if a.active}}is-active{{/if}}" data-action="toggle-active"
@@ -113,7 +113,7 @@
           </div>
 
           <div class="v-section">
-            <div class="v-section__header">Quick Rolls</div>
+            <div class="v-section__header">Быстрые броски</div>
             <div class="v-quick-rolls">
               {{#each vitruvium.tabs.actions.quickRolls as |attr|}}
               <button type="button" class="v-quick-roll" data-action="roll-attr" data-attr="{{attr.key}}">
@@ -153,7 +153,7 @@
         {{else if (eq vitruvium.activeTab 'effects')}}
         <div class="v-section">
           <div class="v-section__header">
-            <span>States & Effects</span>
+            <span>Состояния и эффекты</span>
             <button type="button" class="v-mini" data-action="create-item" data-type="state"><i
                 class="fas fa-plus"></i></button>
           </div>
@@ -163,7 +163,7 @@
               <img src="{{e.img}}" />
               <div class="v-item-info">
                 <div class="v-item-name">{{e.name}}</div>
-                <div class="v-item-meta">Duration: {{e.duration}}</div>
+                <div class="v-item-meta">Длительность: {{e.duration}}</div>
               </div>
               <div class="v-item-controls">
                 <button type="button" class="v-icon-btn {{#if e.active}}is-active{{/if}}" data-action="toggle-active"
@@ -200,7 +200,7 @@
 
       <div class="v-derived-stats">
         <div class="v-stat">
-          <label>Defense</label>
+          <label>Защита</label>
           {{#if vitruvium.isEditing}}
           <input name="system.attributes.armor.value" type="number" value="{{vitruvium.sidebar.derived.armor}}" />
           {{else}}
@@ -208,7 +208,7 @@
           {{/if}}
         </div>
         <div class="v-stat">
-          <label>Speed</label>
+          <label>Скорость</label>
           {{#if vitruvium.isEditing}}
           <input name="system.attributes.speed.value" type="number" value="{{vitruvium.sidebar.derived.speed}}" />
           {{else}}

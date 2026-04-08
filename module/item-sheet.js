@@ -184,13 +184,10 @@ export class VitruviumItemSheet extends ItemSheet {
     });
 
     // Tab switching
-    const tabBase = `v-tabs-${this.appId}`;
-    if (this._itemTab === "effects") {
-      const effectsRadio = html.find(`#${tabBase}-effects`);
-      if (effectsRadio.length) effectsRadio.prop("checked", true);
-    }
-    html.find(".v-itemtabs__toggle").on("change", (ev) => {
-      this._itemTab = ev.currentTarget.value === "effects" ? "effects" : "desc";
+    html.find(".v-tab-link").on("click", (ev) => {
+      ev.preventDefault();
+      this._itemTab = ev.currentTarget.dataset.tab;
+      this.render();
     });
 
     $desc.on("blur", async () => {

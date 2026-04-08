@@ -6,7 +6,7 @@
       <div class="v-header__portrait">
         <img src="{{actor.img}}" data-edit="img" title="{{actor.name}}" />
         <button type="button" class="v-edit-toggle {{#if vitruvium.isEditing}}is-active{{/if}}"
-          data-action="toggle-edit" title="Toggle Edit Mode">
+          data-action="toggle-edit" title="Переключить режим редактирования">
           <i class="fas fa-edit"></i>
         </button>
       </div>
@@ -26,7 +26,7 @@
         </div>
 
         <div class="v-resource-bars">
-          <div class="v-resource-bar hp" title="Health Points">
+          <div class="v-resource-bar hp" title="Очки здоровья">
             <div class="v-resource-bar__fill" style="width: {{vitruvium.header.hp.pct}}%"></div>
             <div class="v-resource-bar__label">
               {{#if vitruvium.isEditing}}
@@ -37,17 +37,17 @@
               {{/if}}
             </div>
           </div>
-          <div class="v-resource-bar inspiration" title="Inspiration">
+          <div class="v-resource-bar inspiration" title="Вдохновение">
             <div class="v-resource-bar__fill" style="width: {{vitruvium.header.inspiration.pct}}%"></div>
             <div class="v-resource-bar__label">{{vitruvium.header.inspiration.value}} /
-              {{vitruvium.header.inspiration.max}} INSP</div>
+              {{vitruvium.header.inspiration.max}} ВДОХН</div>
           </div>
         </div>
       </div>
 
       <div class="v-header__actions">
-        <button type="button" class="v-btn v-btn--primary" data-action="long-rest" title="Long Rest">
-          <i class="fas fa-bed"></i> <span>Rest</span>
+        <button type="button" class="v-btn v-btn--primary" data-action="long-rest" title="Долгий отдых">
+          <i class="fas fa-bed"></i> <span>Отдых</span>
         </button>
       </div>
     </div>
@@ -76,27 +76,35 @@
     {{!-- ZONE B: CENTRAL (Action Panels) --}}
     <main class="v-main">
       <nav class="v-tabs">
-        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'actions')}}is-active{{/if}}" data-tab="actions">Actions</a>
-        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'abilities')}}is-active{{/if}}"
-          data-tab="abilities">Abilities</a>
-        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'skills')}}is-active{{/if}}" data-tab="skills">Skills</a>
+        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'actions')}}is-active{{/if}}" data-tab="actions">Действия</a>
         <a class="v-tab-link {{#if (eq vitruvium.activeTab 'inventory')}}is-active{{/if}}"
-          data-tab="inventory">Inventory</a>
-        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects">Effects</a>
+          data-tab="inventory">Инвентарь</a>
+        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'abilities')}}is-active{{/if}}"
+          data-tab="abilities">Способности</a>
+        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'skills')}}is-active{{/if}}" data-tab="skills">Навыки</a>
+        <a class="v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects">Эффекты</a>
       </nav>
 
       <section class="v-tab-content">
         {{#if (eq vitruvium.activeTab 'actions')}}
         <div class="v-actions-grid">
           <div class="v-section">
-            <div class="v-section__header">Attacks</div>
+            <div class="v-section__header">Атака</div>
             <div class="v-action-cards">
               {{#each vitruvium.tabs.actions.weapons as |w|}}
               <div class="v-action-card weapon">
                 <img src="{{w.img}}" data-action="use" data-item-id="{{w.id}}" />
                 <div class="v-action-card__info">
                   <span class="v-name">{{w.name}}</span>
-                  <span class="v-dmg">+{{w.damage}} DMG</span>
+                  <span class="v-dmg">+{{w.damage}} Урон</span>
+                </div>
+                <div class="v-action-card__controls">
+                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{w.id}}" title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{w.id}}" title="Удалить">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </div>
                 <button type="button" class="v-roll-btn" data-action="attack" data-item-id="{{w.id}}">
                   <i class="fas fa-dice-d20"></i>
@@ -107,14 +115,25 @@
           </div>
 
           <div class="v-section">
-            <div class="v-section__header">Active Abilities</div>
+            <div class="v-section__header">Активные способности</div>
             <div class="v-action-cards">
               {{#each vitruvium.tabs.actions.abilities as |a|}}
               <div class="v-action-card ability">
                 <img src="{{a.img}}" data-action="use-ability" data-item-id="{{a.id}}" />
                 <div class="v-action-card__info">
                   <span class="v-name">{{a.name}}</span>
-                  <span class="v-cost">Cost: {{a.cost}}</span>
+                  <span class="v-cost">Цена: {{a.cost}}</span>
+                </div>
+                <div class="v-action-card__controls">
+                  <button type="button" class="v-icon-btn {{#if a.active}}is-active{{/if}}" data-action="toggle-active" data-item-id="{{a.id}}" title="Активно">
+                    <i class="fas fa-power-off"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{a.id}}" title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{a.id}}" title="Удалить">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </div>
                 <button type="button" class="v-roll-btn" data-action="use-ability" data-item-id="{{a.id}}">
                   <i class="fas fa-magic"></i>
@@ -125,18 +144,54 @@
           </div>
 
           <div class="v-section">
-            <div class="v-section__header">Global Checks</div>
+            <div class="v-section__header">Глобальные проверки</div>
             <div class="v-quick-rolls">
               <button type="button" class="v-quick-roll" data-action="roll-luck">
                 <i class="fas fa-clover"></i>
-                <span>Luck Roll</span>
+                <span>Бросок на удачу</span>
               </button>
               <button type="button" class="v-quick-roll" data-action="roll-bonus-dice">
                 <i class="fas fa-dice"></i>
-                <span>Bonus Dice</span>
+                <span>Бонусный кубик</span>
               </button>
             </div>
           </div>
+        </div>
+
+        {{else if (eq vitruvium.activeTab 'inventory')}}
+        <div class="v-groups">
+          {{#each vitruvium.tabs.inventory.groups as |group|}}
+          <div class="v-group {{#if group.isCollapsed}}is-collapsed{{/if}}">
+            <div class="v-group__header" data-action="toggle-group" data-group-id="item-{{group.key}}">
+              <i class="fas {{#if group.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i>
+              {{group.label}}
+            </div>
+            {{#unless group.isCollapsed}}
+            <div class="v-list">
+              {{#each group.items as |i|}}
+              <div class="v-list-item">
+                <img src="{{i.img}}" data-action="use" data-item-id="{{i.id}}" />
+                <div class="v-item-info">
+                  <div class="v-item-name">{{i.name}}</div>
+                  <div class="v-item-meta">Кол-во: {{i.system.quantity}} | Цена: {{i.system.price}}</div>
+                </div>
+                <div class="v-item-controls">
+                  <button type="button" class="v-icon-btn {{#if i.system.equipped}}is-active{{/if}}"
+                    data-action="toggle-equip" data-item-id="{{i.id}}" title="Экипировать">
+                    <i class="fas fa-shield-alt"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{i.id}}" title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn is-danger" data-action="delete-item"
+                    data-item-id="{{i.id}}" title="Удалить"><i class="fas fa-trash"></i></button>
+                </div>
+              </div>
+              {{/each}}
+            </div>
+            {{/unless}}
+          </div>
+          {{/each}}
         </div>
 
         {{else if (eq vitruvium.activeTab 'abilities')}}
@@ -154,15 +209,19 @@
                 <img src="{{a.img}}" data-action="use" data-item-id="{{a.id}}" />
                 <div class="v-item-info">
                   <div class="v-item-name">{{a.name}}</div>
-                  <div class="v-item-meta">Cost: {{a.system.cost}} | Actions: {{a.system.actions}}</div>
+                  <div class="v-item-meta">Цена: {{a.system.cost}} | Действия: {{a.system.actions}}</div>
                 </div>
                 <div class="v-item-controls">
                   <button type="button" class="v-icon-btn {{#if a.system.active}}is-active{{/if}}"
-                    data-action="toggle-active" data-item-id="{{a.id}}" title="Toggle Active">
+                    data-action="toggle-active" data-item-id="{{a.id}}" title="Активно">
                     <i class="fas fa-power-off"></i>
                   </button>
-                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{a.id}}"><i
-                      class="fas fa-edit"></i></button>
+                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{a.id}}" title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{a.id}}" title="Удалить">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </div>
               </div>
               {{/each}}
@@ -181,42 +240,13 @@
               <div class="v-item-name">{{s.name}}</div>
             </div>
             <div class="v-item-controls">
-              <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{s.id}}"><i
-                  class="fas fa-edit"></i></button>
+              <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{s.id}}" title="Редактировать">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{s.id}}" title="Удалить">
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
-          </div>
-          {{/each}}
-        </div>
-
-        {{else if (eq vitruvium.activeTab 'inventory')}}
-        <div class="v-groups">
-          {{#each vitruvium.tabs.inventory.groups as |group|}}
-          <div class="v-group {{#if group.isCollapsed}}is-collapsed{{/if}}">
-            <div class="v-group__header" data-action="toggle-group" data-group-id="item-{{group.key}}">
-              <i class="fas {{#if group.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i>
-              {{group.label}}
-            </div>
-            {{#unless group.isCollapsed}}
-            <div class="v-list">
-              {{#each group.items as |i|}}
-              <div class="v-list-item">
-                <img src="{{i.img}}" data-action="use" data-item-id="{{i.id}}" />
-                <div class="v-item-info">
-                  <div class="v-item-name">{{i.name}}</div>
-                  <div class="v-item-meta">Qty: {{i.system.quantity}} | Price: {{i.system.price}}</div>
-                </div>
-                <div class="v-item-controls">
-                  <button type="button" class="v-icon-btn {{#if i.system.equipped}}is-active{{/if}}"
-                    data-action="toggle-equip" data-item-id="{{i.id}}" title="Equip">
-                    <i class="fas fa-shield-alt"></i>
-                  </button>
-                  <button type="button" class="v-icon-btn is-danger" data-action="delete-item"
-                    data-item-id="{{i.id}}"><i class="fas fa-trash"></i></button>
-                </div>
-              </div>
-              {{/each}}
-            </div>
-            {{/unless}}
           </div>
           {{/each}}
         </div>
@@ -224,7 +254,7 @@
         {{else if (eq vitruvium.activeTab 'effects')}}
         <div class="v-section">
           <div class="v-section__header">
-            <span>Active Effects</span>
+            <span>Активные эффекты</span>
             <button type="button" class="v-mini" data-action="create-item" data-type="state"><i
                 class="fas fa-plus"></i></button>
           </div>
@@ -234,15 +264,19 @@
               <img src="{{e.img}}" />
               <div class="v-item-info">
                 <div class="v-item-name">{{e.name}}</div>
-                <div class="v-item-meta">Duration: {{e.duration}}</div>
+                <div class="v-item-meta">Длительность: {{e.duration}}</div>
               </div>
               <div class="v-item-controls">
                 <button type="button" class="v-icon-btn {{#if e.active}}is-active{{/if}}" data-action="toggle-active"
-                  data-item-id="{{e.id}}">
+                  data-item-id="{{e.id}}" title="Активно">
                   <i class="fas fa-toggle-on"></i>
                 </button>
-                <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{e.id}}"><i
-                    class="fas fa-trash"></i></button>
+                <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{e.id}}" title="Редактировать">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{e.id}}" title="Удалить">
+                  <i class="fas fa-trash"></i>
+                </button>
               </div>
             </div>
             {{/each}}
@@ -257,7 +291,7 @@
       <div class="v-attr-grid">
         {{#each vitruvium.sidebar.attributes as |attr|}}
         <div class="v-attr-card {{#unless ../vitruvium.isEditing}}rollable{{/unless}}" {{#unless
-          ../vitruvium.isEditing}}data-action="roll-attr" data-attr="{{attr.key}}" title="Roll {{attr.label}}"
+          ../vitruvium.isEditing}}data-action="roll-attr" data-attr="{{attr.key}}" title="Бросок: {{attr.label}}"
           {{/unless}}>
           <div class="v-attr-card__label">{{attr.label}}</div>
           <div class="v-attr-card__value">
@@ -273,12 +307,12 @@
 
       <div class="v-derived-stats">
         <div class="v-stat">
-          <label>Defense</label>
+          <label>Защита</label>
           <span>{{vitruvium.sidebar.derived.armor}}</span>
         </div>
         <div class="v-stat">
-          <label>Speed</label>
-          <span>{{vitruvium.sidebar.derived.speed}}m</span>
+          <label>Скорость</label>
+          <span>{{vitruvium.sidebar.derived.speed}}м</span>
         </div>
       </div>
     </aside>

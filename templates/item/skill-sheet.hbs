@@ -1,172 +1,130 @@
-<form class="{{cssClass}} v-sheet v-item v-skill" autocomplete="off">
+<form class="{{cssClass}} v-sheet v-skill-sheet" autocomplete="off">
 
-  <header class="v-item__header">
-    <div class="v-item__iconbox">
-      <img
-        class="v-item__icon"
-        src="{{item.img}}"
-        data-edit="img"
-        title="{{item.name}}"
-      />
+  {{!-- HEADER --}}
+  <header class="v-item-sheet__header">
+    <div class="v-item-sheet__iconbox">
+      <img class="v-item-sheet__icon" src="{{item.img}}" data-edit="img" title="{{item.name}}" />
     </div>
 
-    <div class="v-item__headcenter">
-      <div class="v-item__namewrap">
-        <div class="v-item__field-text v-item__nameview">{{item.name}}</div>
-        <input
-          class="v-item__field-input v-item__nameinput"
-          type="text"
-          name="name"
-          value="{{item.name}}"
-          placeholder="Название"
-        />
-      </div>
+    <div class="v-item-sheet__titleblock">
+      <div class="v-item-sheet__name-view v-edit-hide">{{item.name}}</div>
+      <input class="v-item-sheet__name-input v-edit-only" type="text" name="name" value="{{item.name}}" placeholder="Название" />
     </div>
   </header>
 
-  <section class="v-itemtabs">
-    <input
-      type="radio"
-      id="{{vitruvium.tabIds.desc}}"
-      name="{{vitruvium.tabName}}"
-      value="desc"
-      class="v-itemtabs__toggle"
-      {{#if (eq vitruvium.activeTab "desc")}}checked{{/if}}
-    />
-    <input
-      type="radio"
-      id="{{vitruvium.tabIds.effects}}"
-      name="{{vitruvium.tabName}}"
-      value="effects"
-      class="v-itemtabs__toggle"
-      {{#if (eq vitruvium.activeTab "effects")}}checked{{/if}}
-    />
+  {{!-- MAIN BODY --}}
+  <section class="v-item-sheet__body {{#unless vitruvium.isState}}no-sidebar{{/unless}}">
+    {{!-- SIDEBAR (state controls) --}}
+    {{#if vitruvium.isState}}
+    <aside class="v-item-sheet__sidebar">
+      <div class="v-item-sheet__toggles">
+        <label class="v-item-sheet__check">
+          <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
+          <span>Активно</span>
+        </label>
 
-    <div class="v-itemtabs__nav" role="tablist">
-      <button
-        type="button"
-        class="v-item__editbtn"
-        data-action="toggle-desc"
-        title="Редактировать"
-      >
-        <i class="fas fa-pen"></i>
-      </button>
-      <label class="v-itemtabs__tab" for="{{vitruvium.tabIds.desc}}" data-tab="desc" role="tab">Описание</label>
-      <label class="v-itemtabs__tab" for="{{vitruvium.tabIds.effects}}" data-tab="effects" role="tab">Эффекты</label>
-    </div>
+        <label class="v-item-sheet__stat">
+          <span>Длительность (ходы)</span>
+          <div class="v-item-sheet__text v-edit-hide">{{system.durationRounds}}</div>
+          <input class="v-edit-only" type="number" name="system.durationRounds" value="{{system.durationRounds}}" data-dtype="Number" min="0" step="1" />
+        </label>
 
-    <div class="v-itemtabs__content">
-      <section class="v-itemtabs__panel v-itemtabs__panel--desc" role="tabpanel">
-        <div class="v-item__panel">
-          <div class="v-item__deschead">
-            <div class="v-h2">Описание</div>
-            <div class="v-line"></div>
-          </div>
+        <label class="v-item-sheet__check">
+          <input type="checkbox" name="flags.mySystem.expireOnTurnStart" {{#if vitruvium.expireOnTurnStart}}checked{{/if}}>
+          <span>Заканчивается в начале хода</span>
+        </label>
+      </div>
 
-          <div class="v-item__descview" data-role="desc-view">
-            {{#if system.description}}
-              <div class="v-item__desccontent">{{{vitruvium.descriptionHTML}}}</div>
-            {{else}}
-              <div class="v-item__descplaceholder">Описание не задано.</div>
-            {{/if}}
-          </div>
+      <div class="v-item-sheet__state-info v-edit-hide">
+        <div class="v-item-sheet__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
+        <div class="v-item-sheet__flag">Длительность: {{system.durationRounds}} ход.</div>
+        <div class="v-item-sheet__flag">Осталось: {{system.durationRemaining}} ход.</div>
+      </div>
+    </aside>
+    {{/if}}
 
-          <textarea
-            class="v-item__descedit"
-            name="system.description"
-            data-role="desc-edit"
-          >{{system.description}}</textarea>
-
-          {{#if vitruvium.isState}}
-            <div class="v-item__flags">
-              <div class="v-item__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
-              <div class="v-item__flag">Длительность: {{system.durationRounds}} ход.</div>
-              <div class="v-item__flag">Осталось: {{system.durationRemaining}} ход.</div>
-            </div>
-
-            <div class="v-item__toggles">
-              <label class="v-check">
-                <input type="checkbox" name="system.active" {{#if system.active}}checked{{/if}}>
-                <span>Активно</span>
-              </label>
-
-              <label class="v-item__stat">
-                <span>Длительность (ходы)</span>
-                <input
-                  type="number"
-                  name="system.durationRounds"
-                  value="{{system.durationRounds}}"
-                  data-dtype="Number"
-                  min="0"
-                  step="1"
-                />
-              </label>
-
-              <label class="v-check">
-                <input
-                  type="checkbox"
-                  name="flags.mySystem.expireOnTurnStart"
-                  {{#if vitruvium.expireOnTurnStart}}checked{{/if}}
-                >
-                <span>Заканчивается в начале хода</span>
-              </label>
-            </div>
-          {{/if}}
+    {{!-- TABS --}}
+    <main class="v-item-sheet__main">
+      <section class="v-item-sheet__tabs">
+        <div class="v-item-sheet__tab-nav" role="tablist">
+          <button type="button" class="v-item-sheet__editbtn" data-action="toggle-desc" title="Редактировать">
+            <i class="fas fa-pen"></i>
+          </button>
+          <a class="v-item-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" data-tab="desc" role="tab">Описание</a>
+          <a class="v-item-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects" role="tab">Эффекты</a>
         </div>
-      </section>
 
-      <section class="v-itemtabs__panel v-itemtabs__panel--effects" role="tabpanel">
-        <div class="v-item__panel">
-          <div class="v-item__effectshead">
-            <div class="v-h2">Эффекты</div>
-            <div class="v-line"></div>
-            <button type="button" class="v-mini" data-action="add-effect">+</button>
-          </div>
+        <div class="v-item-sheet__tab-content">
+          {{!-- DESC TAB --}}
+          <section class="v-item-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" role="tabpanel" data-tab="desc">
+            <div class="v-item-sheet__panel-header">
+              <div class="v-h2">Описание</div>
+              <div class="v-line"></div>
+            </div>
 
-          <div class="v-effects__rows">
-            {{#if vitruvium.effects.length}}
-              {{#each vitruvium.effects as |eff|}}
+            <div class="v-item-sheet__desc-view v-edit-hide" data-role="desc-view">
+              {{#if system.description}}
+                <div class="v-item-sheet__desc-content">{{{vitruvium.descriptionHTML}}}</div>
+              {{else}}
+                <div class="v-item-sheet__desc-placeholder">Описание не задано.</div>
+              {{/if}}
+            </div>
+
+            <textarea class="v-item-sheet__desc-edit v-edit-only" name="system.description" data-role="desc-edit">{{system.description}}</textarea>
+          </section>
+
+          {{!-- EFFECTS TAB --}}
+          <section class="v-item-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" role="tabpanel" data-tab="effects">
+            <div class="v-item-sheet__panel-header">
+              <div class="v-h2">Эффекты</div>
+              <div class="v-line"></div>
+              <button type="button" class="v-mini" data-action="add-effect">+</button>
+            </div>
+
+            <div class="v-effects__rows">
+              {{#if vitruvium.effects.length}}
+                {{#each vitruvium.effects as |eff|}}
+                  <div class="v-effects__row">
+                    <select class="v-effects__key">
+                      {{#each ../vitruvium.effectTargets as |opt|}}
+                        <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
+                      {{/each}}
+                      {{#each ../vitruvium.overTimeEffectTypes as |opt|}}
+                        <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
+                      {{/each}}
+                    </select>
+                    <select class="v-effects__timing" {{#unless eff.isOverTime}}style="display:none;"{{/unless}}>
+                      {{#each ../vitruvium.overTimeTriggerTimings as |timing|}}
+                        <option value="{{timing.key}}" {{#if (eq timing.key eff.triggerTiming)}}selected{{/if}}>{{timing.label}}</option>
+                      {{/each}}
+                    </select>
+                    <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
+                    <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+                  </div>
+                {{/each}}
+              {{else}}
                 <div class="v-effects__row">
                   <select class="v-effects__key">
-                    {{#each ../vitruvium.effectTargets as |opt|}}
-                      <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
+                    {{#each vitruvium.effectTargets as |opt|}}
+                      <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
                     {{/each}}
-                    {{#each ../vitruvium.overTimeEffectTypes as |opt|}}
-                      <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
-                    {{/each}}
-                  </select>
-                  <select class="v-effects__timing" {{#unless eff.isOverTime}}style="display:none;"{{/unless}}>
-                    {{#each ../vitruvium.overTimeTriggerTimings as |timing|}}
-                      <option value="{{timing.key}}" {{#if (eq timing.key eff.triggerTiming)}}selected{{/if}}>{{timing.label}}</option>
+                    {{#each vitruvium.overTimeEffectTypes as |opt|}}
+                      <option value="{{opt.key}}">{{opt.label}}</option>
                     {{/each}}
                   </select>
-                  <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
+                  <select class="v-effects__timing" style="display:none;">
+                    {{#each vitruvium.overTimeTriggerTimings as |timing|}}
+                      <option value="{{timing.key}}" {{#if @first}}selected{{/if}}>{{timing.label}}</option>
+                    {{/each}}
+                  </select>
+                  <input type="number" class="v-effects__val" value="0" step="1" />
                   <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
                 </div>
-              {{/each}}
-            {{else}}
-              <div class="v-effects__row">
-                <select class="v-effects__key">
-                  {{#each vitruvium.effectTargets as |opt|}}
-                    <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
-                  {{/each}}
-                  {{#each vitruvium.overTimeEffectTypes as |opt|}}
-                    <option value="{{opt.key}}">{{opt.label}}</option>
-                  {{/each}}
-                </select>
-                <select class="v-effects__timing" style="display:none;">
-                  {{#each vitruvium.overTimeTriggerTimings as |timing|}}
-                    <option value="{{timing.key}}" {{#if @first}}selected{{/if}}>{{timing.label}}</option>
-                  {{/each}}
-                </select>
-                <input type="number" class="v-effects__val" value="0" step="1" />
-                <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
-              </div>
-            {{/if}}
-          </div>
+              {{/if}}
+            </div>
+          </section>
         </div>
       </section>
-    </div>
+    </main>
   </section>
-
 </form>
