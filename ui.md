@@ -1,198 +1,143 @@
-## Введи дизайн-токены (обязательно)
-Создай CSS переменные:
+Шаг 1 — Исправление getData (КЛЮЧЕВОЕ)
+## В getData: нормализуй и отсортируй
 
-:root {
-  /* База */
-  --v-bg-main: #e7dcc8;
-  --v-bg-panel: #f2e8d5;
-  --v-bg-header: #3a2f25;
-
-  /* Текст */
-  --v-text-primary: #2b2b2b;
-  --v-text-light: #f5f5f5;
-  --v-text-muted: #7a6f5a;
-
-  /* Акценты */
-  --v-accent-gold: #c9a44b;
-  --v-accent-red: #b23a2b;
-  --v-accent-blue: #3a6ea5;
-  --v-accent-green: #4f8a3f;
-
-  /* Границы */
-  --v-border: #b9a88c;
-  --v-border-dark: #5a4a3a;
-
-  /* Тени */
-  --v-shadow-soft: 0 2px 4px rgba(0,0,0,0.2);
-  --v-shadow-deep: 0 4px 12px rgba(0,0,0,0.4);
-}
-
-## Разделение UI по слоям
-
-Header:
-- тёмный
-- контрастный
-
-Main:
-- "бумага"
-- светлый
-
-Sidebar:
-- чуть темнее main
+1. Собери предметы
+2. Сгруппируй по типу
+3. Прогони через INVENTORY_ORDER
 
 ---
-
-Цель:
-создать ощущение:
-→ лист на столе
-→ панель поверх
-
-
-Обнови визуальный стиль всех листов (character, item, ability, skill, state).
-
-Ограничения:
-
-1. НЕ изменять:
-   - HTML структуру
-   - расположение элементов
-   - data-action, name, listeners
-   - функциональность
-
-2. Разрешено:
-   - CSS
-   - классы
-   - псевдоэлементы (::before / ::after)
-   - переменные (:root)
-
----
-
-## Шаг 1 — Ввести дизайн-токены
-
-Создай CSS переменные (цвета, тени, границы).
-Используй их ВЕЗДЕ вместо хардкода.
-
----
-
-## Шаг 2 — Header (верхняя панель)
-
-Сделай:
-
-- тёмный фон (градиент)
-- светлый текст
-- лёгкий inner shadow
 
 Пример:
-- фон: тёмно-коричневый градиент
-- кнопки: слегка светлее фона
 
-Добавь:
-- border-bottom
-- лёгкое свечение активных элементов
+const grouped = {
+  weapon: [],
+  equipment: [],
+  consumable: [],
+  tool: [],
+  trinket: [],
+  loot: []
+};
 
----
+for (const item of items) {
+  const type = item.system?.category || item.type;
+  if (grouped[type]) grouped[type].push(item);
+}
 
-## Шаг 3 — Основной фон (лист)
+const inventory = INVENTORY_ORDER.map(type => ({
+  type,
+  label: INVENTORY_LABELS[type],
+  items: grouped[type] || []
+}));
 
-Сделай:
+return { inventory };
 
-- цвет "пергамента"
-- лёгкий шум/градиент
-- тонкая текстура (без изображений, через градиенты)
+Важно:
+даже если пусто → категория должна быть
 
-Добавь:
-- внутренние отступы
-- мягкие границы
 
----
-
-## Шаг 4 — Панели и блоки
-
-Каждый блок:
-
-- фон: светлее/темнее основного на 5-10%
-- border: 1px solid var(--v-border)
-- border-radius: 6-10px
-- box-shadow: soft
+👉 Это убивает проблему навсегда.
 
 ---
 
-## Шаг 5 — Кнопки
+# 🔹 Шаг 2 — UI кнопка "+" (контекстная)
 
-Сделай 3 типа:
+```markdown id="step-2-plus"
+## Добавь кнопку "+" в header каждой категории
 
-1. Primary (действия):
-   - фон: синий
-   - текст: белый
-   - hover: светлее
+В шаблоне:
 
-2. Danger (урон/атака):
-   - красный
+<div class="v-inventory-header" data-type="{{type}}">
+  <span>{{label}}</span>
+  <button class="v-add-item" data-type="{{type}}">+</button>
+</div>
+🔹 Шаг 3 — Обработчик создания
+## В activateListeners
 
-3. Utility:
-   - нейтральный (серо-коричневый)
+html.find(".v-add-item").click(ev => {
+  const type = ev.currentTarget.dataset.type;
 
-Добавь:
-- hover эффект (brightness)
-- active (translateY + inset shadow)
+  this._createItemFromCategory(type);
+});
+🔹 Шаг 4 — Функция создания
+## Создание предмета с категорией
 
----
+async _createItemFromCategory(type) {
+  const itemData = {
+    name: "Новый предмет",
+    type: "item",
+    system: {
+      category: type
+    }
+  };
 
-## Шаг 6 — HP и ресурсы
+  return this.actor.createEmbeddedDocuments("Item", [itemData]);
+}
+🧠 Важный момент (иначе словишь баг)
+## Откуда брать category
 
-HP:
-- градиент: тёмно-красный → ярко-красный
-- фон бара: тёмный
+Проблема:
 
-Mana:
-- синий градиент
-
-Добавь:
-- внутреннюю тень
-- закругления
-
----
-
-## Шаг 7 — Иконки эффектов
-
-- тёмный фон
-- цветной border по типу
-- hover glow
+- item.type ≠ category
 
 ---
 
-## Шаг 8 — Sidebar
+Правильно:
 
-- фон: чуть темнее main
-- разделители между строками
-- hover highlight
-
----
-
-## Шаг 9 — Текст
-
-- основной: тёмно-коричневый
-- вторичный: muted
-- числа: чуть жирнее
+использовать:
+system.category
 
 ---
 
-## Шаг 10 — Финализация
+Если нет:
+сделать fallback:
 
-Проверить:
+const type = item.system?.category ?? item.type;
+🔹 Шаг 5 — Для способностей (аналогично)
+## Для abilities
 
-- читаемость
-- контраст
-- hover состояния
-- нет "плоских" зон
+Кнопка:
 
-
-## Добавь псевдо-текстуру
-
-background:
-  linear-gradient(...),
-  radial-gradient(...)
+data-type="ability"
 
 ---
 
-Это создаёт эффект "бумаги"
-без картинок
+Создание:
+
+{
+  name: "Новая способность",
+  type: "ability",
+  system: {
+    category: "primary" // или нужная
+  }
+}
+
+
+Исправь систему инвентаря в листе персонажа.
+
+Требования:
+
+1. Ввести фиксированный порядок категорий:
+   weapon → equipment → consumable → tool → trinket → loot
+
+2. В getData:
+   - сгруппировать предметы по system.category
+   - сформировать массив категорий строго по порядку
+   - включать даже пустые категории
+
+3. В UI:
+   - каждая категория имеет header
+   - справа кнопка "+"
+
+4. Кнопка "+":
+   - создаёт новый Item
+   - автоматически задаёт system.category
+
+5. НЕ изменять:
+   - существующую логику предметов
+   - data paths
+   - обработку эффектов
+
+6. Проверить:
+   - порядок категорий стабилен
+   - создание работает корректно
+   - данные сохраняются

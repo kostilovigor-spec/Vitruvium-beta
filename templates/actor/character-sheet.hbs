@@ -168,9 +168,14 @@
         <div class="v-groups">
           {{#each vitruvium.tabs.inventory.groups as |group|}}
           <div class="v-group {{#if group.isCollapsed}}is-collapsed{{/if}}">
-            <div class="v-group__header" data-action="toggle-group" data-group-id="item-{{group.key}}">
-              <i class="fas {{#if group.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i>
-              {{group.label}}
+            <div class="v-group__header">
+              <div class="v-group__header-left" data-action="toggle-group" data-group-id="item-{{group.key}}">
+                <i class="fas {{#if group.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i>
+                {{group.label}}
+              </div>
+              <button type="button" class="v-add-item-btn" data-action="add-inventory-item" data-type="{{group.key}}" title="Добавить предмет">
+                <i class="fas fa-plus"></i>
+              </button>
             </div>
             {{#unless group.isCollapsed}}
             <div class="v-list">

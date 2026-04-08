@@ -44,6 +44,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
     }
   }
 
+  /** Fixed order for inventory categories */
+  #inventoryOrder = ["weapon", "equipment", "consumables", "tools", "trinkets", "loot"];
+
   /** Map of English group keys to Russian labels */
   #groupLabels = {
     // Item types (inventory)
@@ -158,12 +161,28 @@ export class VitruviumCharacterSheet extends ActorSheet {
         }))
       },
       inventory: {
-        groups: Object.entries(groupBy(items.filter(i => i.type === "item"), "system.type")).map(([k, v]) => ({
-          key: k,
-          label: this.#groupLabels[k] || k,
-          items: v,
-          isCollapsed: collapsed.includes(`item-${k}`)
-        }))
+        groups: (() => {
+          const inventoryItems = items.filter(i => i.type === "item");
+          const grouped = {};
+          for (const type of this.#inventoryOrder) {
+            grouped[type] = [];
+          }
+          for (const item of inventoryItems) {
+            const category = item.system?.type || "Other";
+            if (grouped[category] !== undefined) {
+              grouped[category].push(item);
+            } else {
+              if (!grouped["Other"]) grouped["Other"] = [];
+              grouped["Other"].push(item);
+            }
+          }
+          return this.#inventoryOrder.map(type => ({
+            key: type,
+            label: this.#groupLabels[type] || type,
+            items: grouped[type] || [],
+            isCollapsed: collapsed.includes(`item-${type}`)
+          }));
+        })()
       },
       skills: {
         all: items.filter(i => i.type === "skill")
@@ -259,6 +278,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
       case "toggle-group":
         await this._toggleGroup(btn.dataset.groupId);
         break;
+      case "add-inventory-item":
+        await this._createItemFromCategory(btn.dataset.type);
+        break;
     }
   }
 
@@ -270,6 +292,21 @@ export class VitruviumCharacterSheet extends ActorSheet {
     else collapsed.splice(idx, 1);
     await this.actor.setFlag("Vitruvium", "collapsedGroups", collapsed);
     this.render();
+  }
+
+  async _createItemFromCategory(type) {
+    const itemData = {
+      name: "Новый предмет",
+      type: "item",
+      system: {
+        type: type,
+        quantity: 1,
+        price: 0,
+        equipped: false,
+        description: ""
+      }
+    };
+    return this.actor.createEmbeddedDocuments("Item", [itemData]);
   }
 
   async _onInputChange(ev) {

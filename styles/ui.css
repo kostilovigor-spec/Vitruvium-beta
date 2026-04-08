@@ -462,21 +462,48 @@
   border-radius: 4px;
   margin-bottom: 4px;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.v-group__header-left {
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.2s;
+  flex: 1;
 }
 
 .v-group__header:hover {
   background: rgba(90, 74, 58, 0.25);
 }
 
-.v-group__header i {
+.v-group__header-left i {
   width: 10px;
   transition: transform 0.2s;
   text-align: center;
+}
+
+.v-add-item-btn {
+  background: rgba(90, 74, 58, 0.2);
+  border: 1px solid rgba(90, 74, 58, 0.3);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--color-text-dark-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.v-add-item-btn:hover {
+  background: rgba(90, 74, 58, 0.35);
+  border-color: rgba(90, 74, 58, 0.5);
 }
 
 .v-group.is-collapsed .v-group__header {
