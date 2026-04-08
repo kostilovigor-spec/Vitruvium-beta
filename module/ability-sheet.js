@@ -39,6 +39,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
     );
     if (!Number.isFinite(Number(sys.actions))) sys.actions = 1;
     if (typeof sys.attackRoll !== "boolean") sys.attackRoll = false;
+    if (typeof sys.canBlock !== "boolean") sys.canBlock = false;
     data.system = sys;
 
     // Description preview (HTML-safe).
@@ -370,6 +371,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
       });
+    });
+
+    // CanBlock toggle.
+    html.find("input[name='system.canBlock']").on("change", async (ev) => {
+      await this.item.update({ "system.canBlock": ev.currentTarget.checked });
     });
 
     // Contest states: Add row button.

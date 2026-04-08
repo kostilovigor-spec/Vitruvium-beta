@@ -33,12 +33,26 @@
           <input type="checkbox" name="flags.mySystem.expireOnTurnStart" {{#if vitruvium.expireOnTurnStart}}checked{{/if}}>
           <span>Заканчивается в начале хода</span>
         </label>
+
+        <label class="v-item-sheet__check">
+          <input type="checkbox" name="system.canBlock" {{#if system.canBlock}}checked{{/if}}>
+          <span>Даёт блок</span>
+        </label>
       </div>
 
       <div class="v-item-sheet__state-info v-edit-hide">
         <div class="v-item-sheet__flag">Активно: {{#if system.active}}Да{{else}}Нет{{/if}}</div>
         <div class="v-item-sheet__flag">Длительность: {{system.durationRounds}} ход.</div>
         <div class="v-item-sheet__flag">Осталось: {{system.durationRemaining}} ход.</div>
+      </div>
+    </aside>
+    {{else}}
+    <aside class="v-item-sheet__sidebar">
+      <div class="v-item-sheet__toggles">
+        <label class="v-item-sheet__check">
+          <input type="checkbox" name="system.canBlock" {{#if system.canBlock}}checked{{/if}}>
+          <span>Даёт блок</span>
+        </label>
       </div>
     </aside>
     {{/if}}

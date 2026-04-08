@@ -41,6 +41,7 @@ export class VitruviumSkillSheet extends ItemSheet {
         )
       : 0;
     data.system = sys;
+    if (typeof sys.canBlock !== "boolean") sys.canBlock = false;
     if (isState) {
       data.system.active = stateActive;
       data.system.durationRounds = turnDuration;
@@ -216,6 +217,11 @@ export class VitruviumSkillSheet extends ItemSheet {
           "flags.mySystem.expireOnTurnStart": ev.currentTarget.checked,
         });
       });
+
+    // CanBlock toggle.
+    html.find("input[name='system.canBlock']").on("change", async (ev) => {
+      await this.item.update({ "system.canBlock": ev.currentTarget.checked });
+    });
 
     const overTimeKeySet = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
     const overTimeTimingSet = new Set(

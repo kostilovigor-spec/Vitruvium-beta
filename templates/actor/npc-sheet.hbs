@@ -103,8 +103,11 @@
                 </div>
                 <div class="v-item-controls">
                   <button type="button" class="v-icon-btn {{#if a.active}}is-active{{/if}}" data-action="toggle-active"
-                    data-item-id="{{a.id}}">
+                    data-item-id="{{a.id}}" title="Активно">
                     <i class="fas fa-bolt"></i>
+                  </button>
+                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{a.id}}" title="Редактировать">
+                    <i class="fas fa-edit"></i>
                   </button>
                 </div>
               </div>
@@ -127,21 +130,28 @@
 
         {{else if (eq vitruvium.activeTab 'inventory')}}
         <div class="v-groups">
-          {{#each vitruvium.tabs.inventory.groups as |group label|}}
+          {{#each vitruvium.tabs.inventory.groups as |group|}}
           <div class="v-group">
-            <div class="v-group__header">{{label}}</div>
+            <div class="v-group__header">
+              <div class="v-group__header-left">
+                {{group.label}}
+              </div>
+              <button type="button" class="v-add-item-btn" data-action="add-inventory-item" data-type="{{group.key}}" title="Добавить предмет">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
             <div class="v-list">
-              {{#each group as |i|}}
+              {{#each group.items as |i|}}
               <div class="v-list-item">
                 <img src="{{i.img}}" data-action="use" data-item-id="{{i.id}}" />
                 <div class="v-item-info">
                   <div class="v-item-name">{{i.name}}</div>
                 </div>
                 <div class="v-item-controls">
-                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{i.id}}"><i
+                  <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{i.id}}" title="Редактировать"><i
                       class="fas fa-edit"></i></button>
                   <button type="button" class="v-icon-btn is-danger" data-action="delete-item"
-                    data-item-id="{{i.id}}"><i class="fas fa-trash"></i></button>
+                    data-item-id="{{i.id}}" title="Удалить"><i class="fas fa-trash"></i></button>
                 </div>
               </div>
               {{/each}}
@@ -167,10 +177,13 @@
               </div>
               <div class="v-item-controls">
                 <button type="button" class="v-icon-btn {{#if e.active}}is-active{{/if}}" data-action="toggle-active"
-                  data-item-id="{{e.id}}">
+                  data-item-id="{{e.id}}" title="Активно">
                   <i class="fas fa-toggle-on"></i>
                 </button>
-                <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{e.id}}"><i
+                <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{e.id}}" title="Редактировать">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{e.id}}" title="Удалить"><i
                     class="fas fa-trash"></i></button>
               </div>
             </div>

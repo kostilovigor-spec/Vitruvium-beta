@@ -252,18 +252,34 @@ function hasHeavyArmorEquipped(actor) {
 }
 
 function hasBlockWeaponEquipped(actor) {
-  // Проверяем наличие предмета с флагом canBlock
+  // Предметы с флагом canBlock (должны быть экипированы)
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
     if (!it.system?.equipped) continue;
     if (it.system?.canBlock) return true;
   }
 
-  // Проверяем наличие эффекта blockValue
-  const effectTotals = collectEffectTotals(actor);
-  const blockFromEffects = getEffectValue(effectTotals, "blockValue");
+  // Способности с флагом canBlock (должны быть активны)
+  for (const it of actor.items ?? []) {
+    if (it.type !== "ability") continue;
+    if (it.system?.active === false) continue;
+    if (it.system?.canBlock) return true;
+  }
 
-  return blockFromEffects > 0;
+  // Навыки с флагом canBlock (всегда работают)
+  for (const it of actor.items ?? []) {
+    if (it.type !== "skill") continue;
+    if (it.system?.canBlock) return true;
+  }
+
+  // Состояния с флагом canBlock (должны быть активны)
+  for (const it of actor.items ?? []) {
+    if (it.type !== "state") continue;
+    if (it.system?.active === false) continue;
+    if (it.system?.canBlock) return true;
+  }
+
+  return false;
 }
 
 function getArmorTotal(actor, { includeShield = true } = {}) {

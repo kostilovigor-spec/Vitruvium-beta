@@ -96,7 +96,6 @@ export const EFFECT_TARGETS = [
 
   // Защита
   { key: "armorValue", label: "Броня: значение", group: "protection" },
-  { key: "blockValue", label: "Блок: значение", group: "protection" },
 
   // Общие модификаторы
   {

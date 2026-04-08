@@ -26,6 +26,20 @@ export class VitruviumNPCSheet extends ActorSheet {
     });
   }
 
+  /** Fixed order for inventory categories */
+  #inventoryOrder = ["weapon", "equipment", "consumables", "tools", "trinkets", "loot"];
+
+  /** Map of English group keys to Russian labels */
+  #groupLabels = {
+    "weapon": "Оружие",
+    "equipment": "Снаряжение",
+    "consumables": "Расходники",
+    "trinkets": "Безделушки",
+    "tools": "Инструменты",
+    "loot": "Добыча",
+    "Other": "Прочее",
+  };
+
   async getData(options) {
     const data = await super.getData(options);
     const sys = this.actor.system ?? {};
@@ -103,7 +117,27 @@ export class VitruviumNPCSheet extends ActorSheet {
         quickRolls: vitruvium.sidebar.attributes
       },
       inventory: {
-        groups: groupBy(items.filter(i => i.type === "item"), "system.type")
+        groups: (() => {
+          const inventoryItems = items.filter(i => i.type === "item");
+          const grouped = {};
+          for (const type of this.#inventoryOrder) {
+            grouped[type] = [];
+          }
+          for (const item of inventoryItems) {
+            const category = item.system?.type || "Other";
+            if (grouped[category] !== undefined) {
+              grouped[category].push(item);
+            } else {
+              if (!grouped["Other"]) grouped["Other"] = [];
+              grouped["Other"].push(item);
+            }
+          }
+          return this.#inventoryOrder.map(type => ({
+            key: type,
+            label: this.#groupLabels[type] || type,
+            items: grouped[type] || []
+          }));
+        })()
       },
       effects: {
         all: items.filter(i => i.type === "state").map(s => {
@@ -178,6 +212,9 @@ export class VitruviumNPCSheet extends ActorSheet {
       case "create-item":
         await this.actor.createEmbeddedDocuments("Item", [{ name: `New ${btn.dataset.type}`, type: btn.dataset.type || "item" }]);
         break;
+      case "add-inventory-item":
+        await this._createItemFromCategory(btn.dataset.type);
+        break;
     }
   }
 
@@ -198,6 +235,21 @@ export class VitruviumNPCSheet extends ActorSheet {
   async _deleteItem(item) {
     const ok = await Dialog.confirm({ title: `Delete ${item.name}?`, content: `<p>Delete <b>${item.name}</b>?</p>` });
     if (ok) await item.delete();
+  }
+
+  async _createItemFromCategory(type) {
+    const itemData = {
+      name: "Новый предмет",
+      type: "item",
+      system: {
+        type: type,
+        quantity: 1,
+        price: 0,
+        equipped: false,
+        description: ""
+      }
+    };
+    return this.actor.createEmbeddedDocuments("Item", [itemData]);
   }
 
   _postItemToChat(item) {
