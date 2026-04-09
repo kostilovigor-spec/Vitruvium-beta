@@ -2095,12 +2095,32 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
   try {
     const abilityName = abilityItem?.name ?? "Способность";
     const abilityDesc = String(abilityItem?.system?.description ?? "");
+    const abilityCost = clamp(
+      toNumber(abilityItem?.system?.cost, 0),
+      0,
+      6,
+    );
     const damageBase = clamp(
       toNumber(abilityItem?.system?.rollDamageBase, 0),
       0,
       99,
     );
     const healBase = clamp(toNumber(abilityItem?.system?.rollHealBase, 0), 0, 99);
+
+    // Check and deduct inspiration cost
+    const attrs = attackerActor.system?.attributes ?? {};
+    const insp = attrs.inspiration ?? { value: 0, max: 6 };
+    const currentInsp = toNumber(insp.value, 0);
+    if (currentInsp < abilityCost) {
+      ui.notifications?.warn(
+        `Недостаточно вдохновения для использования способности. Требуется: ${abilityCost}, доступно: ${currentInsp}`,
+      );
+      return;
+    }
+    if (abilityCost > 0) {
+      const newInsp = currentInsp - abilityCost;
+      await attackerActor.update({ "system.attributes.inspiration.value": newInsp });
+    }
 
     // Normalize contestStates array - support both old and new format
     let contestStates = Array.isArray(abilityItem?.system?.contestStates)

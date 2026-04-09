@@ -25,22 +25,40 @@
           {{/if}}
         </div>
 
-        <div class="v-resource-bars">
-          <div class="v-resource-bar hp" title="Очки здоровья">
-            <div class="v-resource-bar__fill" style="width: {{vitruvium.header.hp.pct}}%"></div>
-            <div class="v-resource-bar__label">
-              {{#if vitruvium.isEditing}}
-              <input name="system.attributes.hp.value" type="number" value="{{vitruvium.header.hp.value}}" /> /
-              <input name="system.attributes.hp.max" type="number" value="{{vitruvium.header.hp.max}}" />
-              {{else}}
-              {{vitruvium.header.hp.value}} / {{vitruvium.header.hp.max}} ОЗ
-              {{/if}}
+        <div class="v-bars-row">
+          <div class="v-resource-bars">
+            <div class="v-resource-bar hp" title="Очки здоровья">
+              <div class="v-resource-bar__fill" style="width: {{vitruvium.header.hp.pct}}%"></div>
+              <div class="v-resource-bar__label">
+                {{#if vitruvium.isEditing}}
+                <input name="system.attributes.hp.value" type="number" value="{{vitruvium.header.hp.value}}" /> /
+                {{vitruvium.header.hp.max}}
+                {{else}}
+                {{vitruvium.header.hp.value}} / {{vitruvium.header.hp.max}} ОЗ
+                {{/if}}
+              </div>
+            </div>
+            <div class="v-resource-bar inspiration" title="Вдохновение">
+              <div class="v-resource-bar__fill" style="width: {{vitruvium.header.inspiration.pct}}%"></div>
+              <div class="v-resource-bar__label">
+                {{#if vitruvium.isEditing}}
+                <input name="system.attributes.inspiration.value" type="number" value="{{vitruvium.header.inspiration.value}}" /> /
+                {{vitruvium.header.inspiration.max}}
+                {{else}}
+                {{vitruvium.header.inspiration.value}} / {{vitruvium.header.inspiration.max}} ВДОХН
+                {{/if}}
+              </div>
             </div>
           </div>
-          <div class="v-resource-bar inspiration" title="Вдохновение">
-            <div class="v-resource-bar__fill" style="width: {{vitruvium.header.inspiration.pct}}%"></div>
-            <div class="v-resource-bar__label">{{vitruvium.header.inspiration.value}} /
-              {{vitruvium.header.inspiration.max}} ВДОХН</div>
+
+          <div class="v-death-tracker" title="Спасброски от смерти">
+            <div class="v-death-fail {{#if vitruvium.header.death.fails.[0]}}active{{/if}}" data-index="0"></div>
+            <div class="v-death-fail {{#if vitruvium.header.death.fails.[1]}}active{{/if}}" data-index="1"></div>
+
+            <div class="v-death-icon">☠</div>
+
+            <div class="v-death-success {{#if vitruvium.header.death.successes.[0]}}active{{/if}}" data-index="0"></div>
+            <div class="v-death-success {{#if vitruvium.header.death.successes.[1]}}active{{/if}}" data-index="1"></div>
           </div>
         </div>
       </div>
@@ -112,9 +130,6 @@
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
-                <button type="button" class="v-roll-btn" data-action="attack" data-item-id="{{w.id}}">
-                  <i class="fas fa-dice-d20"></i>
-                </button>
               </div>
               {{/each}}
             </div>
@@ -131,9 +146,6 @@
                   <span class="v-cost">Цена: {{a.cost}}</span>
                 </div>
                 <div class="v-action-card__controls">
-                  <button type="button" class="v-icon-btn {{#if a.active}}is-active{{/if}}" data-action="toggle-active" data-item-id="{{a.id}}" title="Активно">
-                    <i class="fas fa-power-off"></i>
-                  </button>
                   <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{a.id}}" title="Редактировать">
                     <i class="fas fa-edit"></i>
                   </button>
@@ -141,9 +153,6 @@
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
-                <button type="button" class="v-roll-btn" data-action="use-ability" data-item-id="{{a.id}}">
-                  <i class="fas fa-magic"></i>
-                </button>
               </div>
               {{/each}}
             </div>

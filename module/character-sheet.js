@@ -99,7 +99,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
         img: e.img,
         name: e.name,
         description: e.system.description
-      }))
+      })),
+      death: {
+        fails: [false, false],
+        successes: [false, false],
+        ...this.actor.getFlag("Vitruvium", "deathTracker")
+      }
     };
 
     // 2. Sidebar Data
@@ -215,6 +220,26 @@ export class VitruviumCharacterSheet extends ActorSheet {
     html.find(".v-tab-link").on("click", (ev) => {
       this._saveScrollPositions(this.element);
       this._activeTab = ev.currentTarget.dataset.tab;
+      this.render();
+    });
+
+    // Death tracker toggle
+    html.find(".v-death-fail, .v-death-success").on("click", async (ev) => {
+      const el = ev.currentTarget;
+      const index = parseInt(el.dataset.index, 10);
+      const isFail = el.classList.contains("v-death-fail");
+      const tracker = this.actor.getFlag("Vitruvium", "deathTracker") ?? {
+        fails: [false, false],
+        successes: [false, false]
+      };
+
+      if (isFail) {
+        tracker.fails[index] = !tracker.fails[index];
+      } else {
+        tracker.successes[index] = !tracker.successes[index];
+      }
+
+      await this.actor.setFlag("Vitruvium", "deathTracker", tracker);
       this.render();
     });
   }
