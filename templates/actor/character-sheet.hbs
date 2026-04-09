@@ -218,9 +218,14 @@
         <div class="v-groups">
           {{#each vitruvium.tabs.abilities.groups as |group|}}
           <div class="v-group {{#if group.isCollapsed}}is-collapsed{{/if}}">
-            <div class="v-group__header" data-action="toggle-group" data-group-id="ability-{{group.key}}">
-              <i class="fas {{#if group.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i>
-              {{group.label}}
+            <div class="v-group__header">
+              <div class="v-group__header-left" data-action="toggle-group" data-group-id="ability-{{group.key}}">
+                <i class="fas {{#if group.isCollapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}}"></i>
+                {{group.label}}
+              </div>
+              <button type="button" class="v-add-item-btn" data-action="add-ability-item" data-type="{{group.key}}" title="Добавить способность">
+                <i class="fas fa-plus"></i>
+              </button>
             </div>
             {{#unless group.isCollapsed}}
             <div class="v-list">
@@ -252,23 +257,30 @@
         </div>
 
         {{else if (eq vitruvium.activeTab 'skills')}}
-        <div class="v-list">
-          {{#each vitruvium.tabs.skills.all as |s|}}
-          <div class="v-list-item">
-            <img src="{{s.img}}" data-action="item-chat" data-item-id="{{s.id}}" />
-            <div class="v-item-info">
-              <div class="v-item-name">{{s.name}}</div>
-            </div>
-            <div class="v-item-controls">
-              <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{s.id}}" title="Редактировать">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{s.id}}" title="Удалить">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
+        <div class="v-section">
+          <div class="v-section__header">
+            <span>Навыки</span>
+            <button type="button" class="v-mini" data-action="create-item" data-type="skill"><i
+                class="fas fa-plus"></i></button>
           </div>
-          {{/each}}
+          <div class="v-list">
+            {{#each vitruvium.tabs.skills.all as |s|}}
+            <div class="v-list-item">
+              <img src="{{s.img}}" data-action="item-chat" data-item-id="{{s.id}}" />
+              <div class="v-item-info">
+                <div class="v-item-name">{{s.name}}</div>
+              </div>
+              <div class="v-item-controls">
+                <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{s.id}}" title="Редактировать">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="v-icon-btn is-danger" data-action="delete-item" data-item-id="{{s.id}}" title="Удалить">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            {{/each}}
+          </div>
         </div>
 
         {{else if (eq vitruvium.activeTab 'effects')}}

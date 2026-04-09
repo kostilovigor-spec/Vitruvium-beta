@@ -306,6 +306,9 @@ export class VitruviumCharacterSheet extends ActorSheet {
       case "add-inventory-item":
         await this._createItemFromCategory(btn.dataset.type);
         break;
+      case "add-ability-item":
+        await this._createAbilityFromCategory(btn.dataset.type);
+        break;
     }
   }
 
@@ -328,6 +331,21 @@ export class VitruviumCharacterSheet extends ActorSheet {
         quantity: 1,
         price: 0,
         equipped: false,
+        description: ""
+      }
+    };
+    return this.actor.createEmbeddedDocuments("Item", [itemData]);
+  }
+
+  async _createAbilityFromCategory(type) {
+    const itemData = {
+      name: "Новая способность",
+      type: "ability",
+      system: {
+        type: type,
+        cost: 0,
+        actions: 1,
+        active: false,
         description: ""
       }
     };
