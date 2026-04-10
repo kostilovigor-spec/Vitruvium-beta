@@ -106,6 +106,7 @@ export class VitruviumItemSheet extends ItemSheet {
       label: attrLabels[key] ?? key,
     }));
     data.vitruvium.attackAttrDefault = defaultAttr;
+    data.vitruvium.showAttackAttr = true;
     data.vitruvium.contestStates = contestStates;
     data.vitruvium.stateTemplateOptions = stateTemplates;
     data.vitruvium.hasStateTemplates = stateTemplates.length > 0;

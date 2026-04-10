@@ -1197,17 +1197,16 @@
 }
 
 /* Hide all panels by default */
-.v-tab-panel {
+.v-item-sheet__panel.v-tab-panel {
   display: none;
 }
 
 /* Show only active panel */
-.v-tab-panel.is-active {
+.v-item-sheet__panel.v-tab-panel.is-active {
   display: flex;
 }
 
 .v-item-sheet__panel {
-  display: flex;
   flex-direction: column;
   gap: 16px;
 }
@@ -1295,6 +1294,63 @@
   font-family: var(--v-font);
   background: rgba(255, 255, 255, 0.6);
   color: var(--v-text-primary);
+}
+
+/* Effect sheet tabs */
+.v-effect-sheet__tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.v-effect-sheet__tab-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--v-border);
+  padding-bottom: 0;
+}
+
+.v-effect-sheet__tab {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--v-text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.v-effect-sheet__tab:hover {
+  color: var(--v-text-primary);
+}
+
+.v-effect-sheet__tab.is-active {
+  color: var(--v-text-primary);
+  border-bottom-color: var(--v-accent);
+}
+
+.v-effect-sheet__tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 12px;
+}
+
+.v-effect-sheet__panel {
+  display: none;
+}
+
+.v-effect-sheet__panel.is-active {
+  display: block;
+}
+
+.v-effect-sheet__panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 /* --- Attack Attribute --- */

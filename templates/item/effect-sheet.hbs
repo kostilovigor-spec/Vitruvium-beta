@@ -1,6 +1,5 @@
 ﻿<form class="{{cssClass}} v-sheet v-effect-sheet" autocomplete="off">
 
-  {{!-- HEADER --}}
   <header class="v-effect-sheet__header">
     <div class="v-effect-sheet__iconbox">
       <img class="v-effect-sheet__icon" src="{{item.img}}" data-edit="img" title="{{item.name}}" />
@@ -8,22 +7,51 @@
 
     <div class="v-effect-sheet__titleblock">
       <div class="v-effect-sheet__name-view">{{item.name}}</div>
-      <input class="v-effect-sheet__name-input" type="text" name="name" value="{{item.name}}" placeholder="РќР°Р·РІР°РЅРёРµ СЌС„С„РµРєС‚Р°" />
-    </div>
-
-    <div class="v-effect-sheet__actions">
-      <button type="button" class="v-btn v-btn--primary" data-action="edit-modifiers">
-        <i class="fas fa-magic"></i>
-        <span>Р­С„С„РµРєС‚С‹</span>
-      </button>
+      <input class="v-effect-sheet__name-input" type="text" name="name" value="{{item.name}}" placeholder="Название эффекта" />
     </div>
   </header>
 
-  {{!-- BODY --}}
   <section class="v-effect-sheet__body">
-    <div class="v-effect-sheet__desc-header">РћРїРёСЃР°РЅРёРµ</div>
-    <div class="v-line"></div>
-    <textarea class="v-effect-sheet__desc" name="system.description" placeholder="Р§С‚Рѕ РґРµР»Р°РµС‚ СЌС‚РѕС‚ СЌС„С„РµРєС‚.">{{system.description}}</textarea>
+    <section class="v-effect-sheet__tabs">
+      <div class="v-effect-sheet__tab-nav" role="tablist">
+        <a class="v-effect-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" data-tab="desc" role="tab">Описание</a>
+        <a class="v-effect-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects" role="tab">Модификаторы</a>
+      </div>
+
+      <div class="v-effect-sheet__tab-content">
+        {{! ====== ВКЛАДКА ОПИСАНИЕ ====== }}
+        <section class="v-effect-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" role="tabpanel" data-tab="desc">
+          <div class="v-effect-sheet__panel-header">
+            <div class="v-h2">Описание</div>
+            <div class="v-line"></div>
+          </div>
+          <textarea class="v-effect-sheet__desc" name="system.description" placeholder="Что делает этот эффект.">{{system.description}}</textarea>
+        </section>
+
+        {{! ====== ВКЛАДКА МОДИФИКАТОРЫ ====== }}
+        <section class="v-effect-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" role="tabpanel" data-tab="effects">
+          <div class="v-effect-sheet__panel-header">
+            <div class="v-h2">Модификаторы</div>
+            <div class="v-line"></div>
+            <button type="button" class="v-mini" data-action="edit-modifiers">+</button>
+          </div>
+
+          {{#if vitruvium.modifierRows.length}}
+            <div class="v-effects-list">
+              {{#each vitruvium.modifierRows as |mod|}}
+                <div class="v-effects-list__row">
+                  <span>{{mod.targetLabel}}</span>
+                  <span>{{mod.typeLabel}}</span>
+                  <span>{{mod.valueLabel}}</span>
+                  {{#if mod.isTimed}}<span>{{mod.triggerTimingLabel}}</span>{{/if}}
+                </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <div class="v-item-sheet__desc-placeholder">Модификаторы не добавлены.</div>
+          {{/if}}
+        </section>
+      </div>
+    </section>
   </section>
 </form>
-

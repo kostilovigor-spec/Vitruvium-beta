@@ -65,6 +65,7 @@
         </div>
 
         <div class="v-item-sheet__tab-content">
+          {{! ====== ВКЛАДКА ОПИСАНИЕ ====== }}
           <section class="v-item-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" role="tabpanel" data-tab="desc">
             <div class="v-item-sheet__panel-header">
               <div class="v-h2">Описание</div>
@@ -82,6 +83,7 @@
             <textarea class="v-item-sheet__desc-edit v-edit-only" name="system.description" data-role="desc-edit">{{system.description}}</textarea>
           </section>
 
+          {{! ====== ВКЛАДКА МОДИФИКАТОРЫ ====== }}
           <section class="v-item-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" role="tabpanel" data-tab="effects">
             <div class="v-item-sheet__panel-header">
               <div class="v-h2">Модификаторы</div>

@@ -7,7 +7,8 @@
       "Bash(git checkout *)",
       "Bash(python *)",
       "Bash(chcp)",
-      "Bash(del *)"
+      "Bash(del *)",
+      "Bash(xargs *)"
     ]
   },
   "$version": 3

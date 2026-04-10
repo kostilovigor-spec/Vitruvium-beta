@@ -1,4 +1,4 @@
-﻿import { openModifierEditor } from "./core/modifier-system.js";
+﻿import { openModifierEditor, presentModifiers } from "./core/modifier-system.js";
 
 export class VitruviumEffectSheet extends ItemSheet {
   static get defaultOptions() {
@@ -17,6 +17,18 @@ export class VitruviumEffectSheet extends ItemSheet {
     const data = super.getData();
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     data.system = sys;
+
+    data.vitruvium = data.vitruvium || {};
+    data.vitruvium.modifierRows = presentModifiers(sys.modifiers);
+
+    const tabBase = `v-tabs-${this.appId}`;
+    data.vitruvium.tabName = tabBase;
+    data.vitruvium.tabIds = {
+      desc: `${tabBase}-desc`,
+      effects: `${tabBase}-effects`,
+    };
+    data.vitruvium.activeTab = this._effectTab ?? "desc";
+
     return data;
   }
 
@@ -33,6 +45,12 @@ export class VitruviumEffectSheet extends ItemSheet {
 
   activateListeners(html) {
     super.activateListeners(html);
+
+    html.find(".v-tab-link").on("click", (ev) => {
+      ev.preventDefault();
+      this._effectTab = ev.currentTarget.dataset.tab;
+      this.render();
+    });
 
     // Immediate save for name on change.
     const $name = html.find("input[name='name']");
@@ -55,9 +73,10 @@ export class VitruviumEffectSheet extends ItemSheet {
       await saveDescriptionDraft();
     });
 
-    html.find("[data-action='edit-modifiers']").on("click", async (ev) => {
+    html.on("click", "[data-action='edit-modifiers']", async (ev) => {
       ev.preventDefault();
       await openModifierEditor(this.item);
+      this.render();
     });
   }
 }
