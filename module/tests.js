@@ -2,7 +2,7 @@ import { rollPool } from "./combat.js";
 import { DamageResolver } from "./core/damage-resolver.js";
 import { rollSuccessDice } from "./rolls.js";
 import {
-  normalizeEffects,
+  normalizeModifiers,
   collectEffectTotals,
   getAttributeRollModifiers,
   getAttackRollModifiers,
@@ -203,66 +203,72 @@ export const registerVitruviumTests = () => {
       assertEqual(out.rerolls.length, 1, "rollSuccessDice luck rerolls");
     });
 
-    await run("effects.normalizeEffects.attributeAndAttackRollKeys", async () => {
-      const out = normalizeEffects([
-        { key: "conditionRollLuck", value: 1 },
-        { key: "movementRollDice", value: 2 },
-        { key: "attackRollLuck", value: -3 },
+    await run("effects.normalizeModifiers.attributeAndAttackRollKeys", async () => {
+      const out = normalizeModifiers([
+        { key: "conditionAdv", value: 1 },
+        { key: "movementDice", value: 2 },
+        { key: "attackDis", value: 3 },
       ]);
       assertEqual(out.length, 3, "new effect keys should be normalized");
     });
 
-    await run("effects.normalizeEffects.legacyAdvDisToSigned", async () => {
-      const out = normalizeEffects([
-        { key: "rollAdv", value: 2 },
-        { key: "rollDis", value: 1 },
-      ]);
-      const one = out.find((e) => e.key === "rollLuck");
-      assert(one, "rollLuck should exist");
-      assertEqual(one.value, 1, "legacy should fold into signed key");
-    });
-
-    await run("effects.normalizeEffects.legacyEffectKeyField", async () => {
-      const out = normalizeEffects([{ effectKey: "speed", value: 2 }]);
+    await run("effects.normalizeModifiers.legacyEffectKeyField", async () => {
+      const out = normalizeModifiers([{ effectKey: "speed", value: 2 }]);
       const one = out.find((e) => e.key === "speed");
       assert(one, "speed should exist from effectKey");
       assertEqual(one.value, 2, "effectKey value should be used");
     });
 
-    await run("effects.getLuckModifiers.signedNegativeIsDis", async () => {
+    await run("effects.getLuckModifiers", async () => {
       const out = getLuckModifiers(
-        { dodgeLuck: -2 },
+        { dodgeAdv: 2, dodgeDis: 1, dodgeLucky: 1, dodgeUnlucky: 0 },
         {
-          signedKey: "dodgeLuck",
           advKey: "dodgeAdv",
           disKey: "dodgeDis",
+          luckyKey: "dodgeLucky",
+          unluckyKey: "dodgeUnlucky",
         }
       );
-      assertEqual(out.adv, 0, "signed negative adv");
-      assertEqual(out.dis, 2, "signed negative dis");
+      assertEqual(out.adv, 2, "adv");
+      assertEqual(out.dis, 1, "dis");
+      assertEqual(out.lucky, 1, "lucky");
+      assertEqual(out.unlucky, 0, "unlucky");
     });
 
     await run("effects.getAttributeRollModifiers", async () => {
       const totals = {
-        combatRollLuck: 2,
-        combatRollDice: 3,
+        combatAdv: 2,
+        combatDis: 0,
+        combatLucky: 1,
+        combatUnlucky: 0,
+        combatDice: 3,
       };
       const out = getAttributeRollModifiers(totals, "combat");
       assertEqual(out.adv, 2, "attr adv");
       assertEqual(out.dis, 0, "attr dis");
+      assertEqual(out.lucky, 1, "attr lucky");
+      assertEqual(out.unlucky, 0, "attr unlucky");
       assertEqual(out.dice, 3, "attr dice");
     });
 
     await run("effects.getAttackRollModifiers", async () => {
       const totals = {
-        combatRollLuck: -1,
-        combatRollDice: 3,
-        attackRollLuck: 4,
-        attackRollDice: 6,
+        combatAdv: 0,
+        combatDis: 1,
+        combatLucky: 0,
+        combatUnlucky: 1,
+        combatDice: 3,
+        attackAdv: 4,
+        attackDis: 0,
+        attackLucky: 1,
+        attackUnlucky: 0,
+        attackDice: 6,
       };
       const out = getAttackRollModifiers(totals, { attrKey: "combat" });
       assertEqual(out.adv, 4, "attack adv");
       assertEqual(out.dis, 1, "attack dis");
+      assertEqual(out.lucky, 1, "attack lucky");
+      assertEqual(out.unlucky, 1, "attack unlucky");
       assertEqual(out.dice, 9, "attack dice");
     });
 

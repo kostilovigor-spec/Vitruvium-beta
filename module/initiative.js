@@ -108,8 +108,16 @@ export async function vitruviumRollInitiative(combat, ids, rollOpts = {}) {
     );
     const totalLuck = luck + globalMods.adv + movementMods.adv;
     const totalUnluck = unluck + globalMods.dis + movementMods.dis;
-    const finalFullMode =
-      globalMods.fullMode !== "normal" ? globalMods.fullMode : fullMode;
+    let finalFullMode = globalMods.fullMode;
+    if (finalFullMode === "normal") {
+      const totalLucky = globalMods.lucky + movementMods.lucky;
+      const totalUnlucky = globalMods.unlucky + movementMods.unlucky;
+      if (totalLucky > totalUnlucky) finalFullMode = "adv";
+      else if (totalUnlucky > totalLucky) finalFullMode = "dis";
+    }
+    if (finalFullMode === "normal") {
+      finalFullMode = fullMode;
+    }
     let appliedLuck = totalLuck;
     let appliedUnluck = totalUnluck;
     const diff = appliedLuck - appliedUnluck;

@@ -19,6 +19,7 @@ import { ActionProcessor } from "./core/action-processor.js";
 
 Hooks.once("init", () => {
 
+  const NS = game.system.id; // у тебя это "Vitruvium"
 
   // Migration: convert old NPC attribute format to new format
   Hooks.on("ready", async () => {
@@ -123,8 +124,6 @@ Hooks.once("init", () => {
       return new Handlebars.SafeString(result);
     },
   );
-
-  const NS = game.system.id; // у тебя это "Vitruvium"
 
   game.settings.register(NS, "enableAutomatedAnimations", {
     name: "Включить Auto Animations",

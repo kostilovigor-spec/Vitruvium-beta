@@ -57,7 +57,7 @@
       "contestCasterAttr": "combat",
       "contestTargetAttr": "combat",
       "description": "",
-      "effects": []
+      "modifiers": []
     },
     "item": {
       "quantity": 1,
@@ -73,18 +73,18 @@
       "canBlock": false,
       "isHeavyArmor": false,
       "description": "",
-      "effects": []
+      "modifiers": []
     },
     "skill": {
       "description": "",
-      "effects": []
+      "modifiers": []
     },
     "state": {
       "active": true,
       "durationRounds": 0,
       "durationRemaining": 0,
       "description": "",
-      "effects": []
+      "modifiers": []
     }
   }
 }

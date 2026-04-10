@@ -1,4 +1,4 @@
-import { openEffectsDialog } from "./effects.js";
+﻿import { openModifierEditor } from "./core/modifier-system.js";
 
 export class VitruviumEffectSheet extends ItemSheet {
   static get defaultOptions() {
@@ -55,9 +55,10 @@ export class VitruviumEffectSheet extends ItemSheet {
       await saveDescriptionDraft();
     });
 
-    html.find("[data-action='edit-effects']").on("click", async (ev) => {
+    html.find("[data-action='edit-modifiers']").on("click", async (ev) => {
       ev.preventDefault();
-      await openEffectsDialog(this.item);
+      await openModifierEditor(this.item);
     });
   }
 }
+

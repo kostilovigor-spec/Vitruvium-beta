@@ -4,7 +4,7 @@ import { playAutomatedAnimation } from "./auto-animations.js";
 import { DiceSystem } from "./core/dice-system.js";
 import { DamageResolver } from "./core/damage-resolver.js";
 import {
-  normalizeEffects,
+  normalizeModifiers,
   collectEffectTotals,
   getEffectValue,
   getEffectiveAttribute,
@@ -230,15 +230,16 @@ function getWeaponDamage(actor, weaponItem = null) {
 }
 
 function getWeaponRollMods(weaponItem) {
-  const effects = normalizeEffects(weaponItem?.system?.effects);
+  const effects = normalizeModifiers(weaponItem?.system?.effects);
   const totals = {};
   for (const eff of effects) {
     totals[eff.key] = (totals[eff.key] ?? 0) + toNumber(eff.value, 0);
   }
   return getLuckModifiers(totals, {
-    signedKey: "weaponLuck",
     advKey: "weaponAdv",
     disKey: "weaponDis",
+    luckyKey: "weaponLucky",
+    unluckyKey: "weaponUnlucky",
   });
 }
 
@@ -1618,9 +1619,10 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             defenseType = "block";
             const attrMods = getAttributeRollModifiers(effectTotals, "condition");
             const blockLuckMods = getLuckModifiers(effectTotals, {
-              signedKey: "blockLuck",
               advKey: "blockAdv",
               disKey: "blockDis",
+              luckyKey: "blockLucky",
+              unluckyKey: "blockUnlucky",
             });
             const blockDiceEff = getEffectValue(effectTotals, "blockDice");
             const poolVal = clamp(
@@ -1652,21 +1654,22 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             }
             appliedLuck = Math.min(appliedLuck, poolVal);
             appliedUnluck = Math.min(appliedUnluck, poolVal);
+            const totalLucky =
+              globalMods.lucky + attrMods.lucky + blockLuckMods.lucky;
+            const totalUnlucky =
+              globalMods.unlucky + attrMods.unlucky + blockLuckMods.unlucky;
+            let finalFullMode = globalMods.fullMode;
+            if (finalFullMode === "normal") {
+              if (totalLucky > totalUnlucky) finalFullMode = "adv";
+              else if (totalUnlucky > totalLucky) finalFullMode = "dis";
+            }
             const modeText =
               finalFullMode === "adv" || finalFullMode === "dis"
                 ? fullText
                 : modeLabel(appliedLuck, appliedUnluck);
             const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-            const totalLuck =
-              (choice.luck ?? 0) +
-              globalMods.adv +
-              attrMods.adv +
-              blockLuckMods.adv;
-            const totalUnluck =
-              (choice.unluck ?? 0) +
-              globalMods.dis +
-              attrMods.dis +
-              blockLuckMods.dis;
+            const totalLuck = appliedLuck;
+            const totalUnluck = appliedUnluck;
             defRoll = await rollPool(poolVal, {
               luck: totalLuck,
               unluck: totalUnluck,
@@ -1679,9 +1682,10 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             defenseType = "dodge";
             const attrMods = getAttributeRollModifiers(effectTotals, "movement");
             const dodgeLuckMods = getLuckModifiers(effectTotals, {
-              signedKey: "dodgeLuck",
               advKey: "dodgeAdv",
               disKey: "dodgeDis",
+              luckyKey: "dodgeLucky",
+              unluckyKey: "dodgeUnlucky",
             });
             const dodgeDiceEff = getEffectValue(effectTotals, "dodgeDice");
             const poolVal = clamp(
@@ -1713,21 +1717,22 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             }
             appliedLuck = Math.min(appliedLuck, poolVal);
             appliedUnluck = Math.min(appliedUnluck, poolVal);
+            const totalLucky =
+              globalMods.lucky + attrMods.lucky + dodgeLuckMods.lucky;
+            const totalUnlucky =
+              globalMods.unlucky + attrMods.unlucky + dodgeLuckMods.unlucky;
+            let finalFullMode = globalMods.fullMode;
+            if (finalFullMode === "normal") {
+              if (totalLucky > totalUnlucky) finalFullMode = "adv";
+              else if (totalUnlucky > totalLucky) finalFullMode = "dis";
+            }
             const modeText =
               finalFullMode === "adv" || finalFullMode === "dis"
                 ? fullText
                 : modeLabel(appliedLuck, appliedUnluck);
             const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-            const totalLuck =
-              (choice.luck ?? 0) +
-              globalMods.adv +
-              attrMods.adv +
-              dodgeLuckMods.adv;
-            const totalUnluck =
-              (choice.unluck ?? 0) +
-              globalMods.dis +
-              attrMods.dis +
-              dodgeLuckMods.dis;
+            const totalLuck = appliedLuck;
+            const totalUnluck = appliedUnluck;
             defRoll = await rollPool(poolVal, {
               luck: totalLuck,
               unluck: totalUnluck,
@@ -1999,10 +2004,16 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           const totalLuck = toNumber(choice.luck, 0) + globalMods.adv + attrMods.adv;
           const totalUnluck =
             toNumber(choice.unluck, 0) + globalMods.dis + attrMods.dis;
-          const finalFullMode =
-            globalMods.fullMode !== "normal"
-              ? globalMods.fullMode
-              : choice.fullMode;
+          let finalFullMode = globalMods.fullMode;
+          if (finalFullMode === "normal") {
+            const totalLucky = globalMods.lucky + attrMods.lucky;
+            const totalUnlucky = globalMods.unlucky + attrMods.unlucky;
+            if (totalLucky > totalUnlucky) finalFullMode = "adv";
+            else if (totalUnlucky > totalLucky) finalFullMode = "dis";
+          }
+          if (finalFullMode === "normal") {
+            finalFullMode = choice.fullMode;
+          }
 
 
 

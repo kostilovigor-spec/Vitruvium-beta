@@ -1,4 +1,4 @@
-import { normalizeEffects, applyEffect, removeEffect } from "./effects.js";
+import { normalizeModifiers, applyEffect, removeEffect } from "./effects.js";
 
 const hasOwn = (obj, key) =>
   Object.prototype.hasOwnProperty.call(obj ?? {}, key);
@@ -213,9 +213,9 @@ async function deleteStateEffects(item) {
 const collectOverTimeEntries = (stateItem, triggerTiming) => {
   if (!stateItem || stateItem.type !== "state") return [];
   if (stateItem.system?.active === false) return [];
-  const effects = normalizeEffects(stateItem.system?.effects, { keepZero: false });
+  const effects = normalizeModifiers(stateItem.system?.modifiers, { keepZero: false });
   return effects.filter((eff) => {
-    const type = String(eff?.type ?? "").trim();
+    const type = String(eff?.target ?? "").trim();
     const timing = String(eff?.triggerTiming ?? "").trim();
     if (!OVERTIME_TYPES.has(type)) return false;
     if (!OVERTIME_TIMINGS.has(timing)) return false;
@@ -262,13 +262,13 @@ const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
       const value = Math.max(0, Math.round(Math.abs(toNumber(eff.value, 0))));
       if (!value) continue;
 
-      if (eff.type === "dot") {
+      if (eff.target === "dot") {
         await processor.process({
           type: "apply_dot",
           actor,
           value
         });
-      } else if (eff.type === "hot") {
+      } else if (eff.target === "hot") {
         hotTotal += value;
       }
     }

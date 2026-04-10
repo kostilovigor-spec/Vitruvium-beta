@@ -4,7 +4,10 @@
       "Bash(type *)",
       "Bash(findstr *)",
       "Bash(powershell *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(python *)",
+      "Bash(chcp)",
+      "Bash(del *)"
     ]
   },
   "$version": 3

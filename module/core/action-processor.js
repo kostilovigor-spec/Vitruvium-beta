@@ -198,7 +198,13 @@ export class ActionProcessor {
             const pool = Math.max(1, Math.min(20, baseAttr + attackMods.dice + globalMods.dice + (options.extraDice || 0)));
             const luck = (options.luck || 0) + globalMods.adv + attackMods.adv;
             const unluck = (options.unluck || 0) + globalMods.dis + attackMods.dis;
-            const fullMode = globalMods.fullMode !== "normal" ? globalMods.fullMode : options.fullMode;
+            let fullMode = globalMods.fullMode;
+            if (fullMode === "normal") {
+                const totalLucky = globalMods.lucky + attackMods.lucky;
+                const totalUnlucky = globalMods.unlucky + attackMods.unlucky;
+                if (totalLucky > totalUnlucky) fullMode = "adv";
+                else if (totalUnlucky > totalLucky) fullMode = "dis";
+            }
 
             ctx.rolls.attack = await DiceSystem.rollPool(pool, { luck, unluck, fullMode });
             ctx.computed.attackSuccesses = ctx.rolls.attack.successes;
@@ -216,11 +222,18 @@ export class ActionProcessor {
                     effectTotals
                 );
                 const pool = Math.max(1, Math.min(20, baseAttr + attrMods.dice + globalMods.dice));
+                let fullMode = globalMods.fullMode;
+                if (fullMode === "normal") {
+                    const totalLucky = globalMods.lucky + attrMods.lucky;
+                    const totalUnlucky = globalMods.unlucky + attrMods.unlucky;
+                    if (totalLucky > totalUnlucky) fullMode = "adv";
+                    else if (totalUnlucky > totalLucky) fullMode = "dis";
+                }
 
                 ctx.rolls.contest = await DiceSystem.rollPool(pool, {
                     luck: globalMods.adv + attrMods.adv,
                     unluck: globalMods.dis + attrMods.dis,
-                    fullMode: globalMods.fullMode
+                    fullMode
                 });
                 ctx.computed.casterContestSuccesses = ctx.rolls.contest.successes;
             }
@@ -237,10 +250,18 @@ export class ActionProcessor {
         const attrMods = Effects.getAttributeRollModifiers(effectTotals, options.attrKey);
         const globalMods = Effects.getGlobalRollModifiers(effectTotals);
 
+        let fullMode = globalMods.fullMode;
+        if (fullMode === "normal") {
+            const totalLucky = globalMods.lucky + attrMods.lucky;
+            const totalUnlucky = globalMods.unlucky + attrMods.unlucky;
+            if (totalLucky > totalUnlucky) fullMode = "adv";
+            else if (totalUnlucky > totalLucky) fullMode = "dis";
+        }
+
         ctx.rolls.check = await DiceSystem.rollPool(pool, {
             luck: (options.luck || 0) + globalMods.adv + attrMods.adv,
             unluck: (options.unluck || 0) + globalMods.dis + attrMods.dis,
-            fullMode: globalMods.fullMode !== "normal" ? globalMods.fullMode : (options.fullMode || "normal"),
+            fullMode,
             extraDice: options.extraDice || 0
         });
 

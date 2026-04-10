@@ -1,13 +1,7 @@
-﻿import {
-  EFFECT_TARGETS,
-  OVERTIME_EFFECT_TYPES,
-  OVERTIME_TRIGGER_TIMINGS,
-  normalizeEffects,
-} from "./effects.js";
-
+import { openModifierEditor, presentModifiers } from "./core/modifier-system.js";
 import { listSystemStateTemplates } from "./state-library.js";
 
-// Ability sheet: editing, effects, and attack attributes.
+// Ability sheet: editing, modifiers, and attack attributes.
 export class VitruviumAbilitySheet extends ItemSheet {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -16,8 +10,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
       width: 860,
       height: 520,
       resizable: true,
-
-      // Save on explicit "Done" toggle to avoid noisy auto-submit.
       submitOnChange: false,
       submitOnClose: false,
     });
@@ -26,7 +18,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
   async getData() {
     const data = await super.getData();
 
-    // Normalize system data and defaults.
     const sys = data.system ?? data.item?.system ?? this.item.system ?? {};
     if (!Number.isFinite(Number(sys.rollDamageBase))) sys.rollDamageBase = 0;
     if (!Number.isFinite(Number(sys.rollHealBase))) sys.rollHealBase = 0;
@@ -42,11 +33,10 @@ export class VitruviumAbilitySheet extends ItemSheet {
     if (typeof sys.canBlock !== "boolean") sys.canBlock = false;
     data.system = sys;
 
-    // Description preview (HTML-safe).
     const desc = String(sys.description ?? "");
     const safe = foundry.utils.escapeHTML(desc).replace(/\n/g, "<br>");
     data.vitruvium = data.vitruvium || {};
-    // Attack attribute options (based on parent actor).
+
     const attrLabels = {
       condition: "Самочувствие",
       attention: "Внимание",
@@ -72,12 +62,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
       : finalKeys.includes("combat")
         ? "combat"
         : finalKeys[0];
+
     const stateTemplates = await listSystemStateTemplates();
-    // Normalize contestStates array - support both old and new format
+
     let contestStates = Array.isArray(sys.contestStates)
       ? sys.contestStates
       : [];
-    // Migrate from old single-state format if contestStates is empty
     if (contestStates.length === 0 && sys.contestStateUuid) {
       contestStates = [
         {
@@ -88,9 +78,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
             "targetNoCheck",
             "targetContest",
             "CRIT_ATTACK",
-          ].includes(
-            sys.contestApplyMode,
-          )
+          ].includes(sys.contestApplyMode)
             ? sys.contestApplyMode
             : "targetContest",
           casterAttr: String(sys.contestCasterAttr ?? defaultAttr),
@@ -98,7 +86,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
         },
       ];
     }
-    // Ensure at least one empty state entry
     if (contestStates.length === 0) {
       contestStates = [
         {
@@ -110,7 +97,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
         },
       ];
     }
-    // Normalize each state entry
     contestStates = contestStates.map((s) => ({
       uuid: String(s.uuid ?? ""),
       durationRounds: Math.max(0, Math.round(Number(s.durationRounds ?? 1))),
@@ -119,14 +105,13 @@ export class VitruviumAbilitySheet extends ItemSheet {
         "targetNoCheck",
         "targetContest",
         "CRIT_ATTACK",
-      ].includes(
-        s.applyMode,
-      )
+      ].includes(s.applyMode)
         ? s.applyMode
         : "targetContest",
       casterAttr: String(s.casterAttr ?? defaultAttr),
       targetAttr: String(s.targetAttr ?? defaultAttr),
     }));
+
     data.vitruvium.attackAttrOptions = finalKeys.map((key) => ({
       key,
       label: attrLabels[key] ?? key,
@@ -136,22 +121,11 @@ export class VitruviumAbilitySheet extends ItemSheet {
     data.vitruvium.stateTemplateOptions = stateTemplates;
     data.vitruvium.hasStateTemplates = stateTemplates.length > 0;
     data.vitruvium.descriptionHTML = safe;
-    const overTimeKeys = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
-    data.vitruvium.effectTargets = EFFECT_TARGETS;
-    data.vitruvium.effects = normalizeEffects(sys.effects, {
-      keepZero: true,
-    }).map((eff) => ({
-      ...eff,
-      effectKey: overTimeKeys.has(String(eff.type ?? "").trim())
-        ? String(eff.type ?? "").trim()
-        : String(eff.key ?? ""),
-      isOverTime: overTimeKeys.has(String(eff.type ?? "").trim()),
-      triggerTiming: String(eff.triggerTiming ?? "end"),
-    }));
-    data.vitruvium.overTimeEffectTypes = OVERTIME_EFFECT_TYPES;
-    data.vitruvium.overTimeTriggerTimings = OVERTIME_TRIGGER_TIMINGS;
-    
-    // Unique tab IDs per window instance to avoid conflicts when multiple sheets are open.
+    data.vitruvium.modifierRows = presentModifiers(sys.modifiers);
+    data.vitruvium.modifierCount = Array.isArray(sys.modifiers)
+      ? sys.modifiers.length
+      : 0;
+
     const tabBase = `v-tabs-${this.appId}`;
     data.vitruvium.tabName = tabBase;
     data.vitruvium.tabIds = {
@@ -168,8 +142,8 @@ export class VitruviumAbilitySheet extends ItemSheet {
       if (typeof this._saveDescOnClose === "function") {
         await this._saveDescOnClose();
       }
-    } catch (e) {
-      /* ignore */
+    } catch (_e) {
+      // ignore
     }
     return super.close(options);
   }
@@ -177,14 +151,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Tab switching
     html.find(".v-tab-link").on("click", (ev) => {
       ev.preventDefault();
       this._abilityTab = ev.currentTarget.dataset.tab;
       this.render();
     });
 
-    // Icon editing should always be available.
     html
       .find("img[data-edit='img']")
       .off("click.vitruvium-img")
@@ -206,7 +178,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
         }).browse();
       });
 
-    // Local helpers.
     const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
     const num = (v, d) => {
       const x = Number(v);
@@ -225,16 +196,14 @@ export class VitruviumAbilitySheet extends ItemSheet {
     const $attackRoll = html.find("input[name='system.attackRoll']");
     const $attackAttr = html.find("select[name='system.attackAttr']");
 
-    // Edit mode toggling.
     const form = html.closest("form");
-    const view = html.find("[data-role='desc-view']");
     const edit = html.find("[data-role='desc-edit']");
 
     const setMode = (isEdit) => {
       form.toggleClass("is-edit", isEdit);
       const $btn = html.find("[data-action='toggle-desc']");
       $btn.toggleClass("is-active", isEdit);
-      $btn.attr("title", isEdit ? "Готово" : "Редактировать");
+      $btn.attr("title", isEdit ? "Завершить редактирование" : "Редактировать");
       if (isEdit) edit.trigger("focus");
     };
 
@@ -251,7 +220,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
     };
     this._saveDescOnClose = saveDescriptionDraft;
 
-    // Persist values when leaving edit mode.
     const exitEditAndSave = async () => {
       const newName = String($name.val() ?? this.item.name);
       const newLevel = clamp(
@@ -269,9 +237,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         1,
         2,
       );
-      const newType = String(
-        $type.val() ?? this.item.system?.type ?? "primary",
-      );
+      const newType = String($type.val() ?? this.item.system?.type ?? "primary");
       const newDesc = currentDesc();
       const newRollDamageBase = clamp(
         num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
@@ -286,7 +252,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       const newAttackAttr = String(
         $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat",
       );
-      // Collect contestStates from form - include all rows, even without uuid
+
       const contestStates = [];
       html.find(".v-contest-states__row").each((_, row) => {
         const $row = $(row);
@@ -316,7 +282,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
           targetAttr,
         });
       });
-      // Ensure at least one entry for migration compatibility
       if (contestStates.length === 0) {
         contestStates.push({
           uuid: "",
@@ -341,7 +306,6 @@ export class VitruviumAbilitySheet extends ItemSheet {
       });
     };
 
-    // Toggle edit mode - use event delegation to avoid issues with re-render.
     html.on("click", "[data-action='toggle-desc']", async (ev) => {
       ev.preventDefault();
 
@@ -352,34 +316,27 @@ export class VitruviumAbilitySheet extends ItemSheet {
       }
     });
 
-    // Active toggle.
     $active.on("change", async (ev) => {
       await this.item.update({ "system.active": ev.currentTarget.checked });
     });
-    // Attack roll toggle.
     $attackRoll.on("change", async (ev) => {
       await this.item.update({ "system.attackRoll": ev.currentTarget.checked });
     });
-    // Ability type selector.
     $type.on("change", async (ev) => {
       await this.item.update({
         "system.type": String(ev.currentTarget.value ?? "primary"),
       });
     });
-    // Attack attribute selector.
     $attackAttr.on("change", async (ev) => {
       await this.item.update({
         "system.attackAttr": String(ev.currentTarget.value ?? "combat"),
       });
     });
 
-    // CanBlock toggle.
     html.find("input[name='system.canBlock']").on("change", async (ev) => {
       await this.item.update({ "system.canBlock": ev.currentTarget.checked });
     });
 
-    // Contest states: Add row button.
-    // Use event delegation on the form element for dynamic content
     const $form = html.closest("form");
     $form.on("click", "[data-action='add-contest-state']", async (ev) => {
       ev.preventDefault();
@@ -404,7 +361,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
         <div class="v-contest-states__row" data-idx="${idx}">
           <div class="v-contest-states__row-header">
             <span>Состояние #${idx + 1}</span>
-            <button type="button" class="v-mini v-contest-states__remove" title="Удалить">?</button>
+            <button type="button" class="v-mini v-contest-states__remove" title="Удалить">×</button>
           </div>
           <div class="v-contest-states__fields">
             <label>
@@ -448,20 +405,15 @@ export class VitruviumAbilitySheet extends ItemSheet {
             </label>
           </div>
         </div>
-      `;
-      $container.append(rowHtml);
-      // Save after adding - use saveContestStates helper
+      `;      $container.append(rowHtml);
       saveContestStates();
     });
 
-    // Contest states: Remove row button.
-    // Use event delegation on the form element for dynamic content
     $form.on("click", ".v-contest-states__remove", (ev) => {
       ev.preventDefault();
       const $btn = $(ev.currentTarget);
       const $row = $btn.closest(".v-contest-states__row");
       $row.remove();
-      // Re-index rows
       const $container = html.find(".v-contest-states__rows");
       $container.find(".v-contest-states__row").each((idx, row) => {
         const $r = $(row);
@@ -469,33 +421,18 @@ export class VitruviumAbilitySheet extends ItemSheet {
         $r.find("span")
           .first()
           .text(`Состояние #${idx + 1}`);
-        $r.find("select[name$='.uuid']").attr(
-          "name",
-          `system.contestStates.${idx}.uuid`,
-        );
+        $r.find("select[name$='.uuid']").attr("name", `system.contestStates.${idx}.uuid`);
         $r.find("input[name$='.durationRounds']").attr(
           "name",
           `system.contestStates.${idx}.durationRounds`,
         );
-        $r.find("select[name$='.applyMode']").attr(
-          "name",
-          `system.contestStates.${idx}.applyMode`,
-        );
-        $r.find("select[name$='.casterAttr']").attr(
-          "name",
-          `system.contestStates.${idx}.casterAttr`,
-        );
-        $r.find("select[name$='.targetAttr']").attr(
-          "name",
-          `system.contestStates.${idx}.targetAttr`,
-        );
+        $r.find("select[name$='.applyMode']").attr("name", `system.contestStates.${idx}.applyMode`);
+        $r.find("select[name$='.casterAttr']").attr("name", `system.contestStates.${idx}.casterAttr`);
+        $r.find("select[name$='.targetAttr']").attr("name", `system.contestStates.${idx}.targetAttr`);
       });
-      // Save after removing - use saveContestStates helper
       saveContestStates();
     });
 
-    // Contest states: Save on change for all fields.
-    // Use debounce to avoid multiple rapid saves
     let contestStatesSaveTimeout = null;
     const saveContestStates = () => {
       if (contestStatesSaveTimeout) clearTimeout(contestStatesSaveTimeout);
@@ -509,16 +446,9 @@ export class VitruviumAbilitySheet extends ItemSheet {
             0,
             Math.round(num($r.find("input[name$='.durationRounds']").val(), 1)),
           );
-          const applyMode = String(
-            $r.find("select[name$='.applyMode']").val() ?? "targetContest",
-          );
-          const casterAttr = String(
-            $r.find("select[name$='.casterAttr']").val() ?? "combat",
-          );
-          const targetAttr = String(
-            $r.find("select[name$='.targetAttr']").val() ?? "combat",
-          );
-          // Include states even without uuid to preserve attr selections
+          const applyMode = String($r.find("select[name$='.applyMode']").val() ?? "targetContest");
+          const casterAttr = String($r.find("select[name$='.casterAttr']").val() ?? "combat");
+          const targetAttr = String($r.find("select[name$='.targetAttr']").val() ?? "combat");
           contestStates.push({
             uuid,
             durationRounds,
@@ -540,14 +470,12 @@ export class VitruviumAbilitySheet extends ItemSheet {
       }, 250);
     };
 
-    // Use event delegation on the form element for dynamic content
     $form.on(
       "change",
       ".v-contest-states__row select, .v-contest-states__row input",
       saveContestStates,
     );
 
-    // Immediate save on change for all editable fields.
     $name.on("change", async () => {
       const v = String($name.val() ?? this.item.name);
       if (v && v !== this.item.name) await this.item.update({ name: v });
@@ -561,11 +489,7 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({ "system.cost": v });
     });
     $actions.on("change", async () => {
-      const v = clamp(
-        num($actions.val(), num(this.item.system?.actions, 1)),
-        1,
-        2,
-      );
+      const v = clamp(num($actions.val(), num(this.item.system?.actions, 1)), 1, 2);
       await this.item.update({ "system.actions": v });
     });
     $rollDamageBase.on("change", async () => {
@@ -577,147 +501,14 @@ export class VitruviumAbilitySheet extends ItemSheet {
       await this.item.update({ "system.rollHealBase": v });
     });
 
-    // Save description draft on blur to avoid losing changes on rerender.
     $desc.on("blur", async () => {
       await saveDescriptionDraft();
     });
 
-    const overTimeKeySet = new Set(OVERTIME_EFFECT_TYPES.map((t) => t.key));
-    const overTimeTimingSet = new Set(
-      OVERTIME_TRIGGER_TIMINGS.map((t) => t.key),
-    );
-    const syncOverTimeRow = ($row) => {
-      const key = String($row.find(".v-effects__key").val() ?? "");
-      const isTimed = overTimeKeySet.has(key);
-      const $timing = $row.find(".v-effects__timing");
-      const $value = $row.find(".v-effects__val");
-      $timing.toggle(isTimed);
-      if (isTimed) {
-        const cur = num($value.val(), 0);
-        $value.val(Math.max(0, Math.round(Math.abs(cur))));
-      }
-    };
-
-    // Effects table: row renderer.
-    const renderEffectRow = (effect = {}) => {
-      const typeKey = String(effect.type ?? "").trim();
-      const isOverTime = overTimeKeySet.has(typeKey);
-      const key = isOverTime
-        ? typeKey
-        : EFFECT_TARGETS.find((t) => t.key === effect.key)?.key ??
-          EFFECT_TARGETS[0]?.key;
-      const rawValue = Number.isFinite(effect.value) ? Number(effect.value) : 0;
-      const value = isOverTime
-        ? Math.max(0, Math.round(Math.abs(rawValue)))
-        : rawValue;
-      const triggerTiming = overTimeTimingSet.has(
-        String(effect.triggerTiming ?? "").trim(),
-      )
-        ? String(effect.triggerTiming).trim()
-        : "end";
-      let options = EFFECT_TARGETS.map((opt, idx) => {
-        const selected = key ? opt.key === key : idx === 0 ? true : false;
-        return `<option value="${opt.key}"${
-          selected ? " selected" : ""
-        }>${opt.label}</option>`;
-      }).join("");
-      options += OVERTIME_EFFECT_TYPES.map((opt) => {
-        const selected = opt.key === key ? " selected" : "";
-        return `<option value="${opt.key}"${selected}>${opt.label}</option>`;
-      }).join("");
-      const timingOptions = OVERTIME_TRIGGER_TIMINGS.map((opt) => {
-        const selected = opt.key === triggerTiming ? " selected" : "";
-        return `<option value="${opt.key}"${selected}>${opt.label}</option>`;
-      }).join("");
-
-      return `
-        <div class="v-effects__row">
-          <select class="v-effects__key">${options}</select>
-          <select class="v-effects__timing" ${
-            isOverTime ? "" : "style='display:none;'"
-          }>${timingOptions}</select>
-          <input type="number" class="v-effects__val" value="${value}" step="1" />
-          <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
-        </div>
-      `;
-    };
-
-    // Effects table: persist changes.
-    const updateEffects = async () => {
-      const next = [];
-      html.find(".v-effects__row").each((_, row) => {
-        const $row = $(row);
-        const key = String($row.find(".v-effects__key").val() ?? "");
-        const value = num($row.find(".v-effects__val").val(), 0);
-        if (overTimeKeySet.has(key)) {
-          const triggerRaw = String(
-            $row.find(".v-effects__timing").val() ?? "end",
-          ).trim();
-          const triggerTiming = overTimeTimingSet.has(triggerRaw)
-            ? triggerRaw
-            : "end";
-          const timedValue = Math.max(0, Math.round(Math.abs(value)));
-          if (!Number.isFinite(timedValue) || timedValue <= 0) return;
-          next.push({ type: key, triggerTiming, value: timedValue });
-          return;
-        }
-        if (!EFFECT_TARGETS.find((t) => t.key === key)) return;
-        if (!Number.isFinite(value) || value === 0) return;
-        next.push({ key, value });
-      });
-      await this.item.update({ "system.effects": next });
-    };
-
-    const existingEffects = normalizeEffects(this.item.system?.effects, {
-      keepZero: true,
-    });
-    html
-      .find(".v-effects__rows")
-      .html(
-        existingEffects.length
-          ? existingEffects.map((eff) => renderEffectRow(eff)).join("")
-          : renderEffectRow(),
-      );
-
-    // Add effect row.
-    html.on("click", "[data-action='add-effect']", (ev) => {
+    html.on("click", "[data-action='edit-modifiers']", async (ev) => {
       ev.preventDefault();
-      const $rows = html.find(".v-effects__rows");
-      $rows.append(renderEffectRow());
-      syncOverTimeRow($rows.find(".v-effects__row").last());
-    });
-
-    // Remove effect row.
-    html.on("click", ".v-effects__remove", (ev) => {
-      ev.preventDefault();
-      $(ev.currentTarget).closest(".v-effects__row").remove();
-      if (!html.find(".v-effects__row").length) {
-        const $rows = html.find(".v-effects__rows");
-        $rows.append(renderEffectRow());
-        syncOverTimeRow($rows.find(".v-effects__row").last());
-      }
-      updateEffects();
-    });
-
-    // Persist effect edits.
-    html.on("change", ".v-effects__key, .v-effects__val, .v-effects__timing", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if ($(ev.currentTarget).hasClass("v-effects__key")) {
-        syncOverTimeRow($(ev.currentTarget).closest(".v-effects__row"));
-      }
-      if ($(ev.currentTarget).hasClass("v-effects__val")) {
-        const $row = $(ev.currentTarget).closest(".v-effects__row");
-        const key = String($row.find(".v-effects__key").val() ?? "");
-        if (overTimeKeySet.has(key)) {
-          const cur = num($(ev.currentTarget).val(), 0);
-          $(ev.currentTarget).val(Math.max(0, Math.round(Math.abs(cur))));
-        }
-      }
-      updateEffects();
-    });
-    html.find(".v-effects__row").each((_, row) => {
-      syncOverTimeRow($(row));
+      await openModifierEditor(this.item);
+      this.render();
     });
   }
 }

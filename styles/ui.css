@@ -999,7 +999,7 @@
   font-size: 9px;
   font-weight: 900;
   text-transform: uppercase;
-  color: var(--v-accent-gold);
+  color: var(--v-border-dark);
   letter-spacing: 0.5px;
 }
 

@@ -1,6 +1,5 @@
 ﻿<form class="{{cssClass}} v-sheet v-ability-sheet" autocomplete="off">
 
-  {{!-- HEADER --}}
   <header class="v-item-sheet__header">
     <div class="v-item-sheet__iconbox">
       <img class="v-item-sheet__icon" src="{{item.img}}" data-edit="img" title="{{item.name}}" />
@@ -26,9 +25,7 @@
     </div>
   </header>
 
-  {{!-- MAIN BODY --}}
   <section class="v-item-sheet__body">
-    {{!-- SIDEBAR --}}
     <aside class="v-item-sheet__sidebar">
       <label class="v-item-sheet__stat">
         <span>Тип</span>
@@ -72,7 +69,6 @@
       </div>
     </aside>
 
-    {{!-- TABS --}}
     <main class="v-item-sheet__main">
       <section class="v-item-sheet__tabs">
         <div class="v-item-sheet__tab-nav" role="tablist">
@@ -80,11 +76,10 @@
             <i class="fas fa-pen"></i>
           </button>
           <a class="v-item-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" data-tab="desc" role="tab">Описание</a>
-          <a class="v-item-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects" role="tab">Эффекты</a>
+          <a class="v-item-sheet__tab v-tab-link {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" data-tab="effects" role="tab">Модификаторы</a>
         </div>
 
         <div class="v-item-sheet__tab-content">
-          {{!-- DESC TAB --}}
           <section class="v-item-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'desc')}}is-active{{/if}}" role="tabpanel" data-tab="desc">
             <div class="v-item-sheet__panel-header">
               <div class="v-h2">Описание</div>
@@ -102,57 +97,28 @@
             <textarea class="v-item-sheet__desc-edit v-edit-only" name="system.description" data-role="desc-edit">{{system.description}}</textarea>
           </section>
 
-          {{!-- EFFECTS TAB --}}
           <section class="v-item-sheet__panel v-tab-panel {{#if (eq vitruvium.activeTab 'effects')}}is-active{{/if}}" role="tabpanel" data-tab="effects">
             <div class="v-item-sheet__panel-header">
-              <div class="v-h2">Эффекты</div>
+              <div class="v-h2">Модификаторы</div>
               <div class="v-line"></div>
-              <button type="button" class="v-mini" data-action="add-effect">+</button>
+              <button type="button" class="v-mini" data-action="edit-modifiers">+</button>
             </div>
 
-            <div class="v-effects__rows">
-              {{#if vitruvium.effects.length}}
-                {{#each vitruvium.effects as |eff|}}
-                  <div class="v-effects__row">
-                    <select class="v-effects__key">
-                      {{#each ../vitruvium.effectTargets as |opt|}}
-                        <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
-                      {{/each}}
-                      {{#each ../vitruvium.overTimeEffectTypes as |opt|}}
-                        <option value="{{opt.key}}" {{#if (eq opt.key eff.effectKey)}}selected{{/if}}>{{opt.label}}</option>
-                      {{/each}}
-                    </select>
-                    <select class="v-effects__timing" {{#unless eff.isOverTime}}style="display:none;"{{/unless}}>
-                      {{#each ../vitruvium.overTimeTriggerTimings as |timing|}}
-                        <option value="{{timing.key}}" {{#if (eq timing.key eff.triggerTiming)}}selected{{/if}}>{{timing.label}}</option>
-                      {{/each}}
-                    </select>
-                    <input type="number" class="v-effects__val" value="{{eff.value}}" step="1" />
-                    <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
+            {{#if vitruvium.modifierRows.length}}
+              <div class="v-effects-list">
+                {{#each vitruvium.modifierRows as |mod|}}
+                  <div class="v-effects-list__row">
+                    <span>{{mod.targetLabel}}</span>
+                    <span>{{mod.typeLabel}}</span>
+                    <span>{{mod.valueLabel}}</span>
+                    {{#if mod.isTimed}}<span>{{mod.triggerTimingLabel}}</span>{{/if}}
                   </div>
                 {{/each}}
-              {{else}}
-                <div class="v-effects__row">
-                  <select class="v-effects__key">
-                    {{#each vitruvium.effectTargets as |opt|}}
-                      <option value="{{opt.key}}" {{#if @first}}selected{{/if}}>{{opt.label}}</option>
-                    {{/each}}
-                    {{#each vitruvium.overTimeEffectTypes as |opt|}}
-                      <option value="{{opt.key}}">{{opt.label}}</option>
-                    {{/each}}
-                  </select>
-                  <select class="v-effects__timing" style="display:none;">
-                    {{#each vitruvium.overTimeTriggerTimings as |timing|}}
-                      <option value="{{timing.key}}" {{#if @first}}selected{{/if}}>{{timing.label}}</option>
-                    {{/each}}
-                  </select>
-                  <input type="number" class="v-effects__val" value="0" step="1" />
-                  <button type="button" class="v-mini v-effects__remove" title="Удалить">x</button>
-                </div>
-              {{/if}}
-            </div>
+              </div>
+            {{else}}
+              <div class="v-item-sheet__desc-placeholder">Модификаторы не добавлены.</div>
+            {{/if}}
 
-            {{!-- ATTACK ATTRIBUTE --}}
             <div class="v-item-sheet__attack-attr">
               <label>
                 <span>Атакующая характеристика</span>
@@ -164,7 +130,6 @@
               </label>
             </div>
 
-            {{!-- CONTEST STATES --}}
             <div class="v-item-sheet__attack-attr">
               <div class="v-item-sheet__panel-header">
                 <div class="v-h3">Накладываемые состояния</div>
@@ -233,7 +198,7 @@
                         <select name="system.contestStates.0.uuid" class="v-item-sheet__select">
                           <option value="">Не накладывать</option>
                           {{#each vitruvium.stateTemplateOptions as |st|}}
-                            <option value="{{st.uuid}}" {{#if (eq st.uuid ../state.uuid)}}selected{{/if}}>{{st.name}}</option>
+                            <option value="{{st.uuid}}">{{st.name}}</option>
                           {{/each}}
                         </select>
                       </label>
@@ -244,9 +209,9 @@
                       <label>
                         <span>Способ наложения</span>
                         <select name="system.contestStates.0.applyMode" class="v-item-sheet__select">
-                          <option value="self" selected>На себя</option>
+                          <option value="self">На себя</option>
                           <option value="targetNoCheck">Цель: без проверки</option>
-                          <option value="targetContest">Цель: соревнование</option>
+                          <option value="targetContest" selected>Цель: соревнование</option>
                           <option value="CRIT_ATTACK">Цель: при крите атаки</option>
                         </select>
                       </label>
@@ -272,7 +237,7 @@
               </div>
 
               {{#unless vitruvium.hasStateTemplates}}
-                <div class="v-item-sheet__desc-placeholder">Compendium системы "Состояния" не найден или пуст.</div>
+                <div class="v-item-sheet__desc-placeholder">Compendium системы «Состояния» не найден или пуст.</div>
               {{/unless}}
             </div>
           </section>

@@ -1,4 +1,4 @@
-<form class="{{cssClass}} v-sheet v-effect-sheet" autocomplete="off">
+﻿<form class="{{cssClass}} v-sheet v-effect-sheet" autocomplete="off">
 
   {{!-- HEADER --}}
   <header class="v-effect-sheet__header">
@@ -8,21 +8,22 @@
 
     <div class="v-effect-sheet__titleblock">
       <div class="v-effect-sheet__name-view">{{item.name}}</div>
-      <input class="v-effect-sheet__name-input" type="text" name="name" value="{{item.name}}" placeholder="Название эффекта" />
+      <input class="v-effect-sheet__name-input" type="text" name="name" value="{{item.name}}" placeholder="РќР°Р·РІР°РЅРёРµ СЌС„С„РµРєС‚Р°" />
     </div>
 
     <div class="v-effect-sheet__actions">
-      <button type="button" class="v-btn v-btn--primary" data-action="edit-effects">
+      <button type="button" class="v-btn v-btn--primary" data-action="edit-modifiers">
         <i class="fas fa-magic"></i>
-        <span>Эффекты</span>
+        <span>Р­С„С„РµРєС‚С‹</span>
       </button>
     </div>
   </header>
 
   {{!-- BODY --}}
   <section class="v-effect-sheet__body">
-    <div class="v-effect-sheet__desc-header">Описание</div>
+    <div class="v-effect-sheet__desc-header">РћРїРёСЃР°РЅРёРµ</div>
     <div class="v-line"></div>
-    <textarea class="v-effect-sheet__desc" name="system.description" placeholder="Что делает этот эффект.">{{system.description}}</textarea>
+    <textarea class="v-effect-sheet__desc" name="system.description" placeholder="Р§С‚Рѕ РґРµР»Р°РµС‚ СЌС‚РѕС‚ СЌС„С„РµРєС‚.">{{system.description}}</textarea>
   </section>
 </form>
+
