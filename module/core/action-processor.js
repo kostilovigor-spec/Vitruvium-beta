@@ -40,8 +40,7 @@ export class ActionProcessor {
         await this.stageRoll(ctx);
         await this.stageModify(ctx);
         await this.stageResolve(ctx);
-        await this.stageApply(ctx);
-
+        // stageApply removed — damage is applied via GM chat button (same as abilities)
         return this.buildResult(ctx);
     }
 
@@ -127,7 +126,7 @@ export class ActionProcessor {
             defenseSuccesses: def,
             weaponDamage: weaponDamage,
             damage: result.damage,
-            isCritical: result.crit
+            margin: result.margin
         };
     }
 

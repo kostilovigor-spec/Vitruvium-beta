@@ -3,6 +3,7 @@ import { escapeHtml } from "./utils/string.js";
 import { playAutomatedAnimation } from "./auto-animations.js";
 import { DiceSystem } from "./core/dice-system.js";
 import { DamageResolver } from "./core/damage-resolver.js";
+import { ConditionResolver } from "./core/condition-resolver.js";
 import {
   normalizeModifiers,
   collectEffectTotals,
@@ -779,10 +780,10 @@ function renderContestTargets({
   `;
 }
 
-function renderGmApplyButtons({ defenderTokenUuid, defenderName = "", damage, isHealing = false, crit = false }) {
+function renderGmApplyButtons({ defenderTokenUuid, defenderName = "", damage, isHealing = false }) {
   const action = isHealing ? "vitruvium-apply-healing" : "vitruvium-apply-damage";
   const btnClass = isHealing ? "v-btn--success" : "v-btn--danger";
-  const btnLabel = isHealing ? `Лечение (${damage})` : `Урон (${damage})${!isHealing && crit ? " ×2️ КРИТ" : ""}`;
+  const btnLabel = isHealing ? `Лечение (${damage})` : `Урон (${damage})`;
   const nameHtml = defenderName
     ? `<span class="v-dmg-name">${escapeHtml(defenderName)}</span>`
     : "";
@@ -883,7 +884,6 @@ async function createGmApplyMessage({
       defenderName: defName,
       damage: dmg,
       isHealing,
-      crit: !!row.crit,
     });
     await ChatMessage.create({
       ...chatVisibilityData({ gmOnly: true }),
@@ -1015,10 +1015,10 @@ function defenseCardTwoCols({
   hit = null,
   damage = 0,
   defenderTokenUuid = "",
-  crit = false,
+  margin = 0,
   compact = "",
 }) {
-  const critBadge = crit ? ' <span class="v-crit-badge">КРИТ!</span>' : "";
+  const marginLabel = margin > 0 ? ` <span class="v-margin-badge">+${margin}</span>` : "";
   const dmgDetail = compact ? `<div class="v-sub">${compact}</div>` : "";
   const resultBox =
     hit === null
@@ -1028,10 +1028,9 @@ function defenseCardTwoCols({
       </div>`
       : hit
         ? renderCollapsibleBox({
-          label: `Урон${critBadge}`,
+          label: `Урон${marginLabel}`,
           value: damage,
           detailHtml: dmgDetail,
-          extraClass: crit ? "v-box--crit" : "",
         })
         : `<div class="v-box">
         <div class="v-box__label">Результат</div>
@@ -1296,8 +1295,7 @@ Hooks.once("ready", () => {
     .vitruvium-chatcard .v-box__label{font-size:12px;opacity:.75;margin-bottom:6px}
     .vitruvium-chatcard .v-box__big{font-size:26px;font-weight:800;line-height:1}
     .vitruvium-chatcard .v-actions{display:flex;gap:10px;align-items:center;margin-top:12px}
-    .vitruvium-chatcard .v-box--crit{border-color:rgba(200,30,30,.5);background:rgba(255,220,220,.45)}
-    .vitruvium-chatcard .v-crit-badge{display:inline-block;padding:1px 7px;border-radius:999px;background:rgba(200,30,30,.85);color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;margin-left:4px;vertical-align:middle}
+    .vitruvium-chatcard .v-margin-badge{display:inline-block;padding:1px 7px;border-radius:999px;background:rgba(40,120,200,.85);color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;margin-left:4px;vertical-align:middle}
     .vitruvium-chatcard .v-details{margin:0}
     .vitruvium-chatcard .v-details__summary{display:flex;align-items:baseline;gap:8px;cursor:pointer;list-style:none}
     .vitruvium-chatcard .v-details__summary::-webkit-details-marker{display:none}
@@ -1748,7 +1746,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           let hit = false;
           let damage = 0;
           let compact = "";
-          let crit = false;
+          let margin = 0;
           const attackKindDef = flags.attackKind ?? "weapon";
           const defSDef = defRoll.successes;
           const atkSDef = toNumber(flags.atkSuccesses, 0);
@@ -1766,7 +1764,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               damage = dmgOut.damage;
               compact = dmgOut.compact;
               hit = attackRollEnabled ? (atkSDef > defSDef) : true;
-              crit = dmgOut.crit ?? false;
+              margin = dmgOut.margin ?? 0;
             } else {
               hit = attackRollEnabled ? atkSDef > defSDef : true;
             }
@@ -1787,26 +1785,37 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             damage = dmgOut.damage;
             compact = dmgOut.compact;
             hit = dmgOut.hit;
-            crit = dmgOut.crit ?? false;
+            margin = dmgOut.margin ?? 0;
           }
 
-          // Apply states configured for CRIT_ATTACK mode.
-          // Reuses the already computed "crit" result from normal attack resolution.
-          const critAttackStates = Array.isArray(flags.critAttackStates)
+          // Apply margin-based states (apply when atkSuccesses - defSuccesses >= threshold).
+          // Works for both ability and weapon attacks.
+          const marginStates = Array.isArray(flags.marginStates)
+            ? flags.marginStates
+            : [];
+          // Backward compatibility: migrate old critAttackStates
+          const legacyCritStates = Array.isArray(flags.critAttackStates)
             ? flags.critAttackStates
             : [];
-          if (
-            crit &&
-            flags.attackKind === "ability" &&
-            flags.attackRoll === true &&
-            critAttackStates.length > 0
-          ) {
-            for (const state of critAttackStates) {
-              if (!state?.uuid) continue;
+          const allMarginStates = [
+            ...marginStates,
+            ...legacyCritStates.map(s => ({
+              ...s,
+              condition: s.condition || ConditionResolver.migrateApplyModeToCondition("CRIT_ATTACK"),
+            })),
+          ];
+
+          if (allMarginStates.length > 0) {
+            const context = { atk: atkSDef, def: defSDef, margin };
+            for (const entry of allMarginStates) {
+              if (!entry?.uuid) continue;
+              if (entry.condition && !ConditionResolver.checkCondition(entry.condition, context)) {
+                continue; // Условие не выполнено
+              }
               await replaceStateFromTemplate(
                 defender,
-                state.uuid,
-                state.durationRounds,
+                entry.uuid,
+                entry.durationRounds,
                 defenderTokenUuid,
               );
             }
@@ -1823,7 +1832,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               hit,
               damage,
               defenderTokenUuid,
-              crit,
+              margin,
               compact,
             }),
             rolls: defRoll.rolls,
@@ -1832,7 +1841,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               defenderTokenUuid,
               damage,
               hit,
-              crit,
+              margin,
             }),
           });
 
@@ -1854,7 +1863,6 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                   label: defender.name,
                   damage,
                   isHealing: false,
-                  crit,
                 },
               ],
             });
@@ -1863,7 +1871,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           const resolvedResults = Array.isArray(flags.resolvedResults) ? flags.resolvedResults : [];
           const nextResolvedResults = [
             ...resolvedResults,
-            { uuid: defenderTokenUuid, damage, hit, crit }
+            { uuid: defenderTokenUuid, damage, hit, margin }
           ];
 
           const nextResolvedDefenderUuids = nextResolvedResults.map(r => r.uuid);
@@ -2146,41 +2154,40 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         0,
         Math.round(toNumber(abilityItem?.system?.contestStateDurationRounds, 1)),
       );
-      const oldMode = [
-        "self",
-        "targetNoCheck",
-        "targetContest",
-        "CRIT_ATTACK",
-      ].includes(
-        abilityItem?.system?.contestApplyMode,
-      )
-        ? abilityItem.system.contestApplyMode
-        : "targetContest";
+      const oldMode = abilityItem?.system?.contestApplyMode ?? "targetContest";
       if (oldUuid) {
+        const normalized = ConditionResolver.normalizeApplyMode(oldMode);
         contestStates = [
-          { uuid: oldUuid, durationRounds: oldDuration, applyMode: oldMode },
+          {
+            uuid: oldUuid,
+            durationRounds: oldDuration,
+            applyMode: normalized.mode,
+            condition: normalized.condition,
+          },
         ];
       }
     }
     // Normalize each state
     contestStates = contestStates
       .filter((s) => String(s.uuid ?? "").trim().length > 0)
-      .map((s) => ({
-        uuid: String(s.uuid ?? "").trim(),
-        durationRounds: Math.max(0, Math.round(Number(s.durationRounds ?? 1))),
-        applyMode: [
-          "self",
-          "targetNoCheck",
-          "targetContest",
-          "CRIT_ATTACK",
-        ].includes(
-          s.applyMode,
-        )
-          ? s.applyMode
-          : "targetContest",
-        casterAttr: String(s.casterAttr ?? "combat").trim(),
-        targetAttr: String(s.targetAttr ?? "combat").trim(),
-      }));
+      .map((s) => {
+        const normalized = ConditionResolver.normalizeApplyMode(s.applyMode);
+        const conditionType = String(s.conditionType ?? "").trim() || (normalized.condition?.type ?? "");
+        const conditionValue = s.conditionValue !== undefined && s.conditionValue !== "" && s.conditionValue !== null
+          ? Number(s.conditionValue)
+          : (normalized.condition?.value ?? "");
+        const condition = conditionType ? { type: conditionType, value: conditionValue } : null;
+        return {
+          uuid: String(s.uuid ?? "").trim(),
+          durationRounds: Math.max(0, Math.round(Number(s.durationRounds ?? 1))),
+          applyMode: normalized.mode,
+          condition,
+          conditionType,
+          conditionValue,
+          casterAttr: String(s.casterAttr ?? "combat").trim(),
+          targetAttr: String(s.targetAttr ?? "combat").trim(),
+        };
+      });
 
     const hasDamage = damageBase > 0;
     const hasHeal = healBase > 0;
@@ -2287,13 +2294,13 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       }
     }
 
-    // Contest roll states (targetContest mode)
+    // Contest roll states (targetContest mode) — require caster vs target contest rolls
     const targetContestStates = nonSelfStates.filter(
       (s) => s.applyMode === "targetContest",
     );
-    // Crit attack states (apply automatically only when attack result is critical)
-    const targetCritAttackStates = nonSelfStates.filter(
-      (s) => s.applyMode === "CRIT_ATTACK",
+    // Margin-based states (apply when atkSuccesses - defSuccesses >= threshold)
+    const targetMarginStates = nonSelfStates.filter(
+      (s) => s.applyMode === "margin",
     );
     const doContestRoll = targetContestStates.length > 0 && hasContestTarget;
     // Use caster/target attr from the first targetContest state
@@ -2443,7 +2450,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         attackRoll: attackRollEnabled,
         contestEnabled: doContestRoll,
         contestStates: targetContestStates,
-        critAttackStates: targetCritAttackStates,
+        marginStates: targetMarginStates,
         contestCasterAttr,
         contestTargetAttr,
         casterContestSuccesses,
@@ -2466,7 +2473,6 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           label: gmTargets.length > 1 ? t.defenderName : "",
           damage: damageShown,
           isHealing: false,
-          crit: false,
         })),
       });
     }
@@ -2481,7 +2487,6 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           label: gmTargets.length > 1 ? t.defenderName : "",
           damage: healShown,
           isHealing: true,
-          crit: false,
         })),
       });
     }
@@ -2494,6 +2499,20 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
 export async function startWeaponAttackFlow(attackerActor, weaponItem) {
   try {
     const weaponName = weaponItem?.name ?? "Оружие";
+    const weaponSys = weaponItem?.system ?? {};
+
+    // Read contest states from weapon (for margin-based effects)
+    const weaponContestStates = Array.isArray(weaponSys.contestStates)
+      ? weaponSys.contestStates
+      : [];
+    const weaponMarginStates = weaponContestStates
+      .filter((s) => String(s.applyMode ?? "") === "margin")
+      .map((s) => ({
+        ...s,
+        condition: s.conditionType === "margin"
+          ? { type: "margin", value: Number(s.conditionValue ?? 2) }
+          : null,
+      }));
 
     const atkChoice = await attackDialog({
       actor: attackerActor,
@@ -2609,6 +2628,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         atkFullMode: atkRoll.fullMode,
         atkSuccesses: atkRoll.successes,
         atkPool: atkRoll.pool,
+        marginStates: weaponMarginStates,
       }),
     });
 
@@ -2622,7 +2642,6 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         label: defenseTargets.length > 1 ? t.defenderName : "",
         damage: predictedDmgValue,
         isHealing: false,
-        crit: false,
       })),
     });
   } catch (e) {

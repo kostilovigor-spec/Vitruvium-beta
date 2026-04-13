@@ -1,7 +1,3 @@
-function isCritical(atk, def) {
-    return atk >= 2 && atk >= 2 * def && atk - def >= 2;
-}
-
 function num(v, d) {
     const n = Number(v);
     return Number.isFinite(n) ? n : d;
@@ -26,6 +22,7 @@ function computeWeaponDamage({
     const def = num(defenseSuccesses, 0);
     const base = num(weaponDamage, 0);
     const armorVal = num(armor, 0);
+    const margin = atk - def;
 
     if (isBlock) {
         const blockBonusEnabled = false;
@@ -43,14 +40,10 @@ function computeWeaponDamage({
         const rawDmg = Math.max(0, totalPotential - effBlock) + breakthrough;
         const dmg = Math.min(rawDmg, totalPotential);
 
-        const crit = isCritical(atk, def);
-        const finalDmg = crit ? dmg * 2 : dmg;
         const blockLabel = blockBonus ? `${def}+${blockBonus}` : `${def}`;
         const formula = `min(max(0, (${base} + max(0, ${atk} - ${armorVal})) - ${blockLabel}) + max(0, ${atk} - ${blockLabel}), ${base} + max(0, ${atk} - ${armorVal}))`;
-        const compact = crit
-            ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
-            : `${formula} = ${dmg}`;
-        return { damage: finalDmg, compact, hit: true, crit };
+        const compact = `${formula} = ${dmg}`;
+        return { damage: dmg, compact, hit: true, margin };
     }
 
     const hit = atk > def;
@@ -59,26 +52,22 @@ function computeWeaponDamage({
             damage: 0,
             compact: `промах: ${atk} <= ${def} -> 0`,
             hit: false,
-            crit: false,
+            margin,
         };
     }
 
     const effAtk = Math.max(0, atk - armorVal);
     const dmg = base + effAtk;
-    const crit = isCritical(atk, def);
-    const finalDmg = crit ? dmg * 2 : dmg;
     const formula = `${base} + max(0, ${atk} - ${armorVal})`;
-    const compact = crit
-        ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
-        : `${formula} = ${dmg}`;
-    return { damage: finalDmg, compact, hit: true, crit };
+    const compact = `${formula} = ${dmg}`;
+    return { damage: dmg, compact, hit: true, margin };
 }
 
 /**
  * @param {Object} options
+ * @param {number} options.weaponDamage
  * @param {number} options.attackSuccesses
  * @param {number} options.defenseSuccesses
- * @param {number} options.weaponDamage
  */
 function computeAbilityDamage({ weaponDamage, attackSuccesses, defenseSuccesses }) {
     const base = num(weaponDamage, 0);
@@ -87,19 +76,15 @@ function computeAbilityDamage({ weaponDamage, attackSuccesses, defenseSuccesses 
     const hit = atk > def;
     const total = base + atk;
     const dmg = hit ? Math.max(0, total) : 0;
-    const crit = hit ? isCritical(atk, def) : false;
-    const finalDmg = crit ? dmg * 2 : dmg;
+    const margin = atk - def;
     const formula = `${base} + ${atk}`;
     const compact = hit
-        ? crit
-            ? `(${formula}) × 2 [КРИТ] = ${finalDmg}`
-            : `${formula} = ${dmg}`
+        ? `${formula} = ${dmg}`
         : `промах: ${atk} <= ${def} -> 0`;
-    return { damage: finalDmg, compact, hit, crit, atkS: atk, defS: def };
+    return { damage: dmg, compact, hit, margin, atkS: atk, defS: def };
 }
 
 export const DamageResolver = {
     computeWeaponDamage,
     computeAbilityDamage,
-    isCritical
 };

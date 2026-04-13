@@ -154,7 +154,7 @@
                     <div class="v-contest-states__fields">
                       <label>
                         <span>Состояние</span>
-                        <select name="system.contestStates.{{idx}}.uuid" class="v-item-sheet__select">
+                        <select data-field="uuid" class="v-item-sheet__select">
                           <option value="">Не накладывать</option>
                           {{#each ../vitruvium.stateTemplateOptions as |st|}}
                             <option value="{{st.uuid}}" {{#if (eq st.uuid state.uuid)}}selected{{/if}}>{{st.name}}</option>
@@ -163,20 +163,34 @@
                       </label>
                       <label class="v-contest-states__duration">
                         <span>Длит. (ходы)</span>
-                        <input type="number" name="system.contestStates.{{idx}}.durationRounds" value="{{state.durationRounds}}" data-dtype="Number" min="0" step="1" />
+                        <input type="number" data-field="durationRounds" value="{{state.durationRounds}}" data-dtype="Number" min="0" step="1" />
                       </label>
                       <label>
                         <span>Способ наложения</span>
-                        <select name="system.contestStates.{{idx}}.applyMode" class="v-item-sheet__select">
+                        <select data-field="applyMode" class="v-item-sheet__select v-apply-mode-select">
                           <option value="self" {{#if (eq state.applyMode "self")}}selected{{/if}}>На себя</option>
                           <option value="targetNoCheck" {{#if (eq state.applyMode "targetNoCheck")}}selected{{/if}}>Цель: без проверки</option>
                           <option value="targetContest" {{#if (eq state.applyMode "targetContest")}}selected{{/if}}>Цель: соревнование</option>
-                          <option value="CRIT_ATTACK" {{#if (eq state.applyMode "CRIT_ATTACK")}}selected{{/if}}>Цель: при крите атаки</option>
+                          <option value="margin" {{#if (eq state.applyMode "margin")}}selected{{/if}}>При разнице успехов ≥</option>
                         </select>
                       </label>
+                      <label class="v-field--margin" style="display:{{#if (eq state.applyMode "margin")}}block{{else}}none{{/if}}">
+                        <span>Порог разницы успехов</span>
+                        <input
+                          type="number"
+                          data-field="conditionValue"
+                          class="v-item-sheet__input"
+                          value="{{state.conditionValue}}"
+                          placeholder="—"
+                          data-dtype="Number"
+                          min="0"
+                          step="1"
+                        />
+                      </label>
+                      <span class="v-field--contest-attrs" style="display:{{#if (eq state.applyMode "targetContest")}}block{{else}}none{{/if}}">
                       <label>
                         <span>Атрибут кастера</span>
-                        <select name="system.contestStates.{{idx}}.casterAttr" class="v-item-sheet__select">
+                        <select data-field="casterAttr" class="v-item-sheet__select">
                           {{#each ../vitruvium.attackAttrOptions as |opt|}}
                             <option value="{{opt.key}}" {{#if (eq opt.key state.casterAttr)}}selected{{/if}}>{{opt.label}}</option>
                           {{/each}}
@@ -184,12 +198,13 @@
                       </label>
                       <label>
                         <span>Атрибут цели</span>
-                        <select name="system.contestStates.{{idx}}.targetAttr" class="v-item-sheet__select">
+                        <select data-field="targetAttr" class="v-item-sheet__select">
                           {{#each ../vitruvium.attackAttrOptions as |opt|}}
                             <option value="{{opt.key}}" {{#if (eq opt.key state.targetAttr)}}selected{{/if}}>{{opt.label}}</option>
                           {{/each}}
                         </select>
                       </label>
+                      </span>
                     </div>
                   </div>
                 {{/each}}
@@ -202,7 +217,7 @@
                   <div class="v-contest-states__fields">
                     <label>
                       <span>Состояние</span>
-                      <select name="system.contestStates.0.uuid" class="v-item-sheet__select">
+                      <select data-field="uuid" class="v-item-sheet__select">
                         <option value="">Не накладывать</option>
                         {{#each vitruvium.stateTemplateOptions as |st|}}
                           <option value="{{st.uuid}}">{{st.name}}</option>
@@ -211,20 +226,34 @@
                     </label>
                     <label class="v-contest-states__duration">
                       <span>Длит. (ходы)</span>
-                      <input type="number" name="system.contestStates.0.durationRounds" value="1" data-dtype="Number" min="0" step="1" />
+                      <input type="number" data-field="durationRounds" value="1" data-dtype="Number" min="0" step="1" />
                     </label>
                     <label>
                       <span>Способ наложения</span>
-                      <select name="system.contestStates.0.applyMode" class="v-item-sheet__select">
+                      <select data-field="applyMode" class="v-item-sheet__select v-apply-mode-select">
                         <option value="self">На себя</option>
                         <option value="targetNoCheck">Цель: без проверки</option>
                         <option value="targetContest" selected>Цель: соревнование</option>
-                        <option value="CRIT_ATTACK">Цель: при крите атаки</option>
+                        <option value="margin">При разнице успехов ≥</option>
                       </select>
                     </label>
+                    <label class="v-field--margin" style="display:none">
+                      <span>Порог разницы успехов</span>
+                      <input
+                        type="number"
+                        data-field="conditionValue"
+                        class="v-item-sheet__input"
+                        value=""
+                        placeholder="—"
+                        data-dtype="Number"
+                        min="0"
+                        step="1"
+                      />
+                    </label>
+                    <span class="v-field--contest-attrs">
                     <label>
                       <span>Атрибут кастера</span>
-                      <select name="system.contestStates.0.casterAttr" class="v-item-sheet__select">
+                      <select data-field="casterAttr" class="v-item-sheet__select">
                         {{#each ../vitruvium.attackAttrOptions as |opt|}}
                           <option value="{{opt.key}}" {{#if (eq opt.key ../vitruvium.attackAttrDefault)}}selected{{/if}}>{{opt.label}}</option>
                         {{/each}}
@@ -232,12 +261,13 @@
                     </label>
                     <label>
                       <span>Атрибут цели</span>
-                      <select name="system.contestStates.0.targetAttr" class="v-item-sheet__select">
+                      <select data-field="targetAttr" class="v-item-sheet__select">
                         {{#each ../vitruvium.attackAttrOptions as |opt|}}
                           <option value="{{opt.key}}" {{#if (eq opt.key ../vitruvium.attackAttrDefault)}}selected{{/if}}>{{opt.label}}</option>
                         {{/each}}
                       </select>
                     </label>
+                    </span>
                   </div>
                 </div>
               {{/if}}
