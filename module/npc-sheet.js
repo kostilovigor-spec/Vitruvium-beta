@@ -184,12 +184,20 @@ export class VitruviumNPCSheet extends ActorSheet {
         break;
       case "use":
       case "attack":
-        if (item?.type === "item") await game.vitruvium.startWeaponAttackFlow(this.actor, item);
-        else if (item?.type === "ability") await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+        if (item?.type === "item") {
+          if (this._itemHasDamage(item)) await game.vitruvium.startWeaponAttackFlow(this.actor, item);
+          else this._postItemToChat(item);
+        } else if (item?.type === "ability") {
+          if (this._itemHasDamage(item)) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+          else if (await this._consumeAbilityCost(item)) this._postItemToChat(item);
+        }
         else if (item) this._postItemToChat(item);
         break;
       case "use-ability":
-        if (item) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+        if (item) {
+          if (this._itemHasDamage(item)) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+          else if (await this._consumeAbilityCost(item)) this._postItemToChat(item);
+        }
         break;
       case "roll-attr":
         await this._rollAttribute(btn.dataset.attr);
@@ -252,8 +260,48 @@ export class VitruviumNPCSheet extends ActorSheet {
     return this.actor.createEmbeddedDocuments("Item", [itemData]);
   }
 
+  _itemHasDamage(item) {
+    if (!item) return false;
+    if (item.type === "item") return Math.max(0, toNumber(item.system?.attackBonus, 0)) > 0;
+    if (item.type === "ability") return Math.max(0, toNumber(item.system?.rollDamageBase, 0)) > 0;
+    return false;
+  }
+
+  async _consumeAbilityCost(item) {
+    if (!item || item.type !== "ability") return true;
+    const cost = clamp(toNumber(item.system?.cost, 0), 0, 6);
+    if (cost <= 0) return true;
+
+    const currentInsp = toNumber(this.actor.system?.attributes?.inspiration?.value, 0);
+    if (currentInsp < cost) {
+      ui.notifications?.warn(
+        `Недостаточно вдохновения для использования способности. Требуется: ${cost}, доступно: ${currentInsp}`,
+      );
+      return false;
+    }
+
+    await this.actor.update({
+      "system.attributes.inspiration.value": currentInsp - cost,
+    });
+    return true;
+  }
+
   _postItemToChat(item) {
-    const content = `<div class="v-itemcard"><img src="${item.img}" width="32" height="32"/><b>${item.name}</b><p>${item.system.description || ""}</p></div>`;
+    const name = escapeHtml(item.name ?? "Предмет");
+    const img = escapeHtml(item.img ?? "icons/svg/item-bag.svg");
+    const desc = String(item.system?.description ?? "");
+    const descHtml = desc ? escapeHtml(desc).replace(/\n/g, "<br>") : "";
+    const content = `
+      <div class="v-itemcard">
+        <div class="v-itemcard__top">
+          <img class="v-itemcard__img" src="${img}" alt="${name}"/>
+          <div class="v-itemcard__head">
+            <div class="v-itemcard__title">@UUID[${item.uuid}]{${name}}</div>
+          </div>
+        </div>
+        ${descHtml ? `<div class="v-itemcard__desc">${descHtml}</div>` : ""}
+      </div>
+    `;
     ChatMessage.create({ content });
   }
 }

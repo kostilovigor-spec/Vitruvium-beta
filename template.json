@@ -13,6 +13,7 @@
         "attack": 0,
         "armor": 0,
         "level": 1,
+        "experience": 0,
 
         "inspiration": { "value": 6, "max": 6 },
         "hp": { "value": 5, "max": 5 },

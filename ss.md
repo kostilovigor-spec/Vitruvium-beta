@@ -1,217 +1,356 @@
-# Задача: Удалить механику crit и заменить её на универсальную систему "разницы успехов"
+## ЗАДАЧА
+
+Реализовать stateful систему обработки атак в Vitruvium:
+
+* startAttack (инициация)
+* resumeAttack (продолжение после защиты)
+* единый pipeline
+* убрать прямые actor.update из UI
+
+Дополнительно:
+→ заложить поддержку типов урона (damage types, resistances, vulnerabilities)
 
 ---
 
-## Цель
+## ЦЕЛЬ
 
-Полностью убрать:
-- isCritical()
-- все проверки crit
-- все зависимости от crit
-
-И заменить на:
-→ универсальную систему:
-"эффект срабатывает, если (atkSuccesses - defSuccesses) >= threshold"
+1. Убрать разрыв pipeline (attack → defense → apply)
+2. Сделать ActionProcessor центром логики
+3. Перенести защиту внутрь процессора
+4. Подготовить систему к damage types
 
 ---
 
-## ЧАСТЬ 1: Удаление crit
+## ЭТАП 1 — ACTION STORE
 
-Найти и удалить:
+Создать:
 
-1. Функцию:
-- isCritical(atk, def)
-
-2. Все использования:
-- crit ? dmg * 2 : dmg
-- result.crit
-- flags.crit
-- UI (бейджи КРИТ, ×2 и т.д.)
-- CRIT_ATTACK режим
-
-3. Очистить:
-- combat.js
-- damage-resolver.js
-- action-processor.js
-- шаблоны
-
-👉 Важно:
-НЕ оставить ни одного зависимого вызова
+module/core/action-store.js
 
 ---
 
-## ЧАСТЬ 2: Введение margin (разницы успехов)
+### Реализация:
 
-Добавить в результат броска:
-
-margin = atkSuccesses - defSuccesses
-
-Добавить в:
-- damage resolver
-- action processor (ctx.computed.margin)
+export const ActionStore = new Map()
 
 ---
 
-## ЧАСТЬ 3: Новая система условий (ядро)
+### Формат хранения:
 
-Создать модуль:
-
-module/core/condition-resolver.js
-
-Функция:
-
-function checkCondition(condition, context) {
-    // condition: { type: "margin", value: number }
-    // context: { atk, def, margin }
-
-    if (condition.type === "margin") {
-        return context.margin >= condition.value;
-    }
-
-    return false;
-}
-
-Экспортировать:
-ConditionResolver.checkCondition
-
----
-
-## ЧАСТЬ 4: Замена CRIT_ATTACK
-
-Удалить:
-- applyMode === "CRIT_ATTACK"
-
-Заменить на:
-
-effect.condition = {
-    type: "margin",
-    value: number
+actionId → {
+ctx,
+createdAt,
+userId
 }
 
 ---
 
-## ЧАСТЬ 5: UI (способности / предметы)
+## ЭТАП 2 — РАСШИРИТЬ ActionContext
 
-Вместо:
-- "при крите"
-
-Сделать:
-
-Поле:
-"Наложить состояние при разнице успехов ≥ [число]"
+Файл: action-processor.js
 
 ---
-
-### Реализация UI:
 
 Добавить:
-- number input (threshold)
 
-Если поле пустое:
-→ условие не используется
+ctx.id = randomID()
+ctx.state = "pending_defense" | "resolved"
 
-Если заполнено:
-→ сохранять:
-
-effect.condition = {
-    type: "margin",
-    value: X
+ctx.damage = {
+base: number,
+types: [
+{ type: "physical", value: number }
+]
 }
 
 ---
 
-## ЧАСТЬ 6: Применение условий
+## ЭТАП 3 — START ATTACK
 
-В местах, где сейчас:
+Добавить метод:
 
-if (crit) {
-    applyEffect(...)
+ActionProcessor.startAttack(action)
+
+---
+
+### Логика:
+
+1. создать ctx
+2. stageRoll (атака)
+3. stageModify
+4. stageResolveAttackOnly (БЕЗ защиты)
+
+---
+
+### stageResolveAttackOnly:
+
+* считать attackSuccesses
+* НЕ считать финальный урон
+* сформировать damage.base
+
+---
+
+### Вернуть:
+
+{
+actionId,
+preview: {
+attackRoll,
+attackSuccesses,
+damagePreview
 }
+}
+
+---
+
+### Сохранить:
+
+ActionStore.set(actionId, ctx)
+
+---
+
+## ЭТАП 4 — RESUME ATTACK
+
+Добавить:
+
+ActionProcessor.resumeAttack(actionId, input)
+
+---
+
+### input:
+
+{
+defenseType: "block" | "dodge",
+defender: Actor
+}
+
+---
+
+### Логика:
+
+1. достать ctx из ActionStore
+2. stageDefense
+3. stageResolveFinal
+4. stageApply
+5. удалить из ActionStore
+
+---
+
+## ЭТАП 5 — STAGE DEFENSE
+
+Реализовать:
+
+stageDefense(ctx, input)
+
+---
+
+### Делает:
+
+* считает pool защиты
+* вызывает DiceSystem.rollPool
+* сохраняет:
+
+ctx.rolls.defense
+ctx.computed.defenseSuccesses
+
+---
+
+### ВАЖНО:
+
+ВСЯ логика из combat.js:
+
+* block
+* dodge
+* armor
+  → перенести сюда
+
+---
+
+## ЭТАП 6 — STAGE RESOLVE FINAL
+
+Реализовать:
+
+stageResolveFinal(ctx)
+
+---
+
+### Делает:
+
+1. вызывает DamageResolver
+2. учитывает:
+
+   * attackSuccesses
+   * defenseSuccesses
+
+---
+
+### ДОБАВИТЬ DAMAGE TYPES
+
+ctx.damage = {
+parts: [
+{ type: "physical", value: X }
+]
+}
+
+---
+
+## ЭТАП 7 — RESISTANCES / VULNERABILITIES
+
+Добавить в ModifierSystem поддержку:
+
+targets:
+
+* resist.physical
+* resist.fire
+* vuln.physical
+* vuln.fire
+
+---
+
+### В stageResolveFinal:
+
+1. получить totals через ModifierSystem
+2. применить:
+
+finalDamage = damage * (1 - resist + vuln)
+
+---
+
+## ЭТАП 8 — STAGE APPLY
+
+Реализовать:
+
+stageApply(ctx)
+
+---
+
+### Делает:
+
+1. суммирует damage.parts
+2. применяет:
+
+await actor.update({
+"system.attributes.hp.value": newHp
+}, {
+vitruvium: {
+damage: total,
+types: ctx.damage.parts
+}
+})
+
+---
+
+### ВАЖНО:
+
+ЭТО ЕДИНСТВЕННОЕ МЕСТО ГДЕ МЕНЯЕТСЯ HP
+
+---
+
+## ЭТАП 9 — ИНТЕГРАЦИЯ В COMBAT.JS
+
+---
+
+### ЗАМЕНИТЬ:
+
+startWeaponAttackFlow
+
+---
+
+### Было:
+
+* roll
+* damage
+* чат
+* логика защиты
+
+---
+
+### Стало:
+
+const { actionId, preview } = processor.startAttack(...)
+
+renderChat(preview, actionId)
+
+---
+
+---
+
+### В обработчике кнопки защиты:
+
+const result = await processor.resumeAttack(actionId, {
+defenseType,
+defender
+})
+
+renderResult(result)
+
+---
+
+## ЭТАП 10 — УДАЛИТЬ BYPASS
+
+Удалить ВСЕ:
+
+actor.update({
+"system.attributes.hp.value"
+})
+
+из:
+
+* combat.js
+* state-duration.js (HoT)
+
+---
 
 Заменить на:
 
-if (ConditionResolver.checkCondition(effect.condition, context)) {
-    applyEffect(...)
-}
+ActionProcessor.process({
+type: "apply_heal"
+})
 
 ---
 
-## ЧАСТЬ 7: Damage resolver
+## ЭТАП 11 — СОКЕТЫ (если есть мультиплеер)
 
-Удалить:
-- умножение урона на 2
+Если действие инициировано игроком:
 
-Оставить:
-- только базовый урон
-
----
-
-## ЧАСТЬ 8: Централизация
-
-Убедиться:
-
-- ВСЕ проверки условий идут через:
-  ConditionResolver.checkCondition
-
-- НЕТ:
-  - прямых сравнений margin >= X в разных местах
-  - дублирования логики
+* actionId должен быть доступен всем
+* resume должен идти через socket
 
 ---
 
-## ЧАСТЬ 9: Обратная совместимость
-
-Если найдены старые данные:
-
-applyMode === "CRIT_ATTACK"
-
-→ при загрузке конвертировать в:
-
-condition = {
-    type: "margin",
-    value: 2   // базовое значение бывшего крита
-}
-
----
-
-## ЧАСТЬ 10: Очистка
+## ЭТАП 12 — ОЧИСТКА
 
 Удалить:
 
-- CRIT_ATTACK из:
-  - ability-sheet.js
-  - item-sheet.js
-  - templates
-
-- UI элементы:
-  - "КРИТ"
-  - ×2
+* логику защиты из combat.js
+* прямые вызовы DamageResolver вне процессора
 
 ---
 
-## ЧАСТЬ 11: Проверки
+## ОЖИДАЕМЫЙ РЕЗУЛЬТАТ
 
-Проверить:
-
-1. margin считается корректно
-2. эффекты применяются при margin >= threshold
-3. ничего не ломается без condition
-
----
-
-## Ограничения
-
-- НЕ переписывать всю боёвку
-- НЕ менять систему бросков
-- НЕ трогать DoT/HoT
-- НЕ ломать существующие эффекты
+* единый pipeline
+* ActionProcessor = центр логики
+* защита встроена в систему
+* нет прямых изменений HP вне ядра
+* готовность к damage types
 
 ---
 
-## Результат
+## ВАЖНО
 
-1. crit полностью удалён
-2. введена универсальная система условий
-3. эффекты используют margin >= X
-4. логика централизована
-5. UI обновлён
+НЕ:
+
+* менять UI кардинально
+* переписывать effects.js
+* трогать sheets
+
+---
+
+## КРИТЕРИИ УСПЕХА
+
+1. атака → защита → урон проходит через ActionProcessor
+2. combat.js не считает урон
+3. нет actor.update вне stageApply
+4. damage types уже проходят через pipeline
+д
