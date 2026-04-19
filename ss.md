@@ -1,356 +1,294 @@
 ## ЗАДАЧА
 
-Реализовать stateful систему обработки атак в Vitruvium:
+Обобщить текущую stateful систему действий, чтобы она поддерживала:
 
-* startAttack (инициация)
-* resumeAttack (продолжение после защиты)
-* единый pipeline
-* убрать прямые actor.update из UI
+* attack
+* ability
+* heal
+* dot
 
-Дополнительно:
-→ заложить поддержку типов урона (damage types, resistances, vulnerabilities)
+через единый pipeline ActionProcessor
 
 ---
 
 ## ЦЕЛЬ
 
-1. Убрать разрыв pipeline (attack → defense → apply)
-2. Сделать ActionProcessor центром логики
-3. Перенести защиту внутрь процессора
-4. Подготовить систему к damage types
+1. Убрать fallback-ветки в combat.js
+2. Сделать process() универсальной точкой входа
+3. Перевести ability на тот же pipeline
+4. Сохранить start/resume механику
 
 ---
 
-## ЭТАП 1 — ACTION STORE
-
-Создать:
-
-module/core/action-store.js
-
----
-
-### Реализация:
-
-export const ActionStore = new Map()
-
----
-
-### Формат хранения:
-
-actionId → {
-ctx,
-createdAt,
-userId
-}
-
----
-
-## ЭТАП 2 — РАСШИРИТЬ ActionContext
+## ЭТАП 1 — УНИФИКАЦИЯ API
 
 Файл: action-processor.js
 
 ---
 
-Добавить:
+### Добавить:
 
-ctx.id = randomID()
-ctx.state = "pending_defense" | "resolved"
-
-ctx.damage = {
-base: number,
-types: [
-{ type: "physical", value: number }
-]
-}
+process(action, input?)
 
 ---
 
-## ЭТАП 3 — START ATTACK
+### Поведение:
 
-Добавить метод:
-
-ActionProcessor.startAttack(action)
-
----
-
-### Логика:
-
-1. создать ctx
-2. stageRoll (атака)
-3. stageModify
-4. stageResolveAttackOnly (БЕЗ защиты)
+* если action.state отсутствует → init
+* если state = await_input → resume
+* иначе → продолжить pipeline
 
 ---
 
-### stageResolveAttackOnly:
-
-* считать attackSuccesses
-* НЕ считать финальный урон
-* сформировать damage.base
-
 ---
 
-### Вернуть:
+## ЭТАП 2 — ЕДИНЫЙ ФОРМАТ ACTION
 
+```javascript
 {
-actionId,
-preview: {
-attackRoll,
-attackSuccesses,
-damagePreview
+  id,
+  type: "attack" | "ability" | "heal" | "dot",
+  state: "init" | "await_input" | "resolved",
+  payload: {}
 }
-}
+```
 
 ---
 
-### Сохранить:
-
-ActionStore.set(actionId, ctx)
-
----
-
-## ЭТАП 4 — RESUME ATTACK
-
-Добавить:
-
-ActionProcessor.resumeAttack(actionId, input)
-
----
-
-### input:
-
-{
-defenseType: "block" | "dodge",
-defender: Actor
-}
-
----
-
-### Логика:
-
-1. достать ctx из ActionStore
-2. stageDefense
-3. stageResolveFinal
-4. stageApply
-5. удалить из ActionStore
-
----
-
-## ЭТАП 5 — STAGE DEFENSE
-
-Реализовать:
-
-stageDefense(ctx, input)
-
----
-
-### Делает:
-
-* считает pool защиты
-* вызывает DiceSystem.rollPool
-* сохраняет:
-
-ctx.rolls.defense
-ctx.computed.defenseSuccesses
-
----
-
-### ВАЖНО:
-
-ВСЯ логика из combat.js:
-
-* block
-* dodge
-* armor
-  → перенести сюда
-
----
-
-## ЭТАП 6 — STAGE RESOLVE FINAL
-
-Реализовать:
-
-stageResolveFinal(ctx)
-
----
-
-### Делает:
-
-1. вызывает DamageResolver
-2. учитывает:
-
-   * attackSuccesses
-   * defenseSuccesses
-
----
-
-### ДОБАВИТЬ DAMAGE TYPES
-
-ctx.damage = {
-parts: [
-{ type: "physical", value: X }
-]
-}
-
----
-
-## ЭТАП 7 — RESISTANCES / VULNERABILITIES
-
-Добавить в ModifierSystem поддержку:
-
-targets:
-
-* resist.physical
-* resist.fire
-* vuln.physical
-* vuln.fire
-
----
-
-### В stageResolveFinal:
-
-1. получить totals через ModifierSystem
-2. применить:
-
-finalDamage = damage * (1 - resist + vuln)
-
----
-
-## ЭТАП 8 — STAGE APPLY
-
-Реализовать:
-
-stageApply(ctx)
-
----
-
-### Делает:
-
-1. суммирует damage.parts
-2. применяет:
-
-await actor.update({
-"system.attributes.hp.value": newHp
-}, {
-vitruvium: {
-damage: total,
-types: ctx.damage.parts
-}
-})
-
----
-
-### ВАЖНО:
-
-ЭТО ЕДИНСТВЕННОЕ МЕСТО ГДЕ МЕНЯЕТСЯ HP
-
----
-
-## ЭТАП 9 — ИНТЕГРАЦИЯ В COMBAT.JS
-
----
-
-### ЗАМЕНИТЬ:
-
-startWeaponAttackFlow
+## ЭТАП 3 — ПЕРЕПИСАТЬ startAttack / resumeAttack
 
 ---
 
 ### Было:
 
-* roll
-* damage
-* чат
-* логика защиты
+startAttack()
+resumeAttack()
 
 ---
 
 ### Стало:
 
-const { actionId, preview } = processor.startAttack(...)
+process(action)
 
-renderChat(preview, actionId)
+---
+
+### НО:
+
+оставить startAttack как thin wrapper:
+
+```javascript
+startAttack(action) {
+  return this.process({ ...action, type: "attack", state: "init" })
+}
+```
+
+---
+
+## ЭТАП 4 — PIPELINE ПО ТИПАМ
+
+Внутри process():
+
+switch(action.type)
+
+---
+
+### attack
+
+* init:
+
+  * roll attack
+  * state → await_input
+  * сохранить в ActionStore
+  * return preview
+
+* await_input:
+
+  * defense
+  * resolve
+  * apply
+  * удалить из store
+
+---
+
+### ability
+
+---
+
+#### вариант 1 (без защиты):
+
+* init:
+
+  * roll (если есть)
+  * resolve
+  * apply
+  * state → resolved
+
+---
+
+#### вариант 2 (если требует contest):
+
+* init:
+
+  * roll атаки
+  * state → await_input
+
+* await_input:
+
+  * contest / defense
+  * resolve
+  * apply
 
 ---
 
 ---
 
-### В обработчике кнопки защиты:
+### heal
 
-const result = await processor.resumeAttack(actionId, {
-defenseType,
-defender
+* init:
+
+  * сразу stageApply
+  * state → resolved
+
+---
+
+---
+
+### dot
+
+* init:
+
+  * tick damage
+  * stageApply
+  * state → resolved
+
+---
+
+## ЭТАП 5 — УДАЛИТЬ FALLBACK В COMBAT.JS
+
+---
+
+### НАЙТИ:
+
+fallback ветку:
+
+"если нет actionId"
+
+---
+
+### ЗАМЕНИТЬ:
+
+всегда создавать action:
+
+type: "ability"
+
+---
+
+---
+
+## ЭТАП 6 — ПЕРЕПИСАТЬ ABILITY FLOW
+
+---
+
+### Сейчас:
+
+ability считается напрямую
+
+---
+
+### Нужно:
+
+```javascript
+processor.process({
+  type: "ability",
+  payload: { ... }
 })
-
-renderResult(result)
-
----
-
-## ЭТАП 10 — УДАЛИТЬ BYPASS
-
-Удалить ВСЕ:
-
-actor.update({
-"system.attributes.hp.value"
-})
-
-из:
-
-* combat.js
-* state-duration.js (HoT)
+```
 
 ---
 
-Заменить на:
+---
 
-ActionProcessor.process({
-type: "apply_heal"
-})
+## ЭТАП 7 — DAMAGE TYPES (УСИЛЕНИЕ)
 
 ---
 
-## ЭТАП 11 — СОКЕТЫ (если есть мультиплеер)
+### ДОБАВИТЬ:
 
-Если действие инициировано игроком:
+damage.parts может содержать несколько типов:
 
-* actionId должен быть доступен всем
-* resume должен идти через socket
+```javascript
+[
+  { type: "physical", value: 10 },
+  { type: "fire", value: 5 }
+]
+```
 
 ---
 
-## ЭТАП 12 — ОЧИСТКА
+### В stageResolve:
+
+ability тоже использует damage.parts
+
+---
+
+---
+
+## ЭТАП 8 — RESISTANCES ПРИМЕНЯЮТСЯ КО ВСЕМ ТИПАМ
+
+---
+
+### В stageApply:
+
+перебрать:
+
+damage.parts
+
+---
+
+для каждого:
+
+* применить resist.*
+* применить vuln.*
+
+---
+
+---
+
+## ЭТАП 9 — УДАЛИТЬ СТАРЫЕ ВХОДЫ
 
 Удалить:
 
-* логику защиты из combat.js
-* прямые вызовы DamageResolver вне процессора
+* processAttack (старый)
+* любые прямые ability-расчёты вне процессора
+
+---
+
+---
+
+## ЭТАП 10 — ТЕСТЫ
+
+Проверить:
+
+1. attack работает как раньше
+2. ability работает через pipeline
+3. heal НЕ использует actor.update напрямую
+4. dot работает через pipeline
+5. нет fallback логики
 
 ---
 
 ## ОЖИДАЕМЫЙ РЕЗУЛЬТАТ
 
-* единый pipeline
-* ActionProcessor = центр логики
-* защита встроена в систему
-* нет прямых изменений HP вне ядра
-* готовность к damage types
-
----
-
-## ВАЖНО
-
-НЕ:
-
-* менять UI кардинально
-* переписывать effects.js
-* трогать sheets
+* один ActionProcessor.process()
+* нет разделения attack / ability
+* pipeline единый
+* damage types применяются везде
 
 ---
 
 ## КРИТЕРИИ УСПЕХА
 
-1. атака → защита → урон проходит через ActionProcessor
-2. combat.js не считает урон
-3. нет actor.update вне stageApply
-4. damage types уже проходят через pipeline
-д
+1. combat.js НЕ содержит логики урона
+2. нет fallback веток
+3. все действия идут через process()
+4. ActionStore используется для всех async действий

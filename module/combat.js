@@ -1441,15 +1441,12 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const curHp = toNumber(targetActor.system?.attributes?.hp?.value, 0);
             const maxHp = toNumber(targetActor.system?.attributes?.hp?.max, 100);
 
+            const _gmProcessor = new ActionProcessor();
             if (isHealing) {
-              await targetActor.update({
-                "system.attributes.hp.value": Math.min(maxHp, curHp + finalVal),
-              });
+              await _gmProcessor.process({ type: "apply_heal", actor: targetActor, value: finalVal });
               btn.textContent = `Лечение применено (+${finalVal}) ✓`;
             } else {
-              await targetActor.update({
-                "system.attributes.hp.value": Math.max(0, curHp - finalVal),
-              });
+              await _gmProcessor.process({ type: "apply_dot", actor: targetActor, value: finalVal });
               btn.textContent = `Урон применён (-${finalVal}) ✓`;
             }
 
@@ -1605,251 +1602,99 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           });
           if (!choice) return;
 
-          const effectTotals = collectEffectTotals(defender);
-          const globalMods = getGlobalRollModifiers(effectTotals);
-          const finalFullMode =
-            globalMods.fullMode !== "normal"
-              ? globalMods.fullMode
-              : choice.fullMode;
-          let defRoll, armorShown, reactionLabel, defenseType;
-          const fullText = fullModeLabel(finalFullMode);
-          if (choice.type === "block") {
-            defenseType = "block";
-            const attrMods = getAttributeRollModifiers(effectTotals, "condition");
-            const blockLuckMods = getLuckModifiers(effectTotals, {
-              advKey: "blockAdv",
-              disKey: "blockDis",
-              luckyKey: "blockLucky",
-              unluckyKey: "blockUnlucky",
-            });
-            const blockDiceEff = getEffectValue(effectTotals, "blockDice");
-            const poolVal = clamp(
-              getEffectiveAttribute(defender.system?.attributes, "condition", effectTotals) +
-              attrMods.dice +
-              blockDiceEff +
-              globalMods.dice +
-              toNumber(choice.extraDice, 0),
-              1,
-              20,
-            );
-            let appliedLuck =
-              (choice.luck ?? 0) +
-              globalMods.adv +
-              attrMods.adv +
-              blockLuckMods.adv;
-            let appliedUnluck =
-              (choice.unluck ?? 0) +
-              globalMods.dis +
-              attrMods.dis +
-              blockLuckMods.dis;
-            const diff = appliedLuck - appliedUnluck;
-            if (diff > 0) {
-              appliedLuck = diff;
-              appliedUnluck = 0;
-            } else if (diff < 0) {
-              appliedUnluck = Math.abs(diff);
-              appliedLuck = 0;
-            }
-            appliedLuck = Math.min(appliedLuck, poolVal);
-            appliedUnluck = Math.min(appliedUnluck, poolVal);
-            const totalLucky =
-              globalMods.lucky + attrMods.lucky + blockLuckMods.lucky;
-            const totalUnlucky =
-              globalMods.unlucky + attrMods.unlucky + blockLuckMods.unlucky;
-            let finalFullMode = globalMods.fullMode;
-            if (finalFullMode === "normal") {
-              if (totalLucky > totalUnlucky) finalFullMode = "adv";
-              else if (totalUnlucky > totalLucky) finalFullMode = "dis";
-            }
-            const modeText =
-              finalFullMode === "adv" || finalFullMode === "dis"
-                ? fullText
-                : modeLabel(appliedLuck, appliedUnluck);
-            const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-            const totalLuck = appliedLuck;
-            const totalUnluck = appliedUnluck;
-            defRoll = await rollPool(poolVal, {
-              luck: totalLuck,
-              unluck: totalUnluck,
-              fullMode: finalFullMode,
-            });
-            armorShown = getArmorTotal(defender, { includeShield: true });
-            const baseLabel = allowDodge ? "Блок" : "Принять удар (тяж. броня)";
-            reactionLabel = `${baseLabel}${modeSuffix}`;
-          } else {
-            defenseType = "dodge";
-            const attrMods = getAttributeRollModifiers(effectTotals, "movement");
-            const dodgeLuckMods = getLuckModifiers(effectTotals, {
-              advKey: "dodgeAdv",
-              disKey: "dodgeDis",
-              luckyKey: "dodgeLucky",
-              unluckyKey: "dodgeUnlucky",
-            });
-            const dodgeDiceEff = getEffectValue(effectTotals, "dodgeDice");
-            const poolVal = clamp(
-              getEffectiveAttribute(defender.system?.attributes, "movement", effectTotals) +
-              attrMods.dice +
-              dodgeDiceEff +
-              globalMods.dice +
-              toNumber(choice.extraDice, 0),
-              1,
-              20,
-            );
-            let appliedLuck =
-              (choice.luck ?? 0) +
-              globalMods.adv +
-              attrMods.adv +
-              dodgeLuckMods.adv;
-            let appliedUnluck =
-              (choice.unluck ?? 0) +
-              globalMods.dis +
-              attrMods.dis +
-              dodgeLuckMods.dis;
-            const diff = appliedLuck - appliedUnluck;
-            if (diff > 0) {
-              appliedLuck = diff;
-              appliedUnluck = 0;
-            } else if (diff < 0) {
-              appliedUnluck = Math.abs(diff);
-              appliedLuck = 0;
-            }
-            appliedLuck = Math.min(appliedLuck, poolVal);
-            appliedUnluck = Math.min(appliedUnluck, poolVal);
-            const totalLucky =
-              globalMods.lucky + attrMods.lucky + dodgeLuckMods.lucky;
-            const totalUnlucky =
-              globalMods.unlucky + attrMods.unlucky + dodgeLuckMods.unlucky;
-            let finalFullMode = globalMods.fullMode;
-            if (finalFullMode === "normal") {
-              if (totalLucky > totalUnlucky) finalFullMode = "adv";
-              else if (totalUnlucky > totalLucky) finalFullMode = "dis";
-            }
-            const modeText =
-              finalFullMode === "adv" || finalFullMode === "dis"
-                ? fullText
-                : modeLabel(appliedLuck, appliedUnluck);
-            const modeSuffix = modeText === "Обычный" ? "" : ` (${modeText})`;
-            const totalLuck = appliedLuck;
-            const totalUnluck = appliedUnluck;
-            defRoll = await rollPool(poolVal, {
-              luck: totalLuck,
-              unluck: totalUnluck,
-              fullMode: finalFullMode,
-            });
-            armorShown = isAbility
-              ? 0
-              : getArmorTotal(defender, { includeShield: false });
-            reactionLabel = `Уклонение${modeSuffix}`;
-          }
+          const defenseType = choice.type; // "block" | "dodge"
+          const isBlock = defenseType === "block";
+          const reactionLabel = isBlock
+            ? (allowDodge ? "Блок" : "Принять удар (тяж. броня)")
+            : "Уклонение";
 
-          // Compute damage right here (GM may not be present instantly)
-          let hit = false;
-          let damage = 0;
-          let compact = "";
-          let margin = 0;
+          const actionId = String(flags.actionId ?? "").trim();
           const attackKindDef = flags.attackKind ?? "weapon";
-          const defSDef = defRoll.successes;
-          const atkSDef = toNumber(flags.atkSuccesses, 0);
 
-          if (attackKindDef === "ability") {
-            const damageValue = toNumber(flags.abilityDamageValue, 0);
-            const hasDamage = toNumber(flags.abilityDamageBase, 0) > 0;
-            const attackRollEnabled = flags.attackRoll === true;
-            if (hasDamage) {
-              const dmgOut = DamageResolver.computeAbilityDamage({
-                weaponDamage: damageValue,
-                attackSuccesses: atkSDef,
-                defenseSuccesses: defSDef,
-              });
-              damage = dmgOut.damage;
-              compact = dmgOut.compact;
-              hit = attackRollEnabled ? (atkSDef > defSDef) : true;
-              margin = dmgOut.margin ?? 0;
-            } else {
-              hit = attackRollEnabled ? atkSDef > defSDef : true;
-            }
-          } else {
-            const armorFull = getArmorTotal(defender, { includeShield: true });
-            const armorNoShield = getArmorTotal(defender, {
-              includeShield: false,
+          // ── Единый путь: всегда через pipeline ───────────────────────────────
+          let resolvedActionId = actionId;
+
+          if (!resolvedActionId) {
+            // Старое сообщение без actionId: создаём action на лету
+            const _init = new ActionProcessor();
+            const atkKind = attackKindDef === "ability" ? "ability" : "attack";
+            const initOpts =
+              attackKindDef === "ability"
+                ? {
+                  damageBase: toNumber(flags.abilityDamageValue, 0),
+                  damageType: "physical",
+                  needsAttackRoll: flags.attackRoll === true,
+                  attackAttr: flags.atkAttrKey ?? "combat",
+                  needsDefense: true,
+                }
+                : {
+                  attackAttr: flags.atkAttrKey ?? "combat",
+                  needsDefense: true,
+                };
+            // Для старых сообщений восстанавливаем ctx вручную
+            const { ActionContext } = await import("./core/action-context.js");
+            const { ActionStore } = await import("./core/action-store.js");
+            const fakeCtx = new ActionContext({
+              type: atkKind,
+              attacker,
+              defender,
+              weapon: null,
+              options: initOpts,
             });
-            const isBlock = defenseType === "block";
-            const armor = isBlock ? armorFull : armorNoShield;
-            const dmgOut = DamageResolver.computeWeaponDamage({
-              weaponDamage: toNumber(flags.weaponDamage, 0),
-              attackSuccesses: atkSDef,
-              defenseSuccesses: defSDef,
-              armor: armor,
-              isBlock: isBlock,
-            });
-            damage = dmgOut.damage;
-            compact = dmgOut.compact;
-            hit = dmgOut.hit;
-            margin = dmgOut.margin ?? 0;
+            fakeCtx.computed.attackSuccesses = toNumber(flags.atkSuccesses, 0);
+            fakeCtx.computed.weaponDamage = toNumber(flags.weaponDamage ?? flags.abilityDamageValue, 0);
+            fakeCtx.damage.base = fakeCtx.computed.weaponDamage;
+            fakeCtx.damage.parts = [{ type: "physical", value: fakeCtx.computed.weaponDamage }];
+            fakeCtx.state = "await_input";
+            ActionStore.set(fakeCtx.id, { ctx: fakeCtx, createdAt: Date.now(), userId: game.user.id });
+            resolvedActionId = fakeCtx.id;
           }
 
-          // Apply margin-based states (apply when atkSuccesses - defSuccesses >= threshold).
-          // Works for both ability and weapon attacks.
-          const marginStates = Array.isArray(flags.marginStates)
-            ? flags.marginStates
-            : [];
-          // Backward compatibility: migrate old critAttackStates
-          const legacyCritStates = Array.isArray(flags.critAttackStates)
-            ? flags.critAttackStates
-            : [];
+          const _processor = new ActionProcessor();
+          const resumeResult = await _processor.resumeAttack(resolvedActionId, {
+            defenseType,
+            defender,
+            defenseOptions: {
+              luck: choice.luck,
+              unluck: choice.unluck,
+              extraDice: choice.extraDice,
+              fullMode: choice.fullMode,
+            }
+          });
+          const defRoll = resumeResult.rolls.defense;
+          const damage = resumeResult.computed.damage ?? 0;
+          const hit = resumeResult.computed.hit ?? (damage > 0);
+          const compact = resumeResult.computed.compact ?? "";
+          const margin = resumeResult.computed.margin ?? 0;
+
+          // ── Margin-based states ────────────────────────────────────────────────
+          const marginStates = Array.isArray(flags.marginStates) ? flags.marginStates : [];
+          const legacyCritStates = Array.isArray(flags.critAttackStates) ? flags.critAttackStates : [];
           const allMarginStates = [
             ...marginStates,
-            ...legacyCritStates.map(s => ({
-              ...s,
-              condition: s.condition || ConditionResolver.migrateApplyModeToCondition("CRIT_ATTACK"),
-            })),
+            ...legacyCritStates.map(s => ({ ...s, condition: s.condition || ConditionResolver.migrateApplyModeToCondition("CRIT_ATTACK") })),
           ];
-
           if (allMarginStates.length > 0) {
-            const context = { atk: atkSDef, def: defSDef, margin };
+            const atkSDef2 = toNumber(flags.atkSuccesses, 0);
+            const defSDef2 = defRoll?.successes ?? 0;
+            const context = { atk: atkSDef2, def: defSDef2, margin };
             for (const entry of allMarginStates) {
               if (!entry?.uuid) continue;
-              if (entry.condition && !ConditionResolver.checkCondition(entry.condition, context)) {
-                continue; // Условие не выполнено
-              }
-              await replaceStateFromTemplate(
-                defender,
-                entry.uuid,
-                entry.durationRounds,
-                defenderTokenUuid,
-              );
+              if (entry.condition && !ConditionResolver.checkCondition(entry.condition, context)) continue;
+              await replaceStateFromTemplate(defender, entry.uuid, entry.durationRounds, defenderTokenUuid);
             }
           }
 
-          // Single public defense card — contains result + GM apply-damage button
+          // ── Чат-карточка защиты ───────────────────────────────────────────────
           await ChatMessage.create({
             ...chatVisibilityData(),
             speaker: ChatMessage.getSpeaker({ actor: defender }),
-            content: defenseCardTwoCols({
-              defenderName: defender.name,
-              reactionLabel,
-              defRoll,
-              hit,
-              damage,
-              defenderTokenUuid,
-              margin,
-              compact,
-            }),
+            content: defenseCardTwoCols({ defenderName: defender.name, reactionLabel, defRoll, hit, damage, defenderTokenUuid, margin, compact }),
             rolls: defRoll.rolls,
-            flags: buildCombatFlags({
-              kind: "defense",
-              defenderTokenUuid,
-              damage,
-              hit,
-              margin,
-            }),
+            flags: buildCombatFlags({ kind: "defense", defenderTokenUuid, damage, hit, margin }),
           });
 
-          await cleanupPredictedGmApplyMessages({
-            attackMessageId: fresh.id,
-            defenderTokenUuid,
-            isHealing: false,
-          });
+          await cleanupPredictedGmApplyMessages({ attackMessageId: fresh.id, defenderTokenUuid, isHealing: false });
 
           if (damage > 0) {
             await createGmApplyMessage({
@@ -1857,30 +1702,15 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               subtitle: `${attacker.name} -> ${defender.name} · итог после защиты`,
               attackMessageId: fresh.id,
               applyPhase: "resolved",
-              rows: [
-                {
-                  defenderTokenUuid,
-                  label: defender.name,
-                  damage,
-                  isHealing: false,
-                },
-              ],
+              rows: [{ defenderTokenUuid, label: defender.name, damage, isHealing: false }],
             });
           }
 
           const resolvedResults = Array.isArray(flags.resolvedResults) ? flags.resolvedResults : [];
-          const nextResolvedResults = [
-            ...resolvedResults,
-            { uuid: defenderTokenUuid, damage, hit, margin }
-          ];
-
+          const nextResolvedResults = [...resolvedResults, { uuid: defenderTokenUuid, damage, hit, margin }];
           const nextResolvedDefenderUuids = nextResolvedResults.map(r => r.uuid);
-          const defenseTargets = getDefenseTargetsFromFlags(flags);
-          const allResolved =
-            defenseTargets.length > 0 &&
-            defenseTargets.every((t) =>
-              nextResolvedDefenderUuids.includes(t.defenderTokenUuid),
-            );
+          const defenseTargetsFlags = getDefenseTargetsFromFlags(flags);
+          const allResolved = defenseTargetsFlags.length > 0 && defenseTargetsFlags.every((t) => nextResolvedDefenderUuids.includes(t.defenderTokenUuid));
 
           await fresh.update({
             "flags.vitruvium.resolvedResults": nextResolvedResults,
@@ -2331,44 +2161,64 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     let atkAttrKey = String(abilityItem?.system?.attackAttr ?? "combat");
     let casterContestRoll = null;
     let casterContestSuccesses = 0;
-    if (needsAttackRoll) {
-      const atkChoice = await attackDialog({
-        actor: attackerActor,
-        weaponName: abilityName,
-        defaultAttrKey: abilityItem?.system?.attackAttr,
-      });
-      if (!atkChoice) return;
-      atkAttrKey = atkChoice.attrKey;
+    let abilityActionId = null;
+
+    if (needsAttackRoll || (hasDamage && hasDefenseTarget)) {
+      const atkChoice = needsAttackRoll
+        ? await attackDialog({ actor: attackerActor, weaponName: abilityName, defaultAttrKey: abilityItem?.system?.attackAttr })
+        : null;
+      if (needsAttackRoll && !atkChoice) return;
+      if (atkChoice) atkAttrKey = atkChoice.attrKey;
 
       const processor = new ActionProcessor();
-      const result = await processor.process({
-        type: "ability",
-        attacker: attackerActor,
-        options: {
-          needsAttackRoll: true,
-          attackAttr: atkAttrKey,
-          luck: atkChoice.luck,
-          unluck: atkChoice.unluck,
-          fullMode: atkChoice.fullMode,
-          extraDice: atkChoice.extraDice,
-          doContestRoll,
-          contestCasterAttr
-        }
-      });
 
-      atkRoll = result.rolls.attack;
-      casterContestRoll = result.rolls.contest;
-      casterContestSuccesses = result.computed.casterContestSuccesses || 0;
+      if (hasDamage && hasDefenseTarget) {
+        // Этап 6: ability с уроном → startAttack(тип="ability") → получает actionId
+        const startResult = await processor.startAttack({
+          type: "ability",
+          attacker: attackerActor,
+          options: {
+            needsAttackRoll: !!atkChoice,
+            attackAttr: atkAttrKey,
+            luck: atkChoice?.luck,
+            unluck: atkChoice?.unluck,
+            fullMode: atkChoice?.fullMode,
+            extraDice: atkChoice?.extraDice,
+            doContestRoll,
+            contestCasterAttr,
+            damageBase,
+            needsDefense: true,
+          }
+        });
+        abilityActionId = startResult.actionId;
+        atkRoll = startResult.preview?.attackRoll ?? null;
+        casterContestSuccesses = startResult.preview?.casterContestSuccesses ?? 0;
+      } else {
+        // Без защиты: простой process
+        const result = await processor.process({
+          type: "ability",
+          attacker: attackerActor,
+          options: {
+            needsAttackRoll: !!atkChoice,
+            attackAttr: atkAttrKey,
+            luck: atkChoice?.luck,
+            unluck: atkChoice?.unluck,
+            fullMode: atkChoice?.fullMode,
+            extraDice: atkChoice?.extraDice,
+            doContestRoll,
+            contestCasterAttr
+          }
+        });
+        atkRoll = result.rolls.attack;
+        casterContestRoll = result.rolls.contest;
+        casterContestSuccesses = result.computed.casterContestSuccesses || 0;
+      }
     } else if (doContestRoll) {
       const processor = new ActionProcessor();
       const result = await processor.process({
         type: "ability",
         attacker: attackerActor,
-        options: {
-          needsAttackRoll: false,
-          doContestRoll,
-          contestCasterAttr
-        }
+        options: { needsAttackRoll: false, doContestRoll, contestCasterAttr }
       });
       casterContestRoll = result.rolls.contest;
       casterContestSuccesses = result.computed.casterContestSuccesses || 0;
@@ -2434,6 +2284,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       flags: buildCombatFlags({
         kind: "attack",
         attackKind: "ability",
+        actionId: abilityActionId ?? undefined,
         abilityDamageBase: damageBase,
         abilityDamageValue: damageValue,
         atkAttrKey: atkAttrKey,
@@ -2527,9 +2378,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
       ? (await actorFromTokenUuid(defenseTargets[0].defenderTokenUuid))
       : null;
 
+    // ── ЭТАП 9: startAttack через pipeline ────────────────────────────────────
     const processor = new ActionProcessor();
-    const result = await processor.process({
-      type: "attack",
+    const { actionId, preview } = await processor.startAttack({
       attacker: attackerActor,
       defender: defenderActor,
       weapon: weaponItem,
@@ -2542,7 +2393,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
       },
     });
 
-    const atkRoll = result.rolls.attack;
+    const atkRoll = preview.attackRoll;
 
     const attackerToken =
       attackerActor?.getActiveTokens?.(true, true)?.[0] ??
@@ -2554,33 +2405,28 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     await playAutomatedAnimation({ actor: attackerActor, item: weaponItem });
 
     if (!hasTarget) {
-      const weaponDamage = result.computed.weaponDamage;
-      const atkRoll = result.rolls.attack;
-      const total = weaponDamage + atkRoll.successes;
+      const weaponDamage = preview.damagePreview;
+      const total = weaponDamage + preview.attackSuccesses;
       await ChatMessage.create({
         ...chatVisibilityData(),
         speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
         content: `
         <div class="vitruvium-chatcard vitruvium-chatcard--attack">
           <div class="v-head">
-            <div class="v-title">${escapeHtml(
-          attackerActor.name,
-        )} — атака (без цели)</div>
-            <div class="v-sub">Оружие: <b>${escapeHtml(
-          weaponName,
-        )}</b> · Атрибут: ${escapeHtml(prettyAttrLabel(atkChoice.attrKey))}</div>
+            <div class="v-title">${escapeHtml(attackerActor.name)} — атака (без цели)</div>
+            <div class="v-sub">Оружие: <b>${escapeHtml(weaponName)}</b> · Атрибут: ${escapeHtml(prettyAttrLabel(atkChoice.attrKey))}</div>
           </div>
           <div class="v-two">
             <div class="v-box">
               <div class="v-box__label">Атака</div>
-              <div class="v-box__big">${atkRoll.successes}</div>
+              <div class="v-box__big">${preview.attackSuccesses}</div>
               ${renderModeDetailSmall(atkRoll)}
-        ${renderFacesInline(chosenResults(atkRoll))}
+              ${renderFacesInline(chosenResults(atkRoll))}
             </div>
             <div class="v-box">
               <div class="v-box__label">Урон</div>
               <div class="v-box__big">${total}</div>
-              <div class="v-sub">${weaponDamage} + ${atkRoll.successes} = ${total}</div>
+              <div class="v-sub">${weaponDamage} + ${preview.attackSuccesses} = ${total}</div>
             </div>
           </div>
         </div>`,
@@ -2593,8 +2439,8 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
     const defenderName = defenseLabel(defenseTargets);
 
     // Public attack message (always includes defense button)
-    const weaponDamage = result.computed.weaponDamage;
-    const predictedDmgValue = weaponDamage + result.rolls.attack.successes;
+    const weaponDamage = preview.damagePreview;
+    const predictedDmgValue = weaponDamage + preview.attackSuccesses;
     const publicContent = attackCardTwoCols({
       attackerName: attackerActor.name,
       defenderLabel: defenderName,
@@ -2614,6 +2460,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
       flags: buildCombatFlags({
         kind: "attack",
         attackKind: "weapon",
+        actionId,
         attackerTokenUuid,
         attackerActorUuid,
         defenderTokenUuid,
@@ -2626,7 +2473,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         atkLuck: atkRoll.luck,
         atkUnluck: atkRoll.unluck,
         atkFullMode: atkRoll.fullMode,
-        atkSuccesses: atkRoll.successes,
+        atkSuccesses: preview.attackSuccesses,
         atkPool: atkRoll.pool,
         marginStates: weaponMarginStates,
       }),

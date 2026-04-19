@@ -59,6 +59,13 @@ const MODIFIER_CATEGORIES = {
       "armorValue",
     ],
   },
+  damage_types: {
+    label: "Типы урона",
+    items: [
+      "resist.physical", "resist.fire", "resist.cold", "resist.lightning",
+      "vuln.physical", "vuln.fire", "vuln.cold", "vuln.lightning",
+    ],
+  },
   overtime: {
     label: "Эффекты со временем",
     items: [
@@ -136,6 +143,14 @@ const MODIFIER_LABELS = {
   speed: "Скорость",
   dot: "Урон со временем",
   hot: "Лечение со временем",
+  "resist.physical": "Сопротивление: физическое",
+  "resist.fire": "Сопротивление: огонь",
+  "resist.cold": "Сопротивление: холод",
+  "resist.lightning": "Сопротивление: молния",
+  "vuln.physical": "Уязвимость: физическое",
+  "vuln.fire": "Уязвимость: огонь",
+  "vuln.cold": "Уязвимость: холод",
+  "vuln.lightning": "Уязвимость: молния",
 };
 
 const TYPE_LABELS = {

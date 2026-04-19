@@ -67,4 +67,14 @@ export const ModifierRegistry = {
   speed: { stack: "add", default: 0 },
   dot: { stack: "add", default: 0 },
   hot: { stack: "add", default: 0 },
+  // Damage types: сопротивления (0.0–1.0 = 0–100% снижение урона)
+  "resist.physical": { stack: "add", default: 0 },
+  "resist.fire": { stack: "add", default: 0 },
+  "resist.cold": { stack: "add", default: 0 },
+  "resist.lightning": { stack: "add", default: 0 },
+  // Damage types: уязвимости (0.0–1.0 = 0–100% увеличение урона)
+  "vuln.physical": { stack: "add", default: 0 },
+  "vuln.fire": { stack: "add", default: 0 },
+  "vuln.cold": { stack: "add", default: 0 },
+  "vuln.lightning": { stack: "add", default: 0 },
 };

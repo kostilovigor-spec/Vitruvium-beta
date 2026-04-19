@@ -274,14 +274,13 @@ const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
     }
   }
 
-  // Preserve manual updates for hot specifically
+  // HoT: через ActionProcessor (единственное место изменения HP)
   if (hotTotal > 0) {
-    const hpValue = Math.max(0, toNumber(actor.system?.attributes?.hp?.value, 0));
-    const hpMax = Math.max(0, toNumber(actor.system?.attributes?.hp?.max, 100));
-    const newHp = Math.min(hpMax, hpValue + hotTotal);
-    if (newHp !== hpValue) {
-      await actor.update({ "system.attributes.hp.value": newHp });
-    }
+    await processor.process({
+      type: "apply_heal",
+      actor,
+      value: hotTotal
+    });
   }
 };
 
