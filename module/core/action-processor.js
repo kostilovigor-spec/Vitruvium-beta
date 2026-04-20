@@ -473,14 +473,8 @@ export class ActionProcessor {
 
         if (total <= 0) return;
 
-        const hp = Number(defender.system?.attributes?.hp?.value) || 0;
-        const newHp = Math.max(0, hp - total);
-
-        await defender.update(
-            { "system.attributes.hp.value": newHp },
-            { vitruvium: { damage: total, types: resolvedParts, source: ctx.action.type ?? "attack" } }
-        );
-
+        // Урон теперь наносится только через кнопку в чате (combat.js вызывает apply_dot)
+        // Поэтому здесь мы убираем прямое обновление HP.
         ctx.applied.hpDamage = total;
         ctx.damage.parts = resolvedParts;
     }
