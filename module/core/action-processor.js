@@ -41,7 +41,8 @@ export class ActionProcessor {
     // state: "init" | "await_input" | "resolved"
     // ════════════════════════════════════════════════════════════════
 
-    async process(action) {
+    async process(rawAction, input = null) {
+        const action = this._normalizeAction(rawAction, input);
         const state = action.state ?? "init";
 
         // Промпт для dice-бросков (не меняет state-машину)
@@ -71,12 +72,10 @@ export class ActionProcessor {
 
             // ── heal ────────────────────────────────────────────────
             case "heal":
-            case "apply_heal":
                 return this._healInit(action);
 
             // ── dot ─────────────────────────────────────────────────
             case "dot":
-            case "apply_dot":
                 return this._dotInit(action);
 
             // ── attribute / luck / bonus_dice ───────────────────────
@@ -95,7 +94,32 @@ export class ActionProcessor {
     // ЭТАП 3: Thin wrappers — startAttack / resumeAttack
     // ════════════════════════════════════════════════════════════════
 
-    /** Инициирует атаку. Возвращает { actionId, preview }. */
+
+    /** Normalize unified action shape and map legacy fields. */
+    _normalizeAction(rawAction, input = null) {
+        const action = foundry.utils.deepClone(rawAction ?? {});
+        const payload = action.payload ?? {};
+        if (!action.type) action.type = String(payload.type ?? "").trim();
+        if (!action.state) action.state = String(payload.state ?? "").trim() || "init";
+        if (!action.id) action.id = String(payload.id ?? "").trim() || undefined;
+
+        action.actor = action.actor ?? payload.actor;
+        action.attacker = action.attacker ?? payload.attacker;
+        action.defender = action.defender ?? payload.defender;
+        action.weapon = action.weapon ?? payload.weapon;
+        action.options = foundry.utils.mergeObject(payload.options ?? {}, action.options ?? {});
+        action.value = action.value ?? payload.value;
+        action.damageType = action.damageType ?? payload.damageType;
+        action.damageParts = action.damageParts ?? payload.damageParts ?? payload.damage?.parts;
+
+        if (action.state === "await_input" && input) {
+            action.defenseType = input.defenseType ?? action.defenseType;
+            action.defenseOptions = input.defenseOptions ?? action.defenseOptions ?? {};
+            action.defender = input.defender ?? action.defender;
+        }
+        return action;
+    }
+    /** Start attack flow. Returns { actionId, preview }. */
     async startAttack(action) {
         return this.process({ ...action, type: "attack", state: "init" });
     }
@@ -104,22 +128,11 @@ export class ActionProcessor {
      *  input: { defenseType: "block"|"dodge", defender, defenseOptions? }
      */
     async resumeAttack(actionId, input) {
-        const entry = ActionStore.get(actionId);
-        if (!entry) throw new Error(`ActionStore: нет активного действия ${actionId}`);
-        const { ctx } = entry;
-        if (ctx.state === "resolved") throw new Error(`ActionStore: действие ${actionId} уже завершено`);
-
-        // Дополняем контекст данными защитника
-        ctx.action.defender = input.defender ?? ctx.action.defender;
-        ctx.action.defenseType = input.defenseType;
-        ctx.action.defenseOptions = input.defenseOptions ?? {};
-
         return this.process({
-            ...ctx.action,
-            type: ctx.action.type ?? "attack",
+            id: actionId,
+            type: "attack",
             state: "await_input",
-            _ctxId: actionId
-        });
+        }, input);
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -149,9 +162,14 @@ export class ActionProcessor {
 
     /** resume: defense → resolveFinal → apply → cleanup */
     async _attackResume(action) {
-        const ctxId = action._ctxId;
+        const ctxId = action.id ?? action._ctxId;
         const entry = ActionStore.get(ctxId);
-        const ctx = entry?.ctx ?? new ActionContext(action);
+        if (!entry?.ctx) throw new Error(`ActionStore: missing action ${ctxId}`);
+        const ctx = entry.ctx;
+
+        ctx.action.defender = action.defender ?? ctx.action.defender;
+        ctx.action.defenseType = action.defenseType ?? ctx.action.defenseType;
+        ctx.action.defenseOptions = action.defenseOptions ?? ctx.action.defenseOptions ?? {};
 
         await this.stageDefense(ctx);
         await this.stageResolveFinal(ctx);
@@ -193,13 +211,7 @@ export class ActionProcessor {
             const pool = Math.max(1, Math.min(20, baseAttr + attackMods.dice + globalMods.dice + (opts.extraDice || 0)));
             const luck = (opts.luck || 0) + globalMods.adv + attackMods.adv;
             const unluck = (opts.unluck || 0) + globalMods.dis + attackMods.dis;
-            let fullMode = globalMods.fullMode;
-            if (fullMode === "normal") {
-                const tl = globalMods.lucky + attackMods.lucky;
-                const tu = globalMods.unlucky + attackMods.unlucky;
-                if (tl > tu) fullMode = "adv";
-                else if (tu > tl) fullMode = "dis";
-            }
+            const fullMode = this._resolveFullMode(opts.fullMode, globalMods, attackMods);
             ctx.rolls.attack = await DiceSystem.rollPool(pool, { luck, unluck, fullMode });
             ctx.computed.attackSuccesses = ctx.rolls.attack.successes;
         }
@@ -213,13 +225,7 @@ export class ActionProcessor {
                 const attrMods = Effects.getAttributeRollModifiers(effectTotals, opts.contestCasterAttr);
                 const baseAttr = Effects.getEffectiveAttribute(action.attacker.system?.attributes, opts.contestCasterAttr, effectTotals);
                 const pool = Math.max(1, Math.min(20, baseAttr + attrMods.dice + globalMods.dice));
-                let fullMode = globalMods.fullMode;
-                if (fullMode === "normal") {
-                    const tl = globalMods.lucky + attrMods.lucky;
-                    const tu = globalMods.unlucky + attrMods.unlucky;
-                    if (tl > tu) fullMode = "adv";
-                    else if (tu > tl) fullMode = "dis";
-                }
+                const fullMode = this._resolveFullMode(opts.fullMode, globalMods, attrMods);
                 ctx.rolls.contest = await DiceSystem.rollPool(pool, {
                     luck: globalMods.adv + attrMods.adv,
                     unluck: globalMods.dis + attrMods.dis,
@@ -235,7 +241,11 @@ export class ActionProcessor {
             const base = toNumber(opts.damageBase, 0);
             const atkS = ctx.computed.attackSuccesses ?? 0;
             ctx.damage.base = base;
-            ctx.damage.parts = [{ type: opts.damageType ?? "physical", value: base + atkS }];
+            ctx.damage.parts = this._buildDamageParts(action, opts, {
+                base,
+                includeAttackSuccesses: true,
+                attackSuccesses: atkS,
+            });
             ctx.computed.weaponDamage = base;
 
             ctx.state = "await_input";
@@ -264,12 +274,15 @@ export class ActionProcessor {
 
     /** Если ability требовала await_input (defense side) */
     async _abilityResume(action) {
-        const ctxId = action._ctxId;
+        const ctxId = action.id ?? action._ctxId;
         const entry = ActionStore.get(ctxId);
-        const ctx = entry?.ctx ?? new ActionContext(action);
+        if (!entry?.ctx) throw new Error(`ActionStore: missing action ${ctxId}`);
+        const ctx = entry.ctx;
+        ctx.action.defender = action.defender ?? ctx.action.defender;
+        ctx.action.defenseType = action.defenseType ?? ctx.action.defenseType;
+        ctx.action.defenseOptions = action.defenseOptions ?? ctx.action.defenseOptions ?? {};
         const opts = ctx.action.options ?? {};
 
-        // Защита (если damageBase задан)
         if (toNumber(opts.damageBase, 0) > 0) {
             await this.stageDefense(ctx);
             await this._abilityResolveFinal(ctx, opts);
@@ -287,8 +300,12 @@ export class ActionProcessor {
         if (opts.damageBase > 0) {
             const base = toNumber(opts.damageBase, 0);
             ctx.damage.base = base;
-            ctx.damage.parts = [{ type: opts.damageType ?? "physical", value: base + atkS }];
-            ctx.computed.damage = base + atkS;
+            ctx.damage.parts = this._buildDamageParts(ctx.action, opts, {
+                base,
+                includeAttackSuccesses: true,
+                attackSuccesses: atkS,
+            });
+            ctx.computed.damage = ctx.damage.parts.reduce((sum, part) => sum + toNumber(part.value, 0), 0);
         }
         if (opts.healBase > 0) {
             ctx.computed.heal = toNumber(opts.healBase, 0) + atkS;
@@ -311,7 +328,12 @@ export class ActionProcessor {
         ctx.computed.margin = dmgOut.margin;
         ctx.computed.hit = dmgOut.hit;
         ctx.computed.compact = dmgOut.compact;
-        ctx.damage.parts = [{ type: opts.damageType ?? "physical", value: dmgOut.damage }];
+        const rawParts = this._buildDamageParts(ctx.action, opts, {
+            base,
+            includeAttackSuccesses: true,
+            attackSuccesses: atk,
+        });
+        ctx.damage.parts = this._scaleDamageParts(rawParts, dmgOut.damage, opts.damageType ?? "physical");
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -320,8 +342,8 @@ export class ActionProcessor {
 
     async _healInit(action) {
         const ctx = new ActionContext({ ...action, type: "heal" });
-        const actor = action.actor ?? action.attacker;
-        const value = toNumber(action.value, 0);
+        const actor = action.actor ?? action.attacker ?? action.defender;
+        const value = toNumber(action.value ?? action.payload?.value, 0);
 
         if (!actor || value <= 0) return this.buildResult(ctx);
 
@@ -341,12 +363,15 @@ export class ActionProcessor {
 
     async _dotInit(action) {
         const ctx = new ActionContext({ ...action, type: "dot" });
-        const actor = action.actor ?? action.attacker;
-        const value = toNumber(action.value, 0);
+        const actor = action.actor ?? action.attacker ?? action.defender;
+        const value = toNumber(action.value ?? action.payload?.value, 0);
 
         if (!actor || value <= 0) return this.buildResult(ctx);
 
-        ctx.damage.parts = [{ type: action.damageType ?? "physical", value }];
+        ctx.damage.parts = this._buildDamageParts(action, action.options ?? {}, {
+            base: value,
+            includeAttackSuccesses: false,
+        });
 
         // Применяем resist/vuln к DoT если есть тип
         const finalValue = this._applyResistancesToParts(ctx.damage.parts, actor)
@@ -473,13 +498,67 @@ export class ActionProcessor {
 
         if (total <= 0) return;
 
-        // Урон теперь наносится только через кнопку в чате (combat.js вызывает apply_dot)
+        // Урон теперь наносится только через кнопку в чате (combat.js вызывает dot)
         // Поэтому здесь мы убираем прямое обновление HP.
         ctx.applied.hpDamage = total;
         ctx.damage.parts = resolvedParts;
     }
 
     /** Применяет resist/vuln к каждому part, возвращает new parts[] с применёнными значениями */
+
+    _buildDamageParts(action, opts = {}, cfg = {}) {
+        const base = Math.max(0, toNumber(cfg.base, 0));
+        const includeAttackSuccesses = cfg.includeAttackSuccesses === true;
+        const attackSuccesses = includeAttackSuccesses ? Math.max(0, toNumber(cfg.attackSuccesses, 0)) : 0;
+        const rawParts = action.damageParts ?? opts.damageParts ?? [];
+        if (Array.isArray(rawParts) && rawParts.length > 0) {
+            return rawParts.map((part) => ({
+                type: String(part?.type ?? opts.damageType ?? action.damageType ?? "physical"),
+                value: Math.max(0, toNumber(part?.value, 0) + attackSuccesses),
+            }));
+        }
+        return [{
+            type: opts.damageType ?? action.damageType ?? "physical",
+            value: base + attackSuccesses,
+        }];
+    }
+
+    _scaleDamageParts(parts, total, fallbackType = "physical") {
+        const normalized = Array.isArray(parts) && parts.length
+            ? parts.map((part) => ({
+                type: String(part?.type ?? fallbackType),
+                value: Math.max(0, toNumber(part?.value, 0)),
+            }))
+            : [{ type: fallbackType, value: Math.max(0, toNumber(total, 0)) }];
+
+        const target = Math.max(0, Math.round(toNumber(total, 0)));
+        const sourceTotal = normalized.reduce((sum, part) => sum + part.value, 0);
+        if (target <= 0) return normalized.map((part) => ({ ...part, value: 0 }));
+        if (sourceTotal <= 0) return [{ type: normalized[0].type, value: target }];
+
+        const scaled = normalized.map((part) => ({
+            type: part.type,
+            value: Math.floor((part.value / sourceTotal) * target),
+        }));
+        const rest = target - scaled.reduce((sum, part) => sum + part.value, 0);
+        if (rest > 0) scaled[0].value += rest;
+        return scaled;
+    }
+
+    _resolveFullMode(userMode, globalMods = {}, localMods = {}) {
+        const chosen = String(userMode ?? "normal");
+        if (chosen === "adv" || chosen === "dis") return chosen;
+
+        let fullMode = globalMods.fullMode ?? "normal";
+        if (fullMode !== "normal") return fullMode;
+
+        const lucky = toNumber(globalMods.lucky, 0) + toNumber(localMods.lucky, 0);
+        const unlucky = toNumber(globalMods.unlucky, 0) + toNumber(localMods.unlucky, 0);
+        if (lucky > unlucky) return "adv";
+        if (unlucky > lucky) return "dis";
+        return "normal";
+    }
+
     _applyResistancesToParts(parts, actor) {
         if (!actor || !Array.isArray(parts)) return parts ?? [];
 
@@ -530,13 +609,7 @@ export class ActionProcessor {
         const attrMods = Effects.getAttributeRollModifiers(effectTotals, options.attrKey);
         const globalMods = Effects.getGlobalRollModifiers(effectTotals);
 
-        let fullMode = globalMods.fullMode;
-        if (fullMode === "normal") {
-            const tl = globalMods.lucky + attrMods.lucky;
-            const tu = globalMods.unlucky + attrMods.unlucky;
-            if (tl > tu) fullMode = "adv";
-            else if (tu > tl) fullMode = "dis";
-        }
+        const fullMode = this._resolveFullMode(options.fullMode, globalMods, attrMods);
 
         ctx.rolls.check = await DiceSystem.rollPool(pool, {
             luck: (options.luck || 0) + globalMods.adv + attrMods.adv,
@@ -640,3 +713,5 @@ export class ActionProcessor {
         });
     }
 }
+
+

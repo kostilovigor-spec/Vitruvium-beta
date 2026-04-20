@@ -132,6 +132,9 @@ export class VitruviumItemSheet extends ItemSheet {
   async close(options) {
     await this._updateObject({}, this._getSubmitData());
     try {
+      if (typeof this._saveContestStatesOnClose === "function") {
+        await this._saveContestStatesOnClose();
+      }
       if (typeof this._saveDescOnClose === "function") {
         await this._saveDescOnClose();
       }
@@ -221,51 +224,60 @@ export class VitruviumItemSheet extends ItemSheet {
     // --- Contest states (как в оригинале, но с margin) ---
 
     let contestStatesSaveTimeout = null;
+    const saveContestStatesNow = async () => {
+      if (contestStatesSaveTimeout) {
+        clearTimeout(contestStatesSaveTimeout);
+        contestStatesSaveTimeout = null;
+      }
+      const contestStates = [];
+      html.find(".v-contest-states__row").each((_, row) => {
+        const $r = $(row);
+        const uuid = String($r.find("[data-field='uuid']").val() ?? "");
+        const durationRounds = Math.max(
+          0,
+          Math.round(num($r.find("[data-field='durationRounds']").val(), 1)),
+        );
+        const applyMode = String(
+          $r.find("[data-field='applyMode']").val() ?? "targetContest",
+        );
+        const conditionValueRaw = $r.find("[data-field='conditionValue']").val();
+        const conditionValue = conditionValueRaw !== undefined && conditionValueRaw !== "" && conditionValueRaw !== null
+          ? Math.max(0, Math.round(num(conditionValueRaw, 0)))
+          : "";
+        const casterAttr = String(
+          $r.find("[data-field='casterAttr']").val() ?? "combat",
+        );
+        const targetAttr = String(
+          $r.find("[data-field='targetAttr']").val() ?? "combat",
+        );
+        contestStates.push({
+          uuid,
+          durationRounds,
+          applyMode,
+          conditionType: applyMode === "margin" ? "margin" : "",
+          conditionValue,
+          casterAttr,
+          targetAttr,
+        });
+      });
+      if (contestStates.length === 0) {
+        contestStates.push({
+          uuid: "",
+          durationRounds: 1,
+          applyMode: "targetContest",
+          condition: null,
+          casterAttr: "combat",
+          targetAttr: "combat",
+        });
+      }
+      await this.item.update({ "system.contestStates": contestStates });
+    };
+    this._saveContestStatesOnClose = saveContestStatesNow;
+
     const saveContestStates = () => {
       if (contestStatesSaveTimeout) clearTimeout(contestStatesSaveTimeout);
       contestStatesSaveTimeout = setTimeout(async () => {
-        const contestStates = [];
-        html.find(".v-contest-states__row").each((_, row) => {
-          const $r = $(row);
-          const uuid = String($r.find("[data-field='uuid']").val() ?? "");
-          const durationRounds = Math.max(
-            0,
-            Math.round(num($r.find("[data-field='durationRounds']").val(), 1)),
-          );
-          const applyMode = String(
-            $r.find("[data-field='applyMode']").val() ?? "targetContest",
-          );
-          const conditionValueRaw = $r.find("[data-field='conditionValue']").val();
-          const conditionValue = conditionValueRaw !== undefined && conditionValueRaw !== "" && conditionValueRaw !== null
-            ? Math.max(0, Math.round(num(conditionValueRaw, 0)))
-            : "";
-          const casterAttr = String(
-            $r.find("[data-field='casterAttr']").val() ?? "combat",
-          );
-          const targetAttr = String(
-            $r.find("[data-field='targetAttr']").val() ?? "combat",
-          );
-          contestStates.push({
-            uuid,
-            durationRounds,
-            applyMode,
-            conditionType: applyMode === "margin" ? "margin" : "",
-            conditionValue,
-            casterAttr,
-            targetAttr,
-          });
-        });
-        if (contestStates.length === 0) {
-          contestStates.push({
-            uuid: "",
-            durationRounds: 1,
-            applyMode: "targetContest",
-            condition: null,
-            casterAttr: "combat",
-            targetAttr: "combat",
-          });
-        }
-        await this.item.update({ "system.contestStates": contestStates });
+        await saveContestStatesNow();
       }, 250);
     };
 

@@ -1443,10 +1443,10 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
             const _gmProcessor = new ActionProcessor();
             if (isHealing) {
-              await _gmProcessor.process({ type: "apply_heal", actor: targetActor, value: finalVal });
+              await _gmProcessor.process({ type: "heal", actor: targetActor, value: finalVal });
               btn.textContent = `Лечение применено (+${finalVal}) ✓`;
             } else {
-              await _gmProcessor.process({ type: "apply_dot", actor: targetActor, value: finalVal });
+              await _gmProcessor.process({ type: "dot", actor: targetActor, value: finalVal });
               btn.textContent = `Урон применён (-${finalVal}) ✓`;
             }
 
@@ -1611,47 +1611,18 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
           const actionId = String(flags.actionId ?? "").trim();
           const attackKindDef = flags.attackKind ?? "weapon";
 
-          // ── Единый путь: всегда через pipeline ───────────────────────────────
-          let resolvedActionId = actionId;
-
-          if (!resolvedActionId) {
-            // Старое сообщение без actionId: создаём action на лету
-            const _init = new ActionProcessor();
-            const atkKind = attackKindDef === "ability" ? "ability" : "attack";
-            const initOpts =
-              attackKindDef === "ability"
-                ? {
-                  damageBase: toNumber(flags.abilityDamageValue, 0),
-                  damageType: "physical",
-                  needsAttackRoll: flags.attackRoll === true,
-                  attackAttr: flags.atkAttrKey ?? "combat",
-                  needsDefense: true,
-                }
-                : {
-                  attackAttr: flags.atkAttrKey ?? "combat",
-                  needsDefense: true,
-                };
-            // Для старых сообщений восстанавливаем ctx вручную
-            const { ActionContext } = await import("./core/action-context.js");
-            const { ActionStore } = await import("./core/action-store.js");
-            const fakeCtx = new ActionContext({
-              type: atkKind,
-              attacker,
-              defender,
-              weapon: null,
-              options: initOpts,
-            });
-            fakeCtx.computed.attackSuccesses = toNumber(flags.atkSuccesses, 0);
-            fakeCtx.computed.weaponDamage = toNumber(flags.weaponDamage ?? flags.abilityDamageValue, 0);
-            fakeCtx.damage.base = fakeCtx.computed.weaponDamage;
-            fakeCtx.damage.parts = [{ type: "physical", value: fakeCtx.computed.weaponDamage }];
-            fakeCtx.state = "await_input";
-            ActionStore.set(fakeCtx.id, { ctx: fakeCtx, createdAt: Date.now(), userId: game.user.id });
-            resolvedActionId = fakeCtx.id;
+          if (!actionId) {
+            ui.notifications?.warn("Это сообщение атаки устарело (без actionId). Создайте атаку заново.");
+            return;
           }
 
           const _processor = new ActionProcessor();
-          const resumeResult = await _processor.resumeAttack(resolvedActionId, {
+          const resumeType = attackKindDef === "ability" ? "ability" : "attack";
+          const resumeResult = await _processor.process({
+            id: actionId,
+            type: resumeType,
+            state: "await_input",
+          }, {
             defenseType,
             defender,
             defenseOptions: {
@@ -1659,7 +1630,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
               unluck: choice.unluck,
               extraDice: choice.extraDice,
               fullMode: choice.fullMode,
-            }
+            },
           });
           const defRoll = resumeResult.rolls.defense;
           const damage = resumeResult.computed.damage ?? 0;
@@ -2171,22 +2142,27 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       if (atkChoice) atkAttrKey = atkChoice.attrKey;
 
       const processor = new ActionProcessor();
+      const abilityOptions = {
+        needsAttackRoll: !!atkChoice,
+        attackAttr: atkAttrKey,
+        luck: atkChoice?.luck,
+        unluck: atkChoice?.unluck,
+        fullMode: atkChoice?.fullMode,
+        extraDice: atkChoice?.extraDice,
+        doContestRoll,
+        contestCasterAttr,
+        damageBase,
+        healBase,
+        damageType: "physical",
+      };
 
       if (hasDamage && hasDefenseTarget) {
-        // Этап 6: ability с уроном → startAttack(тип="ability") → получает actionId
-        const startResult = await processor.startAttack({
+        const startResult = await processor.process({
           type: "ability",
+          state: "init",
           attacker: attackerActor,
           options: {
-            needsAttackRoll: !!atkChoice,
-            attackAttr: atkAttrKey,
-            luck: atkChoice?.luck,
-            unluck: atkChoice?.unluck,
-            fullMode: atkChoice?.fullMode,
-            extraDice: atkChoice?.extraDice,
-            doContestRoll,
-            contestCasterAttr,
-            damageBase,
+            ...abilityOptions,
             needsDefense: true,
           }
         });
@@ -2194,19 +2170,13 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         atkRoll = startResult.preview?.attackRoll ?? null;
         casterContestSuccesses = startResult.preview?.casterContestSuccesses ?? 0;
       } else {
-        // Без защиты: простой process
         const result = await processor.process({
           type: "ability",
+          state: "init",
           attacker: attackerActor,
           options: {
-            needsAttackRoll: !!atkChoice,
-            attackAttr: atkAttrKey,
-            luck: atkChoice?.luck,
-            unluck: atkChoice?.unluck,
-            fullMode: atkChoice?.fullMode,
-            extraDice: atkChoice?.extraDice,
-            doContestRoll,
-            contestCasterAttr
+            ...abilityOptions,
+            needsDefense: false,
           }
         });
         atkRoll = result.rolls.attack;
@@ -2217,8 +2187,17 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       const processor = new ActionProcessor();
       const result = await processor.process({
         type: "ability",
+        state: "init",
         attacker: attackerActor,
-        options: { needsAttackRoll: false, doContestRoll, contestCasterAttr }
+        options: {
+          needsAttackRoll: false,
+          doContestRoll,
+          contestCasterAttr,
+          damageBase,
+          healBase,
+          damageType: "physical",
+          needsDefense: false,
+        }
       });
       casterContestRoll = result.rolls.contest;
       casterContestSuccesses = result.computed.casterContestSuccesses || 0;

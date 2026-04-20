@@ -264,7 +264,7 @@ const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
 
       if (eff.target === "dot") {
         await processor.process({
-          type: "apply_dot",
+          type: "dot",
           actor,
           value
         });
@@ -277,7 +277,7 @@ const applyOverTimeEffectsForActor = async (actor, triggerTiming) => {
   // HoT: через ActionProcessor (единственное место изменения HP)
   if (hotTotal > 0) {
     await processor.process({
-      type: "apply_heal",
+      type: "heal",
       actor,
       value: hotTotal
     });

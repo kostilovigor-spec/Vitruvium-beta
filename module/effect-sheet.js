@@ -34,6 +34,7 @@ export class VitruviumEffectSheet extends ItemSheet {
 
   async close(options) {
     try {
+      await this._updateObject({}, this._getSubmitData());
       if (typeof this._saveDescOnClose === "function") {
         await this._saveDescOnClose();
       }
@@ -41,6 +42,13 @@ export class VitruviumEffectSheet extends ItemSheet {
       /* ignore */
     }
     return super.close(options);
+  }
+
+  async _updateObject(_event, formData) {
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+    return this.item.update(formData);
   }
 
   activateListeners(html) {

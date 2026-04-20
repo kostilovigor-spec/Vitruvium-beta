@@ -67,6 +67,7 @@ export class VitruviumSkillSheet extends ItemSheet {
 
   async close(options) {
     try {
+      await this._updateObject({}, this._getSubmitData());
       if (typeof this._saveDescOnClose === "function") {
         await this._saveDescOnClose();
       }
@@ -74,6 +75,13 @@ export class VitruviumSkillSheet extends ItemSheet {
       // ignore
     }
     return super.close(options);
+  }
+
+  async _updateObject(_event, formData) {
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+    return this.item.update(formData);
   }
 
   activateListeners(html) {
@@ -131,12 +139,8 @@ export class VitruviumSkillSheet extends ItemSheet {
     this._saveDescOnClose = saveDescriptionDraft;
 
     const exitEditAndSave = async () => {
-      const newName = String(html.find("input[name='name']").val() ?? this.item.name);
-      const newDesc = currentDesc();
-      await this.item.update({
-        name: newName,
-        "system.description": newDesc,
-      });
+      await this._updateObject({}, this._getSubmitData());
+      await saveDescriptionDraft();
     };
 
     html.on("click", "[data-action='toggle-desc']", async (ev) => {

@@ -138,6 +138,14 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
   async close(options) {
     try {
+      await this._updateObject({}, this._getSubmitData());
+      if (typeof this._saveContestStatesOnClose === "function") {
+        await this._saveContestStatesOnClose();
+      }
+    } catch (_e) {
+      // ignore
+    }
+    try {
       if (typeof this._saveDescOnClose === "function") {
         await this._saveDescOnClose();
       }
@@ -145,6 +153,13 @@ export class VitruviumAbilitySheet extends ItemSheet {
       // ignore
     }
     return super.close(options);
+  }
+
+  async _updateObject(_event, formData) {
+    for (const key of Object.keys(formData)) {
+      if (key.startsWith("v-tabs-")) delete formData[key];
+    }
+    return this.item.update(formData);
   }
 
   activateListeners(html) {
@@ -219,64 +234,33 @@ export class VitruviumAbilitySheet extends ItemSheet {
     };
     this._saveDescOnClose = saveDescriptionDraft;
 
-    const exitEditAndSave = async () => {
-      const newName = String($name.val() ?? this.item.name);
-      const newLevel = clamp(
-        num($level.val(), num(this.item.system?.level, 1)),
-        1,
-        6,
-      );
-      const newCost = clamp(
-        num($cost.val(), num(this.item.system?.cost, 1)),
-        0,
-        6,
-      );
-      const newActions = clamp(
-        num($actions.val(), num(this.item.system?.actions, 1)),
-        1,
-        2,
-      );
-      const newType = String($type.val() ?? this.item.system?.type ?? "primary");
-      const newDesc = currentDesc();
-      const newRollDamageBase = clamp(
-        num($rollDamageBase.val(), num(this.item.system?.rollDamageBase, 0)),
-        0,
-        99,
-      );
-      const newRollHealBase = clamp(
-        num($rollHealBase.val(), num(this.item.system?.rollHealBase, 0)),
-        0,
-        99,
-      );
-      const newAttackAttr = String(
-        $attackAttr.val() ?? this.item.system?.attackAttr ?? "combat",
-      );
-
+    const collectContestStates = () => {
       const contestStates = [];
       html.find(".v-contest-states__row").each((_, row) => {
-        const $row = $(row);
-        const uuid = String(
-          $row
-            .find("select[name^='system.contestStates'][name$='.uuid']")
-            .val() ?? "",
-        );
+        const $r = $(row);
+        const uuid = String($r.find("[data-field='uuid']").val() ?? "");
         const durationRounds = Math.max(
           0,
-          Math.round(num($row.find("input[name$='.durationRounds']").val(), 1)),
+          Math.round(num($r.find("[data-field='durationRounds']").val(), 1)),
         );
         const applyMode = String(
-          $row.find("select[name$='.applyMode']").val() ?? "targetContest",
+          $r.find("[data-field='applyMode']").val() ?? "targetContest",
         );
-        const casterAttr = String(
-          $row.find("select[name$='.casterAttr']").val() ?? "combat",
-        );
-        const targetAttr = String(
-          $row.find("select[name$='.targetAttr']").val() ?? "combat",
-        );
+        const conditionValueRaw = $r.find("[data-field='conditionValue']").val();
+        const conditionValue =
+          conditionValueRaw !== undefined &&
+          conditionValueRaw !== "" &&
+          conditionValueRaw !== null
+            ? Math.max(0, Math.round(num(conditionValueRaw, 0)))
+            : "";
+        const casterAttr = String($r.find("[data-field='casterAttr']").val() ?? "combat");
+        const targetAttr = String($r.find("[data-field='targetAttr']").val() ?? "combat");
         contestStates.push({
           uuid,
           durationRounds,
           applyMode,
+          conditionType: applyMode === "margin" ? "margin" : "",
+          conditionValue,
           casterAttr,
           targetAttr,
         });
@@ -286,23 +270,29 @@ export class VitruviumAbilitySheet extends ItemSheet {
           uuid: "",
           durationRounds: 1,
           applyMode: "targetContest",
+          conditionType: "",
+          conditionValue: "",
           casterAttr: "combat",
           targetAttr: "combat",
         });
       }
+      return contestStates;
+    };
 
-      await this.item.update({
-        name: newName,
-        "system.level": newLevel,
-        "system.cost": newCost,
-        "system.actions": newActions,
-        "system.type": newType,
-        "system.rollDamageBase": newRollDamageBase,
-        "system.rollHealBase": newRollHealBase,
-        "system.attackAttr": newAttackAttr,
-        "system.contestStates": contestStates,
-        "system.description": newDesc,
-      });
+    let contestStatesSaveTimeout = null;
+    const saveContestStatesNow = async () => {
+      if (contestStatesSaveTimeout) {
+        clearTimeout(contestStatesSaveTimeout);
+        contestStatesSaveTimeout = null;
+      }
+      await this.item.update({ "system.contestStates": collectContestStates() });
+    };
+    this._saveContestStatesOnClose = saveContestStatesNow;
+
+    const exitEditAndSave = async () => {
+      await this._updateObject({}, this._getSubmitData());
+      await saveContestStatesNow();
+      await saveDescriptionDraft();
     };
 
     html.on("click", "[data-action='toggle-desc']", async (ev) => {
@@ -340,52 +330,10 @@ export class VitruviumAbilitySheet extends ItemSheet {
 
     // --- Contest states (debounce 250ms как в оригинале) ---
 
-    let contestStatesSaveTimeout = null;
     const saveContestStates = () => {
       if (contestStatesSaveTimeout) clearTimeout(contestStatesSaveTimeout);
       contestStatesSaveTimeout = setTimeout(async () => {
-        const contestStates = [];
-        html.find(".v-contest-states__row").each((_, row) => {
-          const $r = $(row);
-          const uuid = String($r.find("[data-field='uuid']").val() ?? "");
-          const durationRounds = Math.max(
-            0,
-            Math.round(num($r.find("[data-field='durationRounds']").val(), 1)),
-          );
-          const applyMode = String(
-            $r.find("[data-field='applyMode']").val() ?? "targetContest",
-          );
-          const conditionValueRaw = $r.find("[data-field='conditionValue']").val();
-          const conditionValue = conditionValueRaw !== undefined && conditionValueRaw !== "" && conditionValueRaw !== null
-            ? Math.max(0, Math.round(num(conditionValueRaw, 0)))
-            : "";
-          const casterAttr = String(
-            $r.find("[data-field='casterAttr']").val() ?? "combat",
-          );
-          const targetAttr = String(
-            $r.find("[data-field='targetAttr']").val() ?? "combat",
-          );
-          contestStates.push({
-            uuid,
-            durationRounds,
-            applyMode,
-            conditionType: applyMode === "margin" ? "margin" : "",
-            conditionValue,
-            casterAttr,
-            targetAttr,
-          });
-        });
-        if (contestStates.length === 0) {
-          contestStates.push({
-            uuid: "",
-            durationRounds: 1,
-            applyMode: "targetContest",
-            condition: null,
-            casterAttr: "combat",
-            targetAttr: "combat",
-          });
-        }
-        await this.item.update({ "system.contestStates": contestStates });
+        await saveContestStatesNow();
       }, 250);
     };
 

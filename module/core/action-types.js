@@ -1,5 +1,6 @@
 export const ACTION_TYPES = {
     ATTACK: "attack",
     ABILITY: "ability",
-    HEAL: "heal"
+    HEAL: "heal",
+    DOT: "dot",
 };

@@ -2,7 +2,7 @@ export class ActionContext {
     constructor(action) {
         this.id = foundry.utils.randomID();
         this.action = action;
-        this.state = "pending_defense"; // "pending_defense" | "resolved"
+        this.state = "init"; // "init" | "await_input" | "resolved"
         this.rolls = {};
         this.modifiers = {};
         this.computed = {};
