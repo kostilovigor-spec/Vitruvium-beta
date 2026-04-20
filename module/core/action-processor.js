@@ -9,6 +9,8 @@ import { chatVisibilityData } from "../chat-visibility.js";
 import { genericRollDialog } from "../combat.js";
 import { clamp, toNumber } from "../utils/number.js";
 import { normalizeDamageType } from "../config/damage-types.js";
+import { ConditionResolver } from "./condition-resolver.js";
+import { replaceStateFromTemplate } from "../state-application.js";
 
 // ──────────────────────────────────────────────────────────────────
 // Утилиты (локальные, не зависят от FoundryVTT Document API)
@@ -165,7 +167,7 @@ export class ActionProcessor {
         };
     }
 
-    /** resume: defense → resolveFinal → apply → cleanup */
+    /** resume: defense → resolveFinal → apply → applyStatuses → cleanup */
     async _attackResume(action) {
         const ctxId = action.id ?? action._ctxId;
         const entry = ActionStore.get(ctxId);
@@ -179,6 +181,7 @@ export class ActionProcessor {
         await this.stageDefense(ctx);
         await this.stageResolveFinal(ctx);
         await this.stageApply(ctx);
+        await this.stageApplyStatuses(ctx);
 
         ctx.state = "resolved";
         ActionStore.delete(ctxId);
@@ -267,14 +270,14 @@ export class ActionProcessor {
                     attackRoll: ctx.rolls.attack,
                     contestRoll: ctx.rolls.contest,
                     attackSuccesses: ctx.computed.attackSuccesses,
-                    casterContestSuccesses: ctx.computed.casterContestSuccesses,
+                    casterContestSuccesses: ctx.computed.casterContestSuccesses ?? 0,
                     damagePreview: ctx.damage.base,
                 }
             };
         }
 
         // Без защиты — resolve immediately
-        if (opts.damageBase > 0 || opts.healBase > 0) {
+        if (toNumber(opts.damageBase, 0) > 0 || toNumber(opts.healBase, 0) > 0) {
             await this._abilityResolveImmediate(ctx, opts);
         }
 
@@ -297,6 +300,7 @@ export class ActionProcessor {
             await this.stageDefense(ctx);
             await this._abilityResolveFinal(ctx, opts);
             await this.stageApply(ctx);
+            await this.stageApplyStatuses(ctx);
         }
 
         ctx.state = "resolved";
@@ -762,6 +766,118 @@ export class ActionProcessor {
             speaker: ChatMessage.getSpeaker({ actor: ctx.action.attacker }),
             rolls: roll.rolls || []
         });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // STAGE: Apply Statuses — универсальное применение состояний
+    // ════════════════════════════════════════════════════════════════
+
+    async stageApplyStatuses(ctx) {
+        const { defender, weapon, attacker, options } = ctx.action;
+        
+        const atk = ctx.computed.attackSuccesses ?? 0;
+        const def = ctx.computed.defenseSuccesses ?? 0;
+        const margin = ctx.computed.margin ?? (atk - def);
+        const hit = ctx.computed.hit ?? false;
+
+        // Получаем токены
+        const defenderToken = defender?.getActiveTokens?.()?.[0];
+        const defenderTokenUuid = defenderToken?.document?.uuid;
+        const attackerToken = attacker?.getActiveTokens?.()?.[0];
+        const attackerTokenUuid = attackerToken?.document?.uuid;
+
+        // Собираем все состояния для применения
+        let statesToApply = [];
+
+        // 1. Статусы от оружия (weapon.system.contestStates)
+        if (weapon?.system?.contestStates) {
+            const weaponStates = Array.isArray(weapon.system.contestStates)
+                ? weapon.system.contestStates
+                : [];
+            statesToApply.push(...weaponStates);
+        }
+
+        // 2. Статусы от способности (options.contestStates)
+        if (options?.contestStates) {
+            const abilityStates = Array.isArray(options.contestStates)
+                ? options.contestStates
+                : [];
+            statesToApply.push(...abilityStates);
+        }
+
+        if (statesToApply.length === 0) return;
+
+        // Применяем каждый статус в зависимости от режима
+        const context = { atk, def, margin };
+        
+        for (const state of statesToApply) {
+            if (!state?.uuid) continue;
+
+            const applyMode = state.applyMode;
+
+            // ── РЕЖИМ: self (на себя) ──────────────────────────────────
+            if (applyMode === "self") {
+                if (!attacker) continue;
+                
+                try {
+                    await replaceStateFromTemplate(
+                        attacker,
+                        state.uuid,
+                        state.durationRounds,
+                        attackerTokenUuid
+                    );
+                } catch (err) {
+                    console.error("ActionProcessor | Error applying self state:", err);
+                }
+                continue;
+            }
+
+            // ── РЕЖИМ: targetNoCheck (без проверки) ─────────────────────
+            if (applyMode === "targetNoCheck") {
+                if (!defender) continue;
+                
+                try {
+                    await replaceStateFromTemplate(
+                        defender,
+                        state.uuid,
+                        state.durationRounds,
+                        defenderTokenUuid
+                    );
+                } catch (err) {
+                    console.error("ActionProcessor | Error applying targetNoCheck state:", err);
+                }
+                continue;
+            }
+
+            // ── РЕЖИМ: margin (при разнице успехов) ─────────────────────
+            if (applyMode === "margin") {
+                if (!defender) continue;
+
+                // Проверяем условие
+                const conditionMet = !state.condition || ConditionResolver.checkCondition(state.condition, context);
+                
+                if (!conditionMet) continue;
+
+                try {
+                    await replaceStateFromTemplate(
+                        defender,
+                        state.uuid,
+                        state.durationRounds,
+                        defenderTokenUuid
+                    );
+                } catch (err) {
+                    console.error("ActionProcessor | Error applying margin state:", err);
+                }
+                continue;
+            }
+
+            // ── РЕЖИМ: targetContest (соревнование) ─────────────────────
+            // Этот режим НЕ обрабатывается здесь, так как требует отдельного броска цели
+            // Он обрабатывается в обработчике кнопки vitruvium-contest
+            if (applyMode === "targetContest") {
+                continue;
+            }
+        }
     }
 }
 

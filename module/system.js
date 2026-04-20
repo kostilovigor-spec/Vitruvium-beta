@@ -23,6 +23,10 @@ Hooks.once("init", () => {
 
   // Migration: convert old NPC attribute format to new format
   Hooks.on("ready", async () => {
+
+    // Disable noisy Foundry hook debug logs
+    CONFIG.debug.hooks = false;
+
     if (!game.user.isGM) return;
 
     const npcActors = game.actors.filter((a) => a.type === "npc");

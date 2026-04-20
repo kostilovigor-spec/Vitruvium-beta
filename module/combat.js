@@ -1,4 +1,4 @@
-﻿import { clamp, toNumber } from "./utils/number.js";
+import { clamp, toNumber } from "./utils/number.js";
 import { escapeHtml } from "./utils/string.js";
 import { playAutomatedAnimation } from "./auto-animations.js";
 import { DiceSystem } from "./core/dice-system.js";
@@ -18,6 +18,7 @@ import { getStateTemplateByUuid } from "./state-library.js";
 import { chatVisibilityData } from "./chat-visibility.js";
 import { ActionProcessor } from "./core/action-processor.js";
 import { normalizeDamageType } from "./config/damage-types.js";
+import { replaceStateFromTemplate } from "./state-application.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card with "Применить урон".
@@ -1173,68 +1174,9 @@ function resolveAbilityCardHTML({
   </div>`;
 }
 
-export async function replaceStateFromTemplate(
-  defenderActor,
-  templateUuid,
-  durationOverrideRounds = null,
-  defenderTokenUuid = null,
-) {
-  const templateDoc = await getStateTemplateByUuid(templateUuid);
-  if (!templateDoc) return { applied: false, stateName: null };
-
-  const oldStateIds = (defenderActor.items ?? [])
-    .filter((it) => it.type === "state" && it.name === templateDoc.name)
-    .map((it) => it.id);
-
-  // Delete old states with the same name.
-  // The deleteItem hook in state-duration.js will automatically clean up their icons.
-  if (oldStateIds.length) {
-    await defenderActor.deleteEmbeddedDocuments("Item", oldStateIds);
-  }
-
-  const sourceSystem = foundry.utils.deepClone(templateDoc.system ?? {});
-  const sourceMyFlags = foundry.utils.deepClone(
-    templateDoc.flags?.mySystem ?? {},
-  );
-  const durationTurns =
-    durationOverrideRounds === null || durationOverrideRounds === undefined
-      ? Math.max(0, Math.round(toNumber(sourceSystem.durationRounds, 0)))
-      : Math.max(0, Math.round(toNumber(durationOverrideRounds, 0)));
-  const activeCombat = game.combat?.started ? game.combat : null;
-  const appliedRound = Number.isFinite(Number(activeCombat?.round))
-    ? Number(activeCombat.round)
-    : null;
-  const appliedTurn = Number.isFinite(Number(activeCombat?.turn))
-    ? Number(activeCombat.turn)
-    : null;
-  sourceSystem.active = true;
-  sourceSystem.durationRounds = durationTurns;
-  sourceSystem.durationRemaining = durationTurns;
-
-  const createdState = await defenderActor.createEmbeddedDocuments("Item", [
-    {
-      name: templateDoc.name,
-      type: "state",
-      img: templateDoc.img ?? "icons/svg/aura.svg",
-      system: sourceSystem,
-      flags: {
-        mySystem: {
-          ...sourceMyFlags,
-          turnDuration: durationTurns,
-          remainingTurns: durationTurns,
-          ownerActorId: defenderActor.id,
-          appliedRound,
-          appliedTurn,
-          appliedActorId: defenderActor.id,
-        },
-      },
-    },
-  ]);
-
-  // Note: The createItem hook in state-duration.js will automatically create the icon.
-
-  return { applied: true, stateName: templateDoc.name };
-}
+// Удалено: replaceStateFromTemplate перенесена в state-application.js
+// Экспортируем для обратной совместимости
+export { replaceStateFromTemplate } from "./state-application.js";
 
 /* ---------- Damage ---------- */
 
@@ -1871,6 +1813,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                   state.durationRounds,
                   defenderTokenUuid,
                 );
+                
                 appliedContest = !!out.applied;
                 stateNameContest = out.stateName;
               }
@@ -2027,14 +1970,17 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const selfStates = contestStates.filter((s) => s.applyMode === "self");
     const appliedSelfStates = [];
     for (const state of selfStates) {
+      if (!state.uuid) continue;
       const attackerToken = attackerActor.getActiveTokens()[0];
       const attackerTokenUuid = attackerToken?.document?.uuid;
+      
       const out = await replaceStateFromTemplate(
         attackerActor,
         state.uuid,
         state.durationRounds,
         attackerTokenUuid,
       );
+      
       if (out.applied) {
         appliedSelfStates.push(out.stateName ?? "Состояние");
       }
@@ -2096,21 +2042,29 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     const targetNoCheckStates = nonSelfStates.filter(
       (s) => s.applyMode === "targetNoCheck",
     );
-    if (targetNoCheckStates.length > 0 && hasContestTarget) {
-      for (const t of contestTargets) {
-        const defender = await resolveCombatActor({
-          tokenUuid: t.defenderTokenUuid,
-        });
-        if (defender) {
-          for (const state of targetNoCheckStates) {
-            await replaceStateFromTemplate(
-              defender,
-              state.uuid,
-              state.durationRounds,
-              t.defenderTokenUuid,
-            );
+    
+    if (targetNoCheckStates.length > 0) {
+      if (hasContestTarget) {
+        for (const t of contestTargets) {
+          const defender = await resolveCombatActor({
+            tokenUuid: t.defenderTokenUuid,
+          });
+          if (defender) {
+            for (const state of targetNoCheckStates) {
+              if (!state.uuid) continue;
+              
+              await replaceStateFromTemplate(
+                defender,
+                state.uuid,
+                state.durationRounds,
+                t.defenderTokenUuid,
+              );
+            }
           }
         }
+      } else if (!hasDamage && !hasHeal && !doContestRoll && targetMarginStates.length === 0) {
+        // Only warn if this is the only thing the ability was supposed to do
+        ui.notifications?.warn("Для наложения состояния «без проверки» нужно выбрать цель(и) перед применением.");
       }
     }
 
@@ -2244,7 +2198,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     await playAutomatedAnimation({ actor: attackerActor, item: abilityItem });
 
     // Show contest section only for targetContest mode with targets.
-    const showContest = doContestRoll && hasContestTarget;
+    const showContestSection = doContestRoll && hasContestTarget;
     const publicContent = abilityAttackCard({
       attackerName: attackerActor.name,
       defenderLabel: defenderName,
@@ -2255,10 +2209,10 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       healInfo,
       defenseTargets,
       resolvedResults: [],
-      contestTargets: showContest ? contestTargets : [],
+      contestTargets: (doContestRoll || (targetNoCheckStates.length > 0)) ? contestTargets : [],
       resolvedContestDefenderUuids: [],
       showDefense: hasDamage || attackRollEnabled,
-      showContest,
+      showContest: doContestRoll,
       contestCasterAttr,
       contestTargetAttr,
       contestCasterSuccesses: casterContestSuccesses,
