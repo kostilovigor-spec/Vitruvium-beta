@@ -1,4 +1,4 @@
-﻿import { clamp, toNumber } from "./utils/number.js";
+import { clamp, toNumber } from "./utils/number.js";
 import { escapeHtml } from "./utils/string.js";
 import { rollSuccessDice } from "./rolls.js";
 import {
@@ -309,14 +309,14 @@ export class VitruviumCharacterSheet extends ActorSheet {
           if (this._itemHasDamage(item)) await game.vitruvium.startWeaponAttackFlow(this.actor, item);
           else this._postItemToChat(item);
         } else if (item?.type === "ability") {
-          if (this._itemHasDamage(item)) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+          if (this._itemNeedsAttackFlow(item)) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
           else if (await this._consumeAbilityCost(item)) this._postItemToChat(item);
         }
         else if (item) this._postItemToChat(item);
         break;
       case "use-ability":
         if (item) {
-          if (this._itemHasDamage(item)) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
+          if (this._itemNeedsAttackFlow(item)) await game.vitruvium.startAbilityAttackFlow(this.actor, item);
           else if (await this._consumeAbilityCost(item)) this._postItemToChat(item);
         }
         break;
@@ -442,6 +442,18 @@ export class VitruviumCharacterSheet extends ActorSheet {
     if (item.type === "item") return this.#itemDamageValue(item) > 0;
     if (item.type === "ability") return this.#abilityDamageValue(item) > 0;
     return false;
+  }
+
+  _itemHasStates(item) {
+    if (!item) return false;
+    const contestStates = Array.isArray(item.system?.contestStates) 
+      ? item.system.contestStates 
+      : [];
+    return contestStates.length > 0;
+  }
+
+  _itemNeedsAttackFlow(item) {
+    return this._itemHasDamage(item) || this._itemHasStates(item);
   }
 
   async _editDamageTypeList(field) {

@@ -1969,6 +1969,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
     // Process "self" mode states first - apply to caster immediately
     const selfStates = contestStates.filter((s) => s.applyMode === "self");
     const appliedSelfStates = [];
+    
     for (const state of selfStates) {
       if (!state.uuid) continue;
       const attackerToken = attackerActor.getActiveTokens()[0];
@@ -1988,6 +1989,36 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
 
     // If only "self" states and no damage/heal, post chat card with description and return
     const nonSelfStates = contestStates.filter((s) => s.applyMode !== "self");
+    
+    // Применяем targetNoCheck статусы ДО раннего возврата
+    const selectedTargets = collectSelectedDefenseTargets();
+    const targetNoCheckStates = nonSelfStates.filter((s) => s.applyMode === "targetNoCheck");
+    const appliedTargetNoCheckStates = [];
+    
+    if (targetNoCheckStates.length > 0 && selectedTargets.length > 0) {
+      for (const t of selectedTargets) {
+        const defender = await resolveCombatActor({
+          tokenUuid: t.defenderTokenUuid,
+        });
+        if (defender) {
+          for (const state of targetNoCheckStates) {
+            if (!state.uuid) continue;
+            
+            const out = await replaceStateFromTemplate(
+              defender,
+              state.uuid,
+              state.durationRounds,
+              t.defenderTokenUuid,
+            );
+            
+            if (out.applied) {
+              appliedTargetNoCheckStates.push(`${defender.name}: ${out.stateName ?? "Состояние"}`);
+            }
+          }
+        }
+      }
+    }
+    
     if (
       !hasDamage &&
       !hasHeal &&
@@ -2023,8 +2054,48 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       });
       return;
     }
+    
+    // Если есть только targetNoCheck статусы без урона/лечения
+    if (
+      !hasDamage &&
+      !hasHeal &&
+      targetNoCheckStates.length > 0 &&
+      nonSelfStates.length === targetNoCheckStates.length
+    ) {
+      await playAutomatedAnimation({
+        actor: attackerActor,
+        item: abilityItem,
+      });
 
-    const selectedTargets = collectSelectedDefenseTargets();
+      const img = abilityItem.img ?? "icons/svg/mystery-man.svg";
+      const selfStateLines = appliedSelfStates
+        .map((name) => `<p>✓ Накладывает на себя: <b>${escapeHtml(name)}</b></p>`)
+        .join("");
+      const targetStateLines = appliedTargetNoCheckStates
+        .map((name) => `<p>✓ Накладывает: <b>${escapeHtml(name)}</b></p>`)
+        .join("");
+      const content = `
+        <div class="vitruvium-chatcard">
+          <div class="vitruvium-chatcard__top">
+            <img class="vitruvium-chatcard__img" src="${escapeHtml(img)}" title="${escapeHtml(abilityName)}" />
+            <div class="vitruvium-chatcard__head">
+              <h3>${escapeHtml(abilityName)}</h3>
+              <p>${escapeHtml(attackerActor.name)} использует способность</p>
+            </div>
+          </div>
+          ${selfStateLines}
+          ${targetStateLines}
+          ${abilityDesc ? `<div class="vitruvium-chatcard__desc">${escapeHtml(abilityDesc).replace(/\n/g, "<br>")}</div>` : ""}
+        </div>
+      `;
+      await ChatMessage.create({
+        ...chatVisibilityData(),
+        speaker: ChatMessage.getSpeaker({ actor: attackerActor }),
+        content,
+      });
+      return;
+    }
+
     const defenseTargets = selectedTargets;
     // Check if any non-self states need targets
     const hasNonSelfStates = nonSelfStates.length > 0;
@@ -2036,36 +2107,6 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       ui.notifications?.warn(
         "Для наложения состояния выберите цель (таргет) перед использованием способности.",
       );
-    }
-
-    // For "targetNoCheck" states, apply to all targets immediately without rolls.
-    const targetNoCheckStates = nonSelfStates.filter(
-      (s) => s.applyMode === "targetNoCheck",
-    );
-    
-    if (targetNoCheckStates.length > 0) {
-      if (hasContestTarget) {
-        for (const t of contestTargets) {
-          const defender = await resolveCombatActor({
-            tokenUuid: t.defenderTokenUuid,
-          });
-          if (defender) {
-            for (const state of targetNoCheckStates) {
-              if (!state.uuid) continue;
-              
-              await replaceStateFromTemplate(
-                defender,
-                state.uuid,
-                state.durationRounds,
-                t.defenderTokenUuid,
-              );
-            }
-          }
-        }
-      } else if (!hasDamage && !hasHeal && !doContestRoll && targetMarginStates.length === 0) {
-        // Only warn if this is the only thing the ability was supposed to do
-        ui.notifications?.warn("Для наложения состояния «без проверки» нужно выбрать цель(и) перед применением.");
-      }
     }
 
     // Contest roll states (targetContest mode) — require caster vs target contest rolls
