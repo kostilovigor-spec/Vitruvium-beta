@@ -8,6 +8,7 @@ import { escapeHtml } from "../utils/string.js";
 import { chatVisibilityData } from "../chat-visibility.js";
 import { genericRollDialog } from "../combat.js";
 import { clamp, toNumber } from "../utils/number.js";
+import { normalizeDamageType } from "../config/damage-types.js";
 
 // ──────────────────────────────────────────────────────────────────
 // Утилиты (локальные, не зависят от FoundryVTT Document API)
@@ -109,7 +110,11 @@ export class ActionProcessor {
         action.weapon = action.weapon ?? payload.weapon;
         action.options = foundry.utils.mergeObject(payload.options ?? {}, action.options ?? {});
         action.value = action.value ?? payload.value;
-        action.damageType = action.damageType ?? payload.damageType;
+        action.damageType =
+            action.damageType ??
+            payload.damageType ??
+            payload.damage?.type ??
+            action.weapon?.system?.damage?.type;
         action.damageParts = action.damageParts ?? payload.damageParts ?? payload.damage?.parts;
 
         if (action.state === "await_input" && input) {
@@ -189,7 +194,12 @@ export class ActionProcessor {
         ctx.computed.attackSuccesses = atk;
         ctx.computed.weaponDamage = weaponDamage;
         ctx.damage.base = weaponDamage;
-        ctx.damage.parts = [{ type: ctx.action.damageType ?? "physical", value: weaponDamage }];
+        ctx.damage.parts = [{
+            type: normalizeDamageType(
+                ctx.action.damageType ?? ctx.action.weapon?.system?.damage?.type ?? "physical",
+            ),
+            value: weaponDamage,
+        }];
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -333,7 +343,11 @@ export class ActionProcessor {
             includeAttackSuccesses: true,
             attackSuccesses: atk,
         });
-        ctx.damage.parts = this._scaleDamageParts(rawParts, dmgOut.damage, opts.damageType ?? "physical");
+        ctx.damage.parts = this._scaleDamageParts(
+            rawParts,
+            dmgOut.damage,
+            normalizeDamageType(opts.damageType ?? "physical"),
+        );
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -479,7 +493,12 @@ export class ActionProcessor {
         ctx.computed.compact = result.compact;
 
         // Формируем damage.parts (тип берём из предыдущего шага или "physical")
-        const damageType = ctx.damage.parts?.[0]?.type ?? ctx.action.damageType ?? "physical";
+        const damageType = normalizeDamageType(
+            ctx.damage.parts?.[0]?.type ??
+            ctx.action.damageType ??
+            ctx.action.weapon?.system?.damage?.type ??
+            "physical",
+        );
         ctx.damage.parts = [{ type: damageType, value: result.damage }];
     }
 
@@ -513,12 +532,12 @@ export class ActionProcessor {
         const rawParts = action.damageParts ?? opts.damageParts ?? [];
         if (Array.isArray(rawParts) && rawParts.length > 0) {
             return rawParts.map((part) => ({
-                type: String(part?.type ?? opts.damageType ?? action.damageType ?? "physical"),
+                type: normalizeDamageType(part?.type ?? opts.damageType ?? action.damageType ?? "physical"),
                 value: Math.max(0, toNumber(part?.value, 0) + attackSuccesses),
             }));
         }
         return [{
-            type: opts.damageType ?? action.damageType ?? "physical",
+            type: normalizeDamageType(opts.damageType ?? action.damageType ?? "physical"),
             value: base + attackSuccesses,
         }];
     }
@@ -526,10 +545,10 @@ export class ActionProcessor {
     _scaleDamageParts(parts, total, fallbackType = "physical") {
         const normalized = Array.isArray(parts) && parts.length
             ? parts.map((part) => ({
-                type: String(part?.type ?? fallbackType),
+                type: normalizeDamageType(part?.type ?? fallbackType),
                 value: Math.max(0, toNumber(part?.value, 0)),
             }))
-            : [{ type: fallbackType, value: Math.max(0, toNumber(total, 0)) }];
+            : [{ type: normalizeDamageType(fallbackType), value: Math.max(0, toNumber(total, 0)) }];
 
         const target = Math.max(0, Math.round(toNumber(total, 0)));
         const sourceTotal = normalized.reduce((sum, part) => sum + part.value, 0);
@@ -563,21 +582,53 @@ export class ActionProcessor {
         if (!actor || !Array.isArray(parts)) return parts ?? [];
 
         const effectTotals = Effects.collectEffectTotals(actor);
+        const staticResists = new Set(
+            (Array.isArray(actor.system?.resistances) ? actor.system.resistances : [])
+                .map((type) => normalizeDamageType(type)),
+        );
+        const staticVulns = new Set(
+            (Array.isArray(actor.system?.vulnerabilities) ? actor.system.vulnerabilities : [])
+                .map((type) => normalizeDamageType(type)),
+        );
+
         return parts.map(p => {
-            const resist = toNumber(effectTotals[`resist.${p.type}`], 0);
-            const vuln = toNumber(effectTotals[`vuln.${p.type}`], 0);
+            const type = normalizeDamageType(p?.type ?? "physical");
+            let value = Math.max(0, toNumber(p?.value, 0));
+
+            if (staticResists.has(type)) value *= 0.5;
+            if (staticVulns.has(type)) value *= 2;
+
+            const resist = toNumber(effectTotals[`resist.${type}`], 0);
+            const vuln = toNumber(effectTotals[`vuln.${type}`], 0);
             const multiplier = Math.max(0, 1 - resist + vuln);
-            return { type: p.type, value: Math.round(toNumber(p.value, 0) * multiplier) };
+            value *= multiplier;
+
+            return { type, value: Math.round(value) };
         });
     }
 
     getWeaponDamage(weaponItem, actor) {
-        if (weaponItem) return Number(weaponItem.system?.attackBonus || 0);
+        if (weaponItem) {
+            return Math.max(
+                0,
+                Number(
+                    weaponItem.system?.damage?.value ??
+                    weaponItem.system?.attackBonus ??
+                    0,
+                ),
+            );
+        }
         let best = 0;
         for (const it of actor?.items ?? []) {
             if (it.type !== "item") continue;
             if (!it.system?.equipped) continue;
-            best = Math.max(best, Number(it.system.attackBonus || 0));
+            best = Math.max(
+                best,
+                Math.max(
+                    0,
+                    Number(it.system?.damage?.value ?? it.system?.attackBonus ?? 0),
+                ),
+            );
         }
         return best;
     }

@@ -43,8 +43,20 @@
 
       <label class="v-item-sheet__stat">
         <span>Урон</span>
-        <div class="v-item-sheet__text v-edit-hide">{{system.rollDamageBase}}</div>
-        <input class="v-item-sheet__input v-edit-only" type="number" name="system.rollDamageBase" value="{{system.rollDamageBase}}" data-dtype="Number" min="0" max="99" />
+        <div class="v-item-sheet__text v-edit-hide">{{system.damage.value}}</div>
+        <input class="v-item-sheet__input v-edit-only" type="number" name="system.damage.value" value="{{system.damage.value}}" data-dtype="Number" min="0" max="99" />
+      </label>
+
+      <label class="v-item-sheet__stat">
+        <span>Тип урона</span>
+        <div class="v-item-sheet__text v-edit-hide">{{vitruvium.damageTypeLabel}}</div>
+        <select name="system.damage.type" class="v-item-sheet__select v-edit-only">
+          {{#each vitruvium.damageTypes as |type|}}
+            <option value="{{type.key}}" {{#if (eq type.key ../vitruvium.damageType)}}selected{{/if}}>
+              {{type.icon}} {{type.label}}
+            </option>
+          {{/each}}
+        </select>
       </label>
 
       <label class="v-item-sheet__stat">

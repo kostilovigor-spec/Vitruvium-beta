@@ -81,6 +81,43 @@ Hooks.once("init", () => {
     if (updates.length > 0) {
       await Promise.all(updates);
     }
+
+    // Ensure new damage-model fields exist on actors and embedded items.
+    for (const actor of game.actors ?? []) {
+      if (!["character", "npc"].includes(actor.type)) continue;
+
+      const actorPatch = {};
+      if (!Array.isArray(actor.system?.resistances)) {
+        actorPatch["system.resistances"] = [];
+      }
+      if (!Array.isArray(actor.system?.vulnerabilities)) {
+        actorPatch["system.vulnerabilities"] = [];
+      }
+      if (Object.keys(actorPatch).length > 0) {
+        await actor.update(actorPatch);
+      }
+
+      const itemUpdates = [];
+      for (const item of actor.items ?? []) {
+        if (!["item", "ability"].includes(item.type)) continue;
+        const hasDamageValue = Number.isFinite(Number(item.system?.damage?.value));
+        const hasDamageType = typeof item.system?.damage?.type === "string";
+        if (hasDamageValue && hasDamageType) continue;
+
+        const legacyValue =
+          item.type === "ability"
+            ? Number(item.system?.rollDamageBase ?? 0)
+            : Number(item.system?.attackBonus ?? 0);
+        itemUpdates.push({
+          _id: item.id,
+          "system.damage.value": Number.isFinite(legacyValue) ? Math.max(0, legacyValue) : 0,
+          "system.damage.type": "physical",
+        });
+      }
+      if (itemUpdates.length > 0) {
+        await actor.updateEmbeddedDocuments("Item", itemUpdates);
+      }
+    }
   });
 
   patchVitruviumInitiative();

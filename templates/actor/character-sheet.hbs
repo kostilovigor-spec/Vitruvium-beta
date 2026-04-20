@@ -352,6 +352,35 @@
           <span>{{vitruvium.sidebar.derived.speed}}м</span>
         </div>
       </div>
+
+      <div class="v-derived-stats">
+        <div class="v-stat">
+          <label>Resistances</label>
+          {{#if vitruvium.sidebar.hasResistances}}
+            <span>
+              {{#each vitruvium.sidebar.resistances as |type|}}
+                {{type.icon}} {{type.label}}
+              {{/each}}
+            </span>
+          {{/if}}
+          {{#if vitruvium.isEditing}}
+            <button type="button" class="v-mini" data-action="edit-resistances">+</button>
+          {{/if}}
+        </div>
+        <div class="v-stat">
+          <label>Vulnerabilities</label>
+          {{#if vitruvium.sidebar.hasVulnerabilities}}
+            <span>
+              {{#each vitruvium.sidebar.vulnerabilities as |type|}}
+                {{type.icon}} {{type.label}}
+              {{/each}}
+            </span>
+          {{/if}}
+          {{#if vitruvium.isEditing}}
+            <button type="button" class="v-mini" data-action="edit-vulnerabilities">+</button>
+          {{/if}}
+        </div>
+      </div>
     </aside>
   </div>
 </form>

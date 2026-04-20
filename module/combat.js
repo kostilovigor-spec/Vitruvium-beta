@@ -17,6 +17,7 @@ import {
 import { getStateTemplateByUuid } from "./state-library.js";
 import { chatVisibilityData } from "./chat-visibility.js";
 import { ActionProcessor } from "./core/action-processor.js";
+import { normalizeDamageType } from "./config/damage-types.js";
 
 // Vitruvium combat.js — v13 (chat-button flow, GM resolve via createChatMessage hook)
 // Goal: Players must NEVER see the "Результат" card with "Применить урон".
@@ -220,12 +221,24 @@ function listAttributeKeys(actor) {
 }
 
 function getWeaponDamage(actor, weaponItem = null) {
-  if (weaponItem) return clamp(toNumber(weaponItem.system?.attackBonus, 0), 0, 99);
+  if (weaponItem) {
+    return clamp(
+      toNumber(
+        weaponItem.system?.damage?.value ?? weaponItem.system?.attackBonus,
+        0,
+      ),
+      0,
+      99,
+    );
+  }
   let best = 0;
   for (const it of actor.items ?? []) {
     if (it.type !== "item") continue;
     if (!it.system?.equipped) continue;
-    best = Math.max(best, toNumber(it.system.attackBonus ?? 0, 0));
+    best = Math.max(
+      best,
+      toNumber(it.system?.damage?.value ?? it.system?.attackBonus ?? 0, 0),
+    );
   }
   return best;
 }
@@ -1920,8 +1933,14 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
       0,
       6,
     );
+    const abilityDamageType = normalizeDamageType(
+      abilityItem?.system?.damage?.type ?? "physical",
+    );
     const damageBase = clamp(
-      toNumber(abilityItem?.system?.rollDamageBase, 0),
+      toNumber(
+        abilityItem?.system?.damage?.value ?? abilityItem?.system?.rollDamageBase,
+        0,
+      ),
       0,
       99,
     );
@@ -2153,7 +2172,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
         contestCasterAttr,
         damageBase,
         healBase,
-        damageType: "physical",
+        damageType: abilityDamageType,
       };
 
       if (hasDamage && hasDefenseTarget) {
@@ -2195,7 +2214,7 @@ export async function startAbilityAttackFlow(attackerActor, abilityItem) {
           contestCasterAttr,
           damageBase,
           healBase,
-          damageType: "physical",
+          damageType: abilityDamageType,
           needsDefense: false,
         }
       });
@@ -2330,6 +2349,9 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
   try {
     const weaponName = weaponItem?.name ?? "Оружие";
     const weaponSys = weaponItem?.system ?? {};
+    const weaponDamageType = normalizeDamageType(
+      weaponItem?.system?.damage?.type ?? "physical",
+    );
 
     // Read contest states from weapon (for margin-based effects)
     const weaponContestStates = Array.isArray(weaponSys.contestStates)
@@ -2370,6 +2392,7 @@ export async function startWeaponAttackFlow(attackerActor, weaponItem) {
         extraDice: atkChoice.extraDice,
         fullMode: atkChoice.fullMode,
       },
+      damageType: weaponDamageType,
     });
 
     const atkRoll = preview.attackRoll;

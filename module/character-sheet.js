@@ -12,6 +12,12 @@ import { playAutomatedAnimation } from "./auto-animations.js";
 import { chatVisibilityData } from "./chat-visibility.js";
 import { replaceStateFromTemplate } from "./combat.js";
 import { listSystemStateTemplates } from "./state-library.js";
+import {
+  getDamageTypeIcon,
+  getDamageTypeLabel,
+  normalizeDamageType,
+} from "./config/damage-types.js";
+import { openDamageTypeSelector } from "./ui/damage-type-selector.js";
 
 // Character sheet: attributes, resources, items, and actions.
 export class VitruviumCharacterSheet extends ActorSheet {
@@ -63,6 +69,20 @@ export class VitruviumCharacterSheet extends ActorSheet {
     "other": "Остальные",
   };
 
+  #itemDamageValue(item) {
+    return Math.max(
+      0,
+      toNumber(item?.system?.damage?.value, toNumber(item?.system?.attackBonus, 0)),
+    );
+  }
+
+  #abilityDamageValue(item) {
+    return Math.max(
+      0,
+      toNumber(item?.system?.damage?.value, toNumber(item?.system?.rollDamageBase, 0)),
+    );
+  }
+
   async getData(options) {
     const data = await super.getData(options);
     const sys = this.actor.system ?? {};
@@ -109,6 +129,23 @@ export class VitruviumCharacterSheet extends ActorSheet {
     };
 
     // 2. Sidebar Data
+    const mappedTypes = (arr = []) => {
+      const out = [];
+      for (const rawType of arr) {
+        const type = normalizeDamageType(rawType);
+        if (out.some((entry) => entry.key === type)) continue;
+        out.push({
+          key: type,
+          icon: getDamageTypeIcon(type),
+          label: getDamageTypeLabel(type),
+        });
+      }
+      return out;
+    };
+
+    const resistances = mappedTypes(sys.resistances ?? []);
+    const vulnerabilities = mappedTypes(sys.vulnerabilities ?? []);
+
     vitruvium.sidebar = {
       attributes: [
         { key: "condition", label: "Самочувствие", value: cond, icon: "fa-heart" },
@@ -125,7 +162,11 @@ export class VitruviumCharacterSheet extends ActorSheet {
         speed: 5 + getAttr("movement") + getEffectValue(effectTotals, "speed"),
         level: attrs.level ?? 1
       },
-      coins: sys.coins ?? { bronze: 0, silver: 0, gold: 0 }
+      coins: sys.coins ?? { bronze: 0, silver: 0, gold: 0 },
+      resistances,
+      vulnerabilities,
+      hasResistances: resistances.length > 0,
+      hasVulnerabilities: vulnerabilities.length > 0,
     };
 
     // 3. Central Zone (Tabs with Grouping)
@@ -147,7 +188,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
           id: w.id,
           name: w.name,
           img: w.img,
-          damage: w.system.attackBonus || 0
+          damage: this.#itemDamageValue(w)
         })),
         abilities: activeAbilities.map(a => ({
           id: a.id,
@@ -318,6 +359,12 @@ export class VitruviumCharacterSheet extends ActorSheet {
       case "add-ability-item":
         await this._createAbilityFromCategory(btn.dataset.type);
         break;
+      case "edit-resistances":
+        await this._editDamageTypeList("resistances");
+        break;
+      case "edit-vulnerabilities":
+        await this._editDamageTypeList("vulnerabilities");
+        break;
     }
   }
 
@@ -340,6 +387,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         quantity: 1,
         price: 0,
         equipped: false,
+        damage: { value: 0, type: "physical" },
         description: ""
       }
     };
@@ -355,6 +403,7 @@ export class VitruviumCharacterSheet extends ActorSheet {
         cost: 0,
         actions: 1,
         active: false,
+        damage: { value: 0, type: "physical" },
         description: ""
       }
     };
@@ -390,9 +439,24 @@ export class VitruviumCharacterSheet extends ActorSheet {
 
   _itemHasDamage(item) {
     if (!item) return false;
-    if (item.type === "item") return Math.max(0, toNumber(item.system?.attackBonus, 0)) > 0;
-    if (item.type === "ability") return Math.max(0, toNumber(item.system?.rollDamageBase, 0)) > 0;
+    if (item.type === "item") return this.#itemDamageValue(item) > 0;
+    if (item.type === "ability") return this.#abilityDamageValue(item) > 0;
     return false;
+  }
+
+  async _editDamageTypeList(field) {
+    if (!this._isEditing) return;
+    if (!["resistances", "vulnerabilities"].includes(field)) return;
+
+    const current = Array.isArray(this.actor.system?.[field])
+      ? this.actor.system[field]
+      : [];
+    const selected = await openDamageTypeSelector({
+      title: field === "resistances" ? "Resistances" : "Vulnerabilities",
+      selected: current,
+    });
+    if (!selected) return;
+    await this.actor.update({ [`system.${field}`]: selected });
   }
 
   async _consumeAbilityCost(item) {
