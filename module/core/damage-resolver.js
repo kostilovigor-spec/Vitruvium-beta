@@ -4,24 +4,36 @@ function num(v, d) {
 }
 
 /**
+ * Проверяет, является ли тип урона физическим
+ * @param {string} damageType - тип урона
+ * @returns {boolean}
+ */
+function isPhysicalDamage(damageType) {
+    const physicalTypes = ['physical', 'piercing', 'slashing', 'bludgeoning'];
+    return physicalTypes.includes(String(damageType ?? '').trim().toLowerCase());
+}
+
+/**
  * @param {Object} options
  * @param {number} options.attackSuccesses
  * @param {number} options.defenseSuccesses
  * @param {number} options.weaponDamage
  * @param {number} options.armor
  * @param {boolean} options.isBlock
+ * @param {string} options.damageType - тип урона
  */
 function computeWeaponDamage({
     attackSuccesses,
     defenseSuccesses,
     weaponDamage,
     armor,
-    isBlock
+    isBlock,
+    damageType
 }) {
     const atk = num(attackSuccesses, 0);
     const def = num(defenseSuccesses, 0);
     const base = num(weaponDamage, 0);
-    const armorVal = num(armor, 0);
+    const armorVal = isPhysicalDamage(damageType) ? num(armor, 0) : 0;
     const margin = atk - def;
 
     if (isBlock) {
@@ -32,16 +44,17 @@ function computeWeaponDamage({
             blockBonusEnabled && armorVal >= blockBonusMinArmor ? blockBonusValue : 0;
         const effBlock = Math.max(0, def + blockBonus);
 
-        // Рассчитываем урон по новой формуле
-        const attackAfterArmor = Math.max(0, atk - armorVal); // Успехи атаки после брони
-        const totalPotential = base + attackAfterArmor; // Весь потенциальный урон
-        const breakthrough = Math.max(0, atk - effBlock); // Пролом = успехи атаки - успехи блока
+        // Броня вычитается из урона оружия, а не из успехов атаки
+        const baseDamageAfterArmor = Math.max(0, base - armorVal);
+        const totalPotential = baseDamageAfterArmor + atk;
+        const breakthrough = Math.max(0, atk - effBlock);
 
         const rawDmg = Math.max(0, totalPotential - effBlock) + breakthrough;
         const dmg = Math.min(rawDmg, totalPotential);
 
         const blockLabel = blockBonus ? `${def}+${blockBonus}` : `${def}`;
-        const formula = `min(max(0, (${base} + max(0, ${atk} - ${armorVal})) - ${blockLabel}) + max(0, ${atk} - ${blockLabel}), ${base} + max(0, ${atk} - ${armorVal}))`;
+        const armorLabel = armorVal > 0 ? ` - ${armorVal}` : '';
+        const formula = `min(max(0, (max(0, ${base}${armorLabel}) + ${atk}) - ${blockLabel}) + max(0, ${atk} - ${blockLabel}), max(0, ${base}${armorLabel}) + ${atk})`;
         const compact = `${formula} = ${dmg}`;
         return { damage: dmg, compact, hit: true, margin };
     }
@@ -56,9 +69,11 @@ function computeWeaponDamage({
         };
     }
 
-    const effAtk = Math.max(0, atk - armorVal);
-    const dmg = base + effAtk;
-    const formula = `${base} + max(0, ${atk} - ${armorVal})`;
+    // Броня вычитается из урона оружия
+    const baseDamageAfterArmor = Math.max(0, base - armorVal);
+    const dmg = baseDamageAfterArmor + atk;
+    const armorLabel = armorVal > 0 ? ` - ${armorVal}` : '';
+    const formula = `max(0, ${base}${armorLabel}) + ${atk}`;
     const compact = `${formula} = ${dmg}`;
     return { damage: dmg, compact, hit: true, margin };
 }

@@ -483,12 +483,21 @@ export class ActionProcessor {
         const armor = this.getArmor(ctx.action.defender);
         const isBlock = ctx.computed.isBlock ?? false;
 
+        // Определяем тип урона до расчёта
+        const damageType = normalizeDamageType(
+            ctx.damage.parts?.[0]?.type ??
+            ctx.action.damageType ??
+            ctx.action.weapon?.system?.damage?.type ??
+            "physical",
+        );
+
         const result = DamageResolver.computeWeaponDamage({
             attackSuccesses: atk,
             defenseSuccesses: def,
             weaponDamage,
             armor,
-            isBlock
+            isBlock,
+            damageType
         });
 
         ctx.computed.damage = result.damage;
@@ -496,13 +505,6 @@ export class ActionProcessor {
         ctx.computed.hit = result.hit;
         ctx.computed.compact = result.compact;
 
-        // Формируем damage.parts (тип берём из предыдущего шага или "physical")
-        const damageType = normalizeDamageType(
-            ctx.damage.parts?.[0]?.type ??
-            ctx.action.damageType ??
-            ctx.action.weapon?.system?.damage?.type ??
-            "physical",
-        );
         ctx.damage.parts = [{ type: damageType, value: result.damage }];
     }
 

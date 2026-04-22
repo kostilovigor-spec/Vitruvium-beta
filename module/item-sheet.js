@@ -1,6 +1,7 @@
-﻿import { openModifierEditor, presentModifiers } from "./core/modifier-system.js";
+import { openModifierEditor, presentModifiers } from "./core/modifier-system.js";
 import { ConditionResolver } from "./core/condition-resolver.js";
 import { listSystemStateTemplates } from "./state-library.js";
+import { DAMAGE_TYPES, normalizeDamageType, getDamageTypeLabel } from "./config/damage-types.js";
 
 // Item sheet: inventory items and equipment.
 export class VitruviumItemSheet extends ItemSheet {
@@ -117,6 +118,11 @@ export class VitruviumItemSheet extends ItemSheet {
     data.vitruvium.modifierCount = Array.isArray(sys.modifiers)
       ? sys.modifiers.length
       : 0;
+
+    // Добавляем данные о типах урона
+    data.vitruvium.damageTypes = DAMAGE_TYPES;
+    data.vitruvium.damageType = normalizeDamageType(sys.damage?.type, "physical");
+    data.vitruvium.damageTypeLabel = getDamageTypeLabel(data.vitruvium.damageType);
 
     const tabBase = `v-tabs-${this.appId}`;
     data.vitruvium.tabName = tabBase;
