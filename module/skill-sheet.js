@@ -1,4 +1,4 @@
-﻿import { openModifierEditor, presentModifiers } from "./core/modifier-system.js";
+import { openModifierEditor, presentModifiers } from "./core/modifier-system.js";
 
 export class VitruviumSkillSheet extends ItemSheet {
   static get defaultOptions() {
@@ -7,8 +7,8 @@ export class VitruviumSkillSheet extends ItemSheet {
       template: "systems/Vitruvium/templates/item/skill-sheet.hbs",
       width: 720,
       height: 520,
-      submitOnChange: false,
-      submitOnClose: false,
+      submitOnChange: true,
+      submitOnClose: true,
       resizable: true,
     });
   }

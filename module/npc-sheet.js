@@ -20,7 +20,7 @@ export class VitruviumNPCSheet extends ActorSheet {
       width: 600,
       height: 520,
       resizable: true,
-      submitOnChange: false,
+      submitOnChange: true,
       submitOnClose: true,
       dragDrop: [{ dragSelector: ".v-list-item", dropSelector: null }],
     });

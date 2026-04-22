@@ -29,6 +29,8 @@ export class VitruviumCharacterSheet extends ActorSheet {
       minWidth: 600,
       height: 600,
       resizable: true,
+      submitOnChange: true,
+      submitOnClose: true,
       dragDrop: [{ dragSelector: ".v-list-item", dropSelector: null }],
     });
   }

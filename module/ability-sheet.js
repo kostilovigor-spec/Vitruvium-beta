@@ -12,8 +12,8 @@ export class VitruviumAbilitySheet extends ItemSheet {
       width: 860,
       height: 520,
       resizable: true,
-      submitOnChange: false,
-      submitOnClose: false,
+      submitOnChange: true,
+      submitOnClose: true,
     });
   }
 
