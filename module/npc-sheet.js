@@ -84,7 +84,9 @@ export class VitruviumNPCSheet extends ActorSheet {
         { key: "communication", label: "COM", value: getAttr("communication"), icon: "fa-comments" },
       ],
       derived: {
-        armor: clamp(toNumber(sys.armor?.value ?? sys.armor, 0), 0, 99),
+        armor: clamp(toNumber(sys.armor?.value ?? sys.armor, 0), 0, 99) +
+          this.actor.items.reduce((acc, i) => acc + (i.type === "item" && i.system.equipped ? (i.system.armorBonus || 0) : 0), 0) +
+          getEffectValue(effectTotals, "armorValue"),
         speed: clamp(toNumber(sys.speed?.value ?? sys.speed, 5), 0, 99)
       }
     };

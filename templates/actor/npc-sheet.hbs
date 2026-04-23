@@ -148,6 +148,10 @@
                   <div class="v-item-name">{{i.name}}</div>
                 </div>
                 <div class="v-item-controls">
+                  <button type="button" class="v-icon-btn {{#if i.system.equipped}}is-active{{/if}}"
+                    data-action="toggle-equip" data-item-id="{{i.id}}" title="Экипировать">
+                    <i class="fas fa-shield-alt"></i>
+                  </button>
                   <button type="button" class="v-icon-btn" data-action="edit-item" data-item-id="{{i.id}}" title="Редактировать"><i
                       class="fas fa-edit"></i></button>
                   <button type="button" class="v-icon-btn is-danger" data-action="delete-item"
