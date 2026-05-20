@@ -202,7 +202,9 @@
     <aside class="v-sidebar">
       <div class="v-attr-grid">
         {{#each vitruvium.sidebar.attributes as |attr|}}
-        <div class="v-attr-card">
+        <div class="v-attr-card {{#unless ../vitruvium.isEditing}}rollable{{/unless}}" {{#unless
+          ../vitruvium.isEditing}}data-action="roll-attr" data-attr="{{attr.key}}" title="Бросок: {{attr.label}}"
+          {{/unless}}>
           <div class="v-attr-card__label">{{attr.label}}</div>
           <div class="v-attr-card__value">
             {{#if ../vitruvium.isEditing}}

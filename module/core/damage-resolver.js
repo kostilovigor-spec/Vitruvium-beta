@@ -53,7 +53,7 @@ function computeWeaponDamage({
         const dmg = Math.min(rawDmg, totalPotential);
 
         const blockLabel = blockBonus ? `${def}+${blockBonus}` : `${def}`;
-        const armorLabel = armorVal > 0 ? ` - ${armorVal}` : '';
+        const armorLabel = armorVal > 0 ? ` - armor ${armorVal}` : '';
         const formula = `min(max(0, (max(0, ${base}${armorLabel}) + ${atk}) - ${blockLabel}) + max(0, ${atk} - ${blockLabel}), max(0, ${base}${armorLabel}) + ${atk})`;
         const compact = `${formula} = ${dmg}`;
         return { damage: dmg, compact, hit: true, margin };
@@ -72,7 +72,7 @@ function computeWeaponDamage({
     // Броня вычитается из урона оружия
     const baseDamageAfterArmor = Math.max(0, base - armorVal);
     const dmg = baseDamageAfterArmor + atk;
-    const armorLabel = armorVal > 0 ? ` - ${armorVal}` : '';
+    const armorLabel = armorVal > 0 ? ` - armor ${armorVal}` : '';
     const formula = `max(0, ${base}${armorLabel}) + ${atk}`;
     const compact = `${formula} = ${dmg}`;
     return { damage: dmg, compact, hit: true, margin };

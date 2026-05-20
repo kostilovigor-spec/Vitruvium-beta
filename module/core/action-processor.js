@@ -17,10 +17,7 @@ import { replaceStateFromTemplate } from "../state-application.js";
 // ──────────────────────────────────────────────────────────────────
 
 function getArmorTotal(actor) {
-    const base = toNumber(
-        actor.system?.attributes?.armor?.value ?? actor.system?.attributes?.armor,
-        0,
-    );
+    const base = clamp(toNumber(actor.system?.armor?.value ?? actor.system?.armor, 0), 0, 99);
     let bonus = 0;
     for (const it of actor.items ?? []) {
         if (it.type !== "item") continue;
@@ -882,5 +879,3 @@ export class ActionProcessor {
         }
     }
 }
-
-
